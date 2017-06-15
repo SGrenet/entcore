@@ -87,7 +87,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 		defaultFeed = container.config().getString("feeder", "AAF");
 		feeds.put("AAF", new AafFeeder(vertx, getFilesDirectory("AAF")));
 		feeds.put("AAF1D", new Aaf1dFeeder(vertx, getFilesDirectory("AAF1D")));
-		feeds.put("CSV", new CsvFeeder(vertx, container.config().getObject("csvMappings", new JsonObject())));
+		feeds.put("CSV", new CsvFeeder(vertx));
 		final long deleteUserDelay = container.config().getLong("delete-user-delay", 90 * 24 * 3600 * 1000l);
 		final long preDeleteUserDelay = container.config().getLong("pre-delete-user-delay", 90 * 24 * 3600 * 1000l);
 		final String deleteCron = container.config().getString("delete-cron", "0 0 2 * * ? *");
@@ -273,6 +273,8 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 				break;
 			case "validate" : launchImportValidation(message, null);
 				break;
+			case "columnsMapping" : csvColumnMapping(message);
+				break;
 			case "ignore-duplicate" :
 				duplicateUsers.ignoreDuplicate(message);
 				break;
@@ -314,6 +316,25 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 		checkEventQueue();
 	}
 
+	private void csvColumnMapping(final Message<JsonObject> message) {
+		final String acceptLanguage = message.body().getString("language", "fr");
+		final CsvValidator v = new CsvValidator(vertx, acceptLanguage,
+				container.config().getObject("csvMappings", new JsonObject()));
+		String path = message.body().getString("path");
+		v.columnsMapping(path, new Handler<JsonObject>() {
+			@Override
+			public void handle(JsonObject event) {
+				if (!v.containsErrors()) {
+					sendOK(message, new JsonObject()
+							.putObject("mappings", v.getMappings())
+							.putObject("availableFields", v.getColumnsMapper().availableFields()));
+				} else {
+					sendError(message, "column.mapping.error");
+				}
+			}
+		});
+	}
+
 	private void launchImportValidation(final Message<JsonObject> message, final Handler<Report> handler) {
 		logger.info(message.body().encodePrettily());
 		final String acceptLanguage = message.body().getString("language", "fr");
@@ -323,8 +344,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 		final ImportValidator v;
 		switch (source) {
 			case "CSV":
-				v = new CsvValidator(vertx, acceptLanguage,
-						container.config().getObject("csvMappings", new JsonObject()));
+				v = new CsvValidator(vertx, acceptLanguage, message.body().getObject("columnsMapping"));
 				break;
 			case "AAF":
 			case "AAF1D":
