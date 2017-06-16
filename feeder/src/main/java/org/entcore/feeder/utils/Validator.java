@@ -104,12 +104,19 @@ public class Validator {
 	}
 
 	public String validate(JsonObject object, String acceptLanguage) {
+		return validate(object, acceptLanguage, false);
+	}
+
+	public String validate(JsonObject object, String acceptLanguage, boolean conserveChildAttributes) {
 		if (object == null) {
 			return i18n.translate("null.object", I18n.DEFAULT_DOMAIN, acceptLanguage);
 		}
 		final StringBuilder calcChecksum = new StringBuilder();
 		final Set<String> attributes = new HashSet<>(object.getFieldNames());
 		for (String attr : attributes) {
+			if (conserveChildAttributes && attr != null && attr.startsWith("child")) {
+				continue;
+			}
 			JsonObject v = validate.getObject(attr);
 			if (v == null) {
 				object.removeField(attr);

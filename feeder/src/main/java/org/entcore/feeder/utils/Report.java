@@ -31,6 +31,7 @@ import org.joda.time.format.DateTimeFormat;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.Vertx;
 import org.vertx.java.core.VoidHandler;
+import org.vertx.java.core.Handler;
 import org.vertx.java.core.eventbus.Message;
 import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
@@ -63,7 +64,9 @@ public class Report {
 		final JsonObject errors = new JsonObject();
 		final JsonObject files = new JsonObject();
 		JsonObject ignored = new JsonObject();
-		result = new JsonObject().putObject("errors", errors).putObject("files", files).putObject("ignored", ignored);
+		result = new JsonObject().putString("_id", UUID.randomUUID().toString()).putObject("created", MongoDb.now())
+				.putObject("errors", errors).putObject(FILES, files).putObject("ignored", ignored)
+				.putString("source", getSource());
 	}
 
 	public Report addError(String error) {
@@ -121,10 +124,10 @@ public class Report {
 	}
 
 	public void addUser(String file, JsonObject props) {
-		JsonArray f = result.getObject("files").getArray(file);
+		JsonArray f = result.getObject(FILES).getArray(file);
 		if (f == null) {
 			f = new JsonArray();
-			result.getObject("files").putArray(file, f);
+			result.getObject(FILES).putArray(file, f);
 		}
 		f.addObject(props);
 	}
@@ -161,8 +164,8 @@ public class Report {
 
 	public JsonArray getUsersExternalId() {
 		final JsonArray res = new JsonArray();
-		for (String f : result.getObject("files").getFieldNames()) {
-			JsonArray a = result.getObject("files").getArray(f);
+		for (String f : result.getObject(FILES).getFieldNames()) {
+			JsonArray a = result.getObject(FILES).getArray(f);
 			if (a != null) {
 				for (Object o : a) {
 					if (!(o instanceof JsonObject)) continue;
@@ -312,10 +315,8 @@ public class Report {
 		return result.getObject(MAPPINGS);
 	}
 
-	public void setMappings(JsonObject mappings) {
-		if (mappings != null && mappings.size() > 0) {
-			result.putObject(MAPPINGS, mappings);
-		}
+	public String getSource() {
+		return "REPORT";
 	}
 
 }

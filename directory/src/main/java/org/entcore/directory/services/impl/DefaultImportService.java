@@ -21,12 +21,12 @@ package org.entcore.directory.services.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fr.wseduc.webutils.DefaultAsyncResult;
+import fr.wseduc.mongodb.MongoDb;
 import fr.wseduc.webutils.Either;
+import org.entcore.common.mongodb.MongoDbResult;
 import org.entcore.directory.Directory;
 import org.entcore.directory.pojo.ImportInfos;
 import org.entcore.directory.services.ImportService;
-import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.Vertx;
 import org.vertx.java.core.eventbus.EventBus;
@@ -36,12 +36,16 @@ import org.vertx.java.core.json.JsonObject;
 import org.vertx.java.core.logging.Logger;
 import org.vertx.java.core.logging.impl.LoggerFactory;
 
+import static fr.wseduc.webutils.Utils.defaultValidationParamsNull;
+
 public class DefaultImportService implements ImportService {
 
 	private static final Logger log = LoggerFactory.getLogger(DefaultImportService.class);
 	private final EventBus eb;
 	private final Vertx vertx;
 	private static final ObjectMapper mapper = new ObjectMapper();
+	private final MongoDb mongo = MongoDb.getInstance();
+	private static final String IMPORTS = "imports";
 
 	public DefaultImportService(Vertx vertx, EventBus eb) {
 		this.eb = eb;
@@ -82,6 +86,12 @@ public class DefaultImportService implements ImportService {
 	}
 
 	@Override
+	public void validate(String importId, final Handler<Either<JsonObject, JsonObject>> handler) {
+		JsonObject action = new JsonObject().putString("action", "validateWithId").putString("id", importId);
+		sendCommand(handler, action);
+	}
+
+	@Override
 	public void doImport(ImportInfos importInfos, final Handler<Either<JsonObject, JsonObject>> handler) {
 		try {
 			JsonObject action = new JsonObject(mapper.writeValueAsString(importInfos))
@@ -110,32 +120,72 @@ public class DefaultImportService implements ImportService {
 	}
 
 	@Override
+	public void doImport(String importId, final Handler<Either<JsonObject, JsonObject>> handler) {
+		JsonObject action = new JsonObject().putString("action", "importWithId").putString("id", importId);
+		sendCommand(handler, action);
+	}
+
+	@Override
 	public void columnsMapping(ImportInfos importInfos, final Handler<Either<JsonObject, JsonObject>> handler) {
 		try {
 			JsonObject action = new JsonObject(mapper.writeValueAsString(importInfos))
 					.putString("action", "columnsMapping");
-			eb.send("entcore.feeder", action, new Handler<Message<JsonObject>>() {
-				@Override
-				public void handle(Message<JsonObject> event) {
-					if ("ok".equals(event.body().getString("status"))) {
-						JsonObject r = event.body();
-						r.removeField("status");
-						if (r.getObject("errors", new JsonObject()).size() > 0) {
-							handler.handle(new Either.Left<JsonObject, JsonObject>(r));
-						} else {
-							handler.handle(new Either.Right<JsonObject, JsonObject>(r));
-						}
-					} else {
-						handler.handle(new Either.Left<JsonObject, JsonObject>(new JsonObject().putArray("global",
-								new JsonArray().addString(event.body().getString("message", "")))));
-					}
-				}
-			});
+			sendCommand(handler, action);
 		} catch (JsonProcessingException e) {
 			handler.handle(new Either.Left<JsonObject, JsonObject>(new JsonObject()
 					.putArray("global", new JsonArray().addString("unexpected.error"))));
 			log.error(e.getMessage(), e);
 		}
+	}
+
+	@Override
+	public void addLine(String importId, String profile, JsonObject line, Handler<Either<String, JsonObject>> handler) {
+		final JsonObject query = new JsonObject().putString("_id", importId);
+		final JsonObject update = new JsonObject().putObject("$push", new JsonObject().putObject("files." + profile, line));
+		mongo.update(IMPORTS, query, update, MongoDbResult.validActionResultHandler(handler));
+	}
+
+	@Override
+	public void updateLine(String importId, String profile, JsonObject line, Handler<Either<String, JsonObject>> handler) {
+		Integer lineId = line.getInteger("line");
+		if (defaultValidationParamsNull(handler, lineId)) return;
+		JsonObject item = new JsonObject();
+		for (String attr : line.getFieldNames()) {
+			if ("line".equals(attr)) continue;
+			item.putValue("files." + profile + ".$." + attr, line.getValue(attr));
+		}
+//		db.imports.update({"_id" : "8ff9a53f-a216-49f2-97cf-7ccc41c6e2b6", "files.Relative.line" : 147}, {$set : {"files.Relative.$.state" : "bla"}})
+		final JsonObject query = new JsonObject().putString("_id", importId).putNumber("files." + profile + ".line", lineId);
+		final JsonObject update = new JsonObject().putObject("$set", item);
+		mongo.update(IMPORTS, query, update, MongoDbResult.validActionResultHandler(handler));
+	}
+
+	@Override
+	public void deleteLine(String importId, String profile, Integer line, Handler<Either<String, JsonObject>> handler) {
+		final JsonObject query = new JsonObject().putString("_id", importId).putNumber("files." + profile + ".line", line);
+		final JsonObject update = new JsonObject().putObject("$pull", new JsonObject()
+				.putObject("files." + profile, new JsonObject().putNumber("line", line)));
+		mongo.update(IMPORTS, query, update, MongoDbResult.validActionResultHandler(handler));
+	}
+
+	protected void sendCommand(final Handler<Either<JsonObject, JsonObject>> handler, JsonObject action) {
+		eb.send("entcore.feeder", action, new Handler<Message<JsonObject>>() {
+			@Override
+			public void handle(Message<JsonObject> event) {
+				if ("ok".equals(event.body().getString("status"))) {
+					JsonObject r = event.body();
+					r.removeField("status");
+					if (r.getObject("errors", new JsonObject()).size() > 0) {
+						handler.handle(new Either.Left<JsonObject, JsonObject>(r));
+					} else {
+						handler.handle(new Either.Right<JsonObject, JsonObject>(r));
+					}
+				} else {
+					handler.handle(new Either.Left<JsonObject, JsonObject>(new JsonObject().putArray("global",
+							new JsonArray().addString(event.body().getString("message", "")))));
+				}
+			}
+		});
 	}
 
 }

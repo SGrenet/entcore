@@ -20,10 +20,17 @@
 package org.entcore.feeder;
 
 import org.vertx.java.core.Handler;
+import org.vertx.java.core.eventbus.Message;
 import org.vertx.java.core.json.JsonObject;
 
 public interface ImportValidator {
 
+	void validate(Handler<JsonObject> handler);
+
 	void validate(String path, Handler<JsonObject> handler);
+
+	boolean isValid();
+
+	void exportIfValid(Handler<JsonObject> handler);
 
 }
