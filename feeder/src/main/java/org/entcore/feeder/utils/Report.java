@@ -155,7 +155,7 @@ public class Report {
 	}
 
 	public JsonObject getResult() {
-		return result;
+		return result.copy();
 	}
 
 	public void setUsersExternalId(JsonArray usersExternalIds) {
@@ -313,6 +313,39 @@ public class Report {
 
 	public JsonObject getMappings() {
 		return result.getObject(MAPPINGS);
+  }
+
+	protected int cleanAttributeKeys(JsonObject attribute) {
+		int count = 0;
+		if (attribute != null) {
+			for (String attr : attribute.getFieldNames()) {
+				JsonObject j = attribute.getObject(attr);
+				if (j != null) {
+					for (String attr2 : j.copy().getFieldNames()) {
+						if (attr2.contains(".")) {
+							count++;
+							j.putString(attr2.replaceAll("\\.", "_|_"), (String) j.removeField(attr2));
+						}
+					}
+				}
+			}
+		}
+		return count;
+	}
+
+	protected void uncleanAttributeKeys(JsonObject attribute) {
+		if (attribute != null) {
+			for (String attr : attribute.getFieldNames()) {
+				JsonObject j = attribute.getObject(attr);
+				if (j != null) {
+					for (String attr2 : j.copy().getFieldNames()) {
+						if (attr2.contains("_|_")) {
+							j.putString(attr2.replaceAll("_\\|_", "."), (String) j.removeField(attr2));
+						}
+					}
+				}
+			}
+		}
 	}
 
 	public String getSource() {
