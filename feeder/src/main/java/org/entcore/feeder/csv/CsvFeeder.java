@@ -44,6 +44,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
+import static fr.wseduc.webutils.Utils.getOrElse;
 import static org.entcore.feeder.dictionary.structures.DefaultProfiles.*;
 import static org.entcore.feeder.dictionary.structures.DefaultProfiles.GUEST_PROFILE;
 import static org.entcore.feeder.utils.CSVUtil.emptyLine;
@@ -53,7 +54,7 @@ public class CsvFeeder implements Feed {
 
 	public static final Pattern frenchDatePatter = Pattern.compile("^([0-9]{2})/([0-9]{2})/([0-9]{4})$");
 	private static final Logger log = LoggerFactory.getLogger(CsvFeeder.class);
-	public static final long DEFAULT_STUDENT_SEED = 0l;
+	private long defaultStudentSeed = 0l;
 	private final ProfileColumnsMapper columnsMapper;
 	private final Vertx vertx;
 	private final Map<String, String> studentExternalIdMapping = new HashMap<>();
@@ -537,10 +538,7 @@ public class CsvFeeder implements Feed {
 		if (mapping.trim().isEmpty()) return;
 		try {
 			String hash = Hash.sha1(mapping.getBytes("UTF-8"));
-			String childId = studentExternalIdMapping.get(hash);
-			if (childId != null) {
-				linkStudents.addString(childId);
-			}
+			linkStudents.add(getOrElse(studentExternalIdMapping.get(hash), hash));
 		} catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
 			log.error(e.getMessage(), e);
 		}
@@ -560,8 +558,8 @@ public class CsvFeeder implements Feed {
 	protected static String getHashMapping(JsonObject props, String c, Structure structure, long seed) {
 		String mapping = structure.getExternalId()+props.getString("surname", "")+
 				props.getString("lastName", "")+props.getString("firstName", "")+
-//				props.getString("email","")+props.getString("title","")+
-//				props.getString("homePhone","")+props.getString("mobile","")+
+				props.getString("email","")+props.getString("title","")+
+				props.getString("homePhone","")+props.getString("mobile","")+
 				c+seed;
 		try {
 			return Hash.sha1(mapping.getBytes("UTF-8"));
