@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 
 import static fr.wseduc.webutils.Utils.getOrElse;
+import static fr.wseduc.webutils.Utils.isEmpty;
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 import static org.entcore.feeder.csv.CsvFeeder.*;
 import static org.entcore.feeder.utils.CSVUtil.emptyLine;
@@ -322,7 +323,13 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 			int i = 0;
 			while ((strings = csvParser.readNext()) != null) {
 				if (i == 0) {
-					addMapping(profile, columnsMapper.getColumsMapping(profile, strings));
+					JsonObject mapping = columnsMapper.getColumsMapping(profile, strings);
+					if (mapping != null) {
+						addMapping(profile, mapping);
+					} else {
+						addErrorByFile(profile, "invalid.column.empty");
+						break;
+					}
 					columnsNumber = strings.length;
 				} else if (!emptyLine(strings) && columnsNumber != strings.length) {
 					addErrorByFile(profile, "bad.columns.number", "" + (i + 1));
@@ -448,7 +455,11 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 
 	private void parseErrors(String key, JsonArray invalidColumns, String profile, final Handler<JsonObject> handler) {
 		for (Object o : invalidColumns) {
-			addErrorByFile(profile, key, (String) o);
+			if (isEmpty((String) o)) {
+				addErrorByFile(profile, "invalid.column.empty");
+			} else {
+				addErrorByFile(profile, key, (String) o);
+			}
 		}
 		handler.handle(result);
 	}

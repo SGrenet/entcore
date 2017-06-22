@@ -32,6 +32,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import static fr.wseduc.webutils.Utils.isEmpty;
+
 public class ProfileColumnsMapper {
 
 	private final Map<String, Map<String, Object>> profilesNamesMapping = new HashMap<>();
@@ -230,6 +232,7 @@ public class ProfileColumnsMapper {
 	public JsonObject getColumsMapping(String profile, String[] strings) {
 		JsonObject mapping = new JsonObject();
 		for (String key : strings) {
+			if (isEmpty(key)) return null;
 			String cm = columnsNameMapping(profile, key);
 			if (profilesNamesMapping.get(profile).containsValue(cm)) {
 				mapping.putString(key, cm);
