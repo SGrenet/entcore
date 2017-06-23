@@ -318,15 +318,20 @@ public class Report {
 	protected int cleanAttributeKeys(JsonObject attribute) {
 		int count = 0;
 		if (attribute != null) {
-			for (String attr : attribute.getFieldNames()) {
-				JsonObject j = attribute.getObject(attr);
-				if (j != null) {
-					for (String attr2 : j.copy().getFieldNames()) {
+			for (String attr : attribute.copy().getFieldNames()) {
+				Object j = attribute.getValue(attr);
+				if (j instanceof JsonObject) {
+					for (String attr2 : ((JsonObject) j).copy().getFieldNames()) {
 						if (attr2.contains(".")) {
 							count++;
-							j.putString(attr2.replaceAll("\\.", "_|_"), (String) j.removeField(attr2));
+							((JsonObject) j).putString(
+									attr2.replaceAll("\\.", "_|_"), (String) ((JsonObject) j).removeField(attr2));
 						}
 					}
+				} else if (j instanceof JsonArray && attr.contains(".")) {
+					attribute.putArray(attr.replaceAll("\\.", "_|_"), (JsonArray) j);
+					attribute.removeField(attr);
+					count++;
 				}
 			}
 		}
@@ -335,14 +340,18 @@ public class Report {
 
 	protected void uncleanAttributeKeys(JsonObject attribute) {
 		if (attribute != null) {
-			for (String attr : attribute.getFieldNames()) {
-				JsonObject j = attribute.getObject(attr);
-				if (j != null) {
-					for (String attr2 : j.copy().getFieldNames()) {
+			for (String attr : attribute.copy().getFieldNames()) {
+				Object j = attribute.getValue(attr);
+				if (j instanceof JsonObject) {
+					for (String attr2 : ((JsonObject) j).copy().getFieldNames()) {
 						if (attr2.contains("_|_")) {
-							j.putString(attr2.replaceAll("_\\|_", "."), (String) j.removeField(attr2));
+							((JsonObject) j).putString(
+									attr2.replaceAll("_\\|_", "."), (String) ((JsonObject) j).removeField(attr2));
 						}
 					}
+				} else if (j instanceof JsonArray && attr.contains("_|_")) {
+					attribute.putArray(attr.replaceAll("_\\|_", "."), (JsonArray) j);
+					attribute.removeField(attr);
 				}
 			}
 		}

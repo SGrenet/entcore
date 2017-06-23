@@ -210,6 +210,7 @@ public class CsvReport extends Report {
 		int count = 0;
 		count += cleanAttributeKeys(getClassesMappings());
 		count += cleanAttributeKeys(getMappings());
+		count += cleanAttributeKeys(result.getObject("errors"));
 		if (count > 0) {
 			result.putBoolean(KEYS_CLEANED, true);
 		}
@@ -218,6 +219,7 @@ public class CsvReport extends Report {
 	protected void uncleanKeys() {
 		uncleanAttributeKeys(getClassesMappings());
 		uncleanAttributeKeys(getMappings());
+		uncleanAttributeKeys(result.getObject("errors"));
 		result.removeField(KEYS_CLEANED);
 	}
 
