@@ -37,6 +37,7 @@ import org.vertx.java.core.logging.Logger;
 import org.vertx.java.core.logging.impl.LoggerFactory;
 
 import static fr.wseduc.webutils.Utils.defaultValidationParamsNull;
+import static fr.wseduc.webutils.Utils.isNotEmpty;
 
 public class DefaultImportService implements ImportService {
 
@@ -68,6 +69,9 @@ public class DefaultImportService implements ImportService {
 							JsonObject f = r.getObject("files");
 							if(r.getObject("softErrors") != null) {
 								f.putObject("softErrors", r.getObject("softErrors"));
+							}
+							if (isNotEmpty(r.getString("_id"))) {
+								f.putString("importId", r.getString("_id"));
 							}
 							handler.handle(new Either.Right<JsonObject, JsonObject>(f));
 						}
