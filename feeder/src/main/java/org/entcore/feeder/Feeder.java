@@ -399,13 +399,13 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 		v.columnsMapping(path, new Handler<JsonObject>() {
 			@Override
 			public void handle(JsonObject event) {
+				JsonObject result = new JsonObject().putObject("result",
+						v.getResult().putObject("availableFields", v.getColumnsMapper().availableFields())
+				);
 				if (!v.containsErrors()) {
-					sendOK(message, new JsonObject()
-							.putObject("mappings", v.getMappings())
-							.putObject("availableFields", v.getColumnsMapper().availableFields()));
-				} else {
-					sendOK(message, new JsonObject().putObject("result", v.getResult()));
+					result.getObject("result").removeField("errors");
 				}
+				sendOK(message, result);
 			}
 		});
 	}
