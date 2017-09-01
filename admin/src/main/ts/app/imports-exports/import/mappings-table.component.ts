@@ -10,7 +10,7 @@ import { BundlesService } from 'sijil'
             <th>{{ headers[0] | translate }}</th>
             <th>{{ headers[1] | translate }}</th>
         </tr>
-        <tr *ngFor="let value of mappingsKeys">
+        <tr *ngFor="let value of mappingsKeys()">
             <td>{{value}}</td>
             <td>
             <select [(ngModel)]="mappings[value]" name="availables">
@@ -33,10 +33,14 @@ export class MappingsTable implements OnInit {
 
     @Input() headers : Array<String>;
     @Input() mappings : Object; // TODO type with a Map<> when available in Typescript
-    mappingsKeys : Array<String>
     @Input() availables : Array<String>;
 
+    mappingsKeys = function() : Array<String> {
+        if (!this.mappings) 
+            return [];
+        return Object.keys(this.mappings);
+    }
+
     ngOnInit() {
-        this.mappingsKeys = Object.keys(this.mappings);
     }
 }
