@@ -113,35 +113,31 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 
 	protected void mapClasses(JsonArray classes) {
 		JsonObject classesMapping = new JsonObject();
-		Set<String> stm = profilesClassesMapping.get("Student");
-		if (stm != null && stm.size() > 0) {
-			for (String profile : profiles.keySet()) {
-				if (!"Student".equals(profile)) {
-					Set<String> m = profilesClassesMapping.get(profile);
-					if (m == null || m.size() == 0) continue;
-					JsonObject jm = new JsonObject();
-					classesMapping.putObject(profile, jm);
-					for (String c: m) {
-						if (stm.contains(c)) {
-							jm.putString(c, c);
-						} else {
-							jm.putString(c, "");
-						}
-					}
+
+		// 1 : Maps profile's classes against StudentClasses if they are availables
+		Set<String> studentClasses = profilesClassesMapping.get("Student") != null ?
+				profilesClassesMapping.get("Student") : Collections.<String>emptySet();
+		for (String profile : profiles.keySet()) {
+			Set<String> profileClasses = profilesClassesMapping.get(profile);
+			if (profileClasses == null || profileClasses.size() == 0) continue;
+			JsonObject mapping = new JsonObject();
+			classesMapping.putObject(profile, mapping);
+			for (String c: profileClasses) {
+				if (!"Student".equals(profile) && studentClasses.contains(c)) {
+					mapping.putString(c, c);
+				} else {
+					mapping.putString(c, "");
 				}
 			}
-			JsonObject jm = new JsonObject();
-			classesMapping.putObject("Student", jm);
-			for (String s : stm) {
-				jm.putString(s, "");
-			}
 		}
+
+		// 2 : Maps profile's classes against dbClasses
 		if (classes != null && classes.size() > 0) {
-			for (String attr : classesMapping.getFieldNames()) {
-				JsonObject j = classesMapping.getObject(attr);
-				for (String attr2 : j.getFieldNames()) {
-					if (classes.contains(attr2)) {
-						j.putString(attr2, attr2);
+			for (String profile : classesMapping.getFieldNames()) {
+				JsonObject profileClassesMapping = classesMapping.getObject(profile);
+				for (String _class : profileClassesMapping.getFieldNames()) {
+					if (classes.contains(_class)) {
+						profileClassesMapping.putString(_class, _class);
 					}
 				}
 			}
