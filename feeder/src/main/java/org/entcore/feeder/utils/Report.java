@@ -39,10 +39,7 @@ import org.vertx.java.core.logging.Logger;
 import org.vertx.java.core.logging.impl.LoggerFactory;
 import org.vertx.java.platform.Container;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class Report {
 
@@ -108,19 +105,32 @@ public class Report {
 		log.error(error);
 	}
 
-	public void addSoftErrorByFile(String file, String key, String... errors) {
+	public void addSoftErrorByFile(String file, String key, String lineNumber, String... errors) {
 		JsonObject softErrors = result.getObject("softErrors");
 		if (softErrors == null) {
 			softErrors = new JsonObject();
 			result.putObject("softErrors", softErrors);
 		}
-		JsonArray f = softErrors.getArray(file);
-		if (f == null) {
-			f = new JsonArray();
-			softErrors.putArray(file, f);
+		JsonObject fileErrors = softErrors.getObject(file);
+		if (fileErrors == null) {
+			fileErrors = new JsonObject();
+			softErrors.putObject(file, fileErrors);
 		}
-		String error = i18n.translate(key, I18n.DEFAULT_DOMAIN, acceptLanguage, errors);
-		f.addString(error);
+		String cleanKey = key.replace('.','-'); // Mongo don't support '.' characters in document field's name
+		JsonObject reason = fileErrors.getObject(cleanKey);
+		if (reason == null) {
+			reason = new JsonObject();
+			fileErrors.putObject(cleanKey, reason);
+		}
+		JsonArray lineErrors = reason.getArray(lineNumber);
+		if (lineErrors == null) {
+			lineErrors = new JsonArray();
+			reason.putArray(lineNumber, lineErrors);
+		}
+		List<String> errorContext = new ArrayList<>(Arrays.asList(errors)); // Hack to support "add" operation
+		errorContext.add(0, lineNumber);
+		String error = i18n.translate(key, I18n.DEFAULT_DOMAIN, acceptLanguage, errorContext.toArray(new String[errorContext.size()]));
+		lineErrors.addString(error);
 		log.error(error);
 	}
 
