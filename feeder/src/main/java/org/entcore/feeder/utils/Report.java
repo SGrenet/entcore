@@ -111,27 +111,34 @@ public class Report {
 			softErrors = new JsonObject();
 			result.putObject("softErrors", softErrors);
 		}
-		JsonObject fileErrors = softErrors.getObject(file);
+		JsonArray reasons = softErrors.getArray("reasons");
+		if (reasons == null) {
+			reasons = new JsonArray();
+			softErrors.putArray("reasons", reasons);
+		}
+		if (!reasons.contains(key)) {
+			reasons.addString(key);
+		}
+
+		JsonArray fileErrors = softErrors.getArray(file);
 		if (fileErrors == null) {
-			fileErrors = new JsonObject();
-			softErrors.putObject(file, fileErrors);
+			fileErrors = new JsonArray();
+			softErrors.putArray(file, fileErrors);
 		}
-		String cleanKey = key.replace('.','-'); // Mongo don't support '.' characters in document field's name
-		JsonObject reason = fileErrors.getObject(cleanKey);
-		if (reason == null) {
-			reason = new JsonObject();
-			fileErrors.putObject(cleanKey, reason);
-		}
-		JsonArray lineErrors = reason.getArray(lineNumber);
-		if (lineErrors == null) {
-			lineErrors = new JsonArray();
-			reason.putArray(lineNumber, lineErrors);
-		}
+		JsonObject error = new JsonObject().copy()
+				.putString("line",lineNumber)
+				.putString("reason", key)
+				.putString("attribute", errors.length > 0 ? errors[0] : "")
+				.putString("value", errors.length > 1 ? errors[1] : "");
+
 		List<String> errorContext = new ArrayList<>(Arrays.asList(errors)); // Hack to support "add" operation
 		errorContext.add(0, lineNumber);
-		String error = i18n.translate(key, I18n.DEFAULT_DOMAIN, acceptLanguage, errorContext.toArray(new String[errorContext.size()]));
-		lineErrors.addString(error);
-		log.error(error);
+		String translation = i18n.translate(key, I18n.DEFAULT_DOMAIN, acceptLanguage, errorContext.toArray(new String[errorContext.size()]));
+		error.putString("translation", translation);
+
+		fileErrors.addObject(error);
+		log.error(translation);
+		//String cleanKey = key.replace('.','-'); // Mongo don't support '.' characters in document field's name
 	}
 
 	public void addUser(String file, JsonObject props) {
