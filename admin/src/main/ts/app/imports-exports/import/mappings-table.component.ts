@@ -6,20 +6,22 @@ import { BundlesService } from 'sijil'
     selector: 'mappings-table',
     template: `
     <table>
-        <tr>
+        <thead>
             <th>{{ headers[0] | translate }}</th>
             <th>{{ headers[1] | translate }}</th>
-        </tr>
-        <tr *ngFor="let value of mappingsKeys()">
-            <td>{{value}}</td>
-            <td>
-            <select [(ngModel)]="mappings[value]" name="availables">
-                <option *ngFor="let available of availables" [ngValue]="available">
-                    {{available}}
-                </option>
-            </select>
-            </td>
-        </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let value of mappingsKeys()">
+                <td>{{value}}</td>
+                <td>
+                <select [(ngModel)]="mappings[value]" name="availables">
+                    <option *ngFor="let available of availables" [ngValue]="available">
+                        {{available}}
+                    </option>
+                </select>
+                </td>
+            </tr>
+        </tbody>
     </table>
     `,
     changeDetection: ChangeDetectionStrategy.OnPush
