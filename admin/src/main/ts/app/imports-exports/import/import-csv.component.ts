@@ -7,8 +7,8 @@ import { ActivatedRoute, Data, Router, NavigationEnd } from '@angular/router'
 import { Subscription } from 'rxjs/Subscription'
 import { routing } from '../../core/services/routing.service'
 import { ImportCSVService } from './import-csv.service'
-import { Wizard } from 'infra-components'
 import { User, Error, Profile } from './user.model'
+import { WizardComponent } from '../../shared/ux/components'
 
 @Component({
     selector: 'import-csv',
@@ -151,7 +151,7 @@ export class ImportCSV implements OnInit, OnDestroy {
     private structureSubscriber: Subscription;
     private routerSubscriber:Subscription;
 
-    @ViewChild(Wizard) wizardEl: Wizard;
+    @ViewChild(WizardComponent) wizardEl: WizardComponent;
 
     stepErrors = [];
     
