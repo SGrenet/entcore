@@ -2,8 +2,8 @@ import {
     ChangeDetectionStrategy, ChangeDetectorRef, AfterViewInit,
     Component, Input, OnInit, ComponentRef, ViewChildren, QueryList } from '@angular/core'
 import { BundlesService } from 'sijil'
-import { ComponentDescriptor, DynamicComponent } from '../../shared/ux/directives'
-import { SimpleSelect } from '../../shared/ux/components'
+import { ComponentDescriptor, DynamicComponent} from '../../shared/ux/directives/dynamic-component'
+import { SimpleSelectComponent } from '../../shared/ux/components/value-editable/simple-select.component'
 
 
 @Component({
@@ -52,7 +52,7 @@ export class MappingsTable implements OnInit, AfterViewInit {
     }
 
     newSimpleSelect():ComponentDescriptor {
-        return new ComponentDescriptor(SimpleSelect, {model: this.mappings, options : this.availables});
+        return new ComponentDescriptor(SimpleSelectComponent, {model: this.mappings, options : this.availables});
     }
 
     loadAvailables(value:string, index:number) {
