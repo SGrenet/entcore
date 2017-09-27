@@ -1,5 +1,9 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnInit } from '@angular/core'
+import { 
+    ChangeDetectionStrategy, ChangeDetectorRef, AfterViewInit,
+    Component, Input, OnInit, ComponentRef, ViewChildren, QueryList } from '@angular/core'
 import { BundlesService } from 'sijil'
+import { ComponentDescriptor, DynamicComponent } from '../../shared/ux/directives'
+import { SimpleSelect } from '../../shared/ux/components'
 
 
 @Component({
@@ -11,38 +15,57 @@ import { BundlesService } from 'sijil'
             <th>{{ headers[1] | translate }}</th>
         </thead>
         <tbody>
-            <tr *ngFor="let value of mappingsKeys()">
+        <tr *ngFor="let value of mappingsKeys(),index as i;">
                 <td>{{value}}</td>
-                <td>
-                <select [(ngModel)]="mappings[value]" name="availables">
-                    <option *ngFor="let available of availables" [ngValue]="available">
-                        {{available}}
-                    </option>
-                </select>
+                <td (click)="loadAvailables(value, i)">
+                    <span [hidden]="isLoaded(i)">
+                        {{mappings[value]}}
+                    </span>
+                    <ng-template [dynamic-component]="newSimpleSelect()"></ng-template>
                 </td>
             </tr>
         </tbody>
     </table>
     `,
+    styles: [`
+        td:first-of-type + td { font-weight : bold; }
+        td:first-of-type + td:hover { border: 2px dashed orange; cursor:pointer; }
+    `],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class MappingsTable implements OnInit { 
+export class MappingsTable implements OnInit, AfterViewInit { 
     constructor (
         private bundles: BundlesService,
         private cdRef : ChangeDetectorRef)  {}
     
     translate = (...args) => { return (<any> this.bundles.translate)(...args) }
 
-    @Input() headers : Array<String>;
-    @Input() mappings : Object; // TODO type with a Map<> when available in Typescript
-    @Input() availables : Array<String>;
+    @ViewChildren(DynamicComponent) dComponents:QueryList<DynamicComponent>;
+    @Input() headers : String[];
+    @Input() mappings : Object;
+    @Input() availables : String[];
 
-    mappingsKeys = function() : Array<String> {
+    mappingsKeys = function() : String[] {
         if (!this.mappings) 
             return [];
         return Object.keys(this.mappings);
     }
 
-    ngOnInit() {
+    newSimpleSelect():ComponentDescriptor {
+        return new ComponentDescriptor(SimpleSelect, {model: this.mappings, options : this.availables});
     }
+
+    loadAvailables(value:string, index:number) {
+        this.dComponents.toArray()[index].load({selected:value});
+    }
+    isLoaded(index:number):boolean {
+        if (this.dComponents == undefined) 
+            return false;
+        else
+            return this.dComponents.toArray()[index].isLoaded();
+    }
+
+    ngOnInit() {}
+
+    ngAfterViewInit() {}
 }
