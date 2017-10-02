@@ -21,8 +21,8 @@ export class SimpleSelectComponent {
 
     translate = (...args) => { return (<any> this.bundles.translate)(...args) }
 
-    @Input() selected: String;
+    @Input() selected: string;
     @Input() model : any;
-    @Input() options : Array<String>;
+    @Input() options : string[];
 
 }
