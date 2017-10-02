@@ -23,7 +23,9 @@ import { DatepickerComponent,
     TooltipComponent,
     WizardComponent,
     SimpleSelectComponent,
-    EllipsisComponent } from './components'
+    EllipsisComponent,
+    PagerComponent,
+    LengthPipe } from './components'
 import { AnchorDirective, DynamicTemplateDirective } from './directives'
 import { FilterPipe, OrderPipe, StorePipe, LimitPipe, FlattenObjectArrayPipe } from './pipes'
 import { DynamicModuleImportsService, LabelsService } from './services';
@@ -58,6 +60,8 @@ import { InfiniteScrollModule } from 'ngx-infinite-scroll';
         WizardComponent,
         SimpleSelectComponent,
         EllipsisComponent,
+        PagerComponent,
+        LengthPipe,
         // directives
         AnchorDirective,
         DynamicTemplateDirective,
@@ -90,6 +94,8 @@ import { InfiniteScrollModule } from 'ngx-infinite-scroll';
         WizardComponent,
         SimpleSelectComponent,
         EllipsisComponent,
+        PagerComponent,
+        LengthPipe,
         // directives
         AnchorDirective,
         DynamicTemplateDirective,

@@ -8,6 +8,8 @@ export { SideLayoutComponent } from './side-layout.component'
 export { SpinnerCubeComponent } from './spinner-cube.component'
 export { SimpleSelectComponent } from './value-editable/simple-select.component'
 export { EllipsisComponent} from './ellipsis/ellipsis.component'
+export { PagerComponent } from './table/pager.component'
+export { LengthPipe } from './table/length.pipe'
 
 // (Infra components historic)
 export { ItemTreeComponent } from './item-tree.component'
