@@ -2015,7 +2015,7 @@ table {
     text-align: right;
 }
 .container {
-    padding: .25em;
+    padding: .5em;
 }
 
 .message {
@@ -2031,28 +2031,42 @@ table {
 
 .button {
     padding : .25rem;
+    border: 2px solid black;
     font-weight: bold; 
     border-radius: 5px;
     align-items: center;
     display: inline-flex;
     cursor: pointer;
 
-    &.is-outline { border: 2px solid black;  }
-    &.is-outline:hover { 
-        background:  black; 
-        color : white !important;
+    &.is-succcess { border-color: green; }
+    &.is-info { border-color: blue; }
+    &.is-danger { border-color: red; }
+    &.is-warning { border-color: orange; }
+
+    &.is-success, &.is-success.is-outlined:hover { background: green; }
+    &.is-info, &.is-info.is-outlined:hover { background: blue; }
+    &.is-danger, &.is-danger.is-outlined:hover { background: red; }
+    &.is-waring, &.is-warning.is-outlined:hover { background: orange; }
+
+    &.is-outlined { background: transparent; }
+
+    &.is-success.is-outlined{ border-color: green; color: green;}
+    &.is-info.is-outlined{ border-color: blue; color: blue;}
+    &.is-danger.is-outlined{ border-color: red; color: red;}
+    &.is-warning.is-outlined{ border-color: orange; color: orange;}
+
+    &.is-success, &.is-success.is-outlined:hover, 
+    &.is-info, &.is-info.is-outlined:hover, 
+    &.is-danger, &.is-danger.is-outlined:hover, 
+    &.is-warning, &.is-warning.is-outlined:hover { 
+        color : white ;
         text-decoration: none; 
     }
 
-    &.is-outline.is-success { border-color:  green; color: green;}
-    &.is-outline.is-info { border-color:  blue; color: blue;}
-    &.is-outline.is-danger { border-color: red; color: red;}
-    &.is-outline.is-warning { border-color: orange; color: orange;}
-
-    &.is-outline.is-success:hover { background: green; }
-    &.is-outline.is-info:hover { background: blue; }
-    &.is-outline.is-danger:hover { background: red; }
-    &.is-outline.is-warning:hover { background: orange; }
+    &[disabled], &[disabled]:hover {
+        background: $button-bg;
+        cursor: auto;
+    }
 
 }
 
@@ -2062,11 +2076,10 @@ table {
 wizard {
     background: $main-light !important;
     button {
-        background-color: $accent;
-        color: white !important;
+        background-color: $button-bg;
         padding: 10px 10px;
         &:hover {
-            background-color: $accent-dark !important;
+            background-color: $button-bg-hover ;
         }
     }
     nav.steps-progress-menu {
