@@ -25,7 +25,9 @@ import { DatepickerComponent,
     SimpleSelectComponent,
     EllipsisComponent,
     PagerComponent,
-    LengthPipe } from './components'
+    LengthPipe,
+    MessageStickerComponent, 
+    MessageBoxComponent } from './components'
 import { AnchorDirective, DynamicTemplateDirective } from './directives'
 import { FilterPipe, OrderPipe, StorePipe, LimitPipe, FlattenObjectArrayPipe } from './pipes'
 import { DynamicModuleImportsService, LabelsService } from './services';
@@ -62,6 +64,8 @@ import { InfiniteScrollModule } from 'ngx-infinite-scroll';
         EllipsisComponent,
         PagerComponent,
         LengthPipe,
+        MessageStickerComponent, 
+        MessageBoxComponent,
         // directives
         AnchorDirective,
         DynamicTemplateDirective,
@@ -96,6 +100,8 @@ import { InfiniteScrollModule } from 'ngx-infinite-scroll';
         EllipsisComponent,
         PagerComponent,
         LengthPipe,
+        MessageStickerComponent, 
+        MessageBoxComponent,
         // directives
         AnchorDirective,
         DynamicTemplateDirective,
@@ -107,7 +113,7 @@ import { InfiniteScrollModule } from 'ngx-infinite-scroll';
         StorePipe
     ],
     providers: [],
-    entryComponents: [SimpleSelectComponent]
+    entryComponents: [SimpleSelectComponent, MessageBoxComponent]
 })
 export class UxModule {
     static forRoot(labelsProvider: Provider): ModuleWithProviders {
