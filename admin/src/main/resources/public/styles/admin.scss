@@ -2027,7 +2027,6 @@ i.fa {
 
 .message {
     border: 1px solid black; 
-    font-weight: bold;
     box-shadow: 1px 1px 2px 1px #CCC;
 
     p { margin : 0px ;}
@@ -2042,6 +2041,7 @@ i.fa {
     .message-body {
         padding: .5em;
         font-size: 0.9em;
+        font-weight: initial;
         background: white;
     }
 
@@ -2109,8 +2109,13 @@ wizard {
             background-color: $button-bg-hover ;
         }
     }
+    label {
+        min-width: 200px;
+        display: inline-block;
+    }
+
     nav.steps-progress-menu {
-        font-size: 1.05em;
+        font-size: 1.2em;
         font-weight: bold;
         color: $main-lighter;
         li { 
