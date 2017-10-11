@@ -1,12 +1,14 @@
-import { Component, Input } from '@angular/core'
+import { Component, Input, ContentChild, TemplateRef } from '@angular/core'
 
 @Component({
     selector: 'panel-section',
     template: `
         <section class="panel-section">
-            <div class="panel-section-header" (click)="folded !== null ? folded=!folded : null" [class.foldable]="folded !== null">
+            <div class="panel-section-header" [class.foldable]="folded !== null">
                 {{ sectionTitle | translate }}
+                <ng-template [ngTemplateOutlet]="otherActions" ></ng-template>
                 <i class="opener" *ngIf="folded !== null"
+                    (click)="folded !== null ? folded=!folded : null"
                     [class.opened]="!folded"></i>
             </div>
             <div class="panel-section-content" *ngIf="!folded">
@@ -20,7 +22,7 @@ import { Component, Input } from '@angular/core'
             font-size: 1.1em;
             padding: 10px 10px;
         }
-        .panel-section-header.foldable {
+        .panel-section-header.foldable .opener{
             cursor: pointer;
         }
         .panel-section-content {
@@ -31,4 +33,5 @@ import { Component, Input } from '@angular/core'
 export class PanelSectionComponent {
     @Input("section-title") sectionTitle : string
     @Input() folded : boolean = null
+    @ContentChild(TemplateRef) otherActions:TemplateRef<any>;
 }
