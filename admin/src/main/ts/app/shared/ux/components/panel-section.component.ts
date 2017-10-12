@@ -6,7 +6,7 @@ import { Component, Input, ContentChild, TemplateRef } from '@angular/core'
         <section class="panel-section">
             <div class="panel-section-header" [class.foldable]="folded !== null">
                 {{ sectionTitle | translate }}
-                <ng-template [ngTemplateOutlet]="otherActions" ></ng-template>
+                <ng-content select="[other-actions]"></ng-content>
                 <i class="opener" *ngIf="folded !== null"
                     (click)="folded !== null ? folded=!folded : null"
                     [class.opened]="!folded"></i>
@@ -33,5 +33,4 @@ import { Component, Input, ContentChild, TemplateRef } from '@angular/core'
 export class PanelSectionComponent {
     @Input("section-title") sectionTitle : string
     @Input() folded : boolean = null
-    @ContentChild(TemplateRef) otherActions:TemplateRef<any>;
 }
