@@ -73,7 +73,7 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 		super(vertx, importInfos);
 		this.mappingFinder = new MappingFinder(vertx);
 		this.vertx = vertx;
-		defaultStudentSeed = new Random().nextLong();
+		defaultStudentSeed = getSeed();
 	}
 
 	public void columnsMapping(final String p, final Handler<JsonObject> handler) {
@@ -311,7 +311,7 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 					}
 				} else if (!emptyLine(strings)) {
 					for (Integer idx : classesIdx) {
-						if (isNotEmpty(strings[idx].trim())) {
+						if (idx < strings.length && isNotEmpty(strings[idx].trim())) {
 							mapping.add(strings[idx].trim());
 						}
 					}
@@ -343,8 +343,8 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 						break;
 					}
 					columnsNumber = strings.length;
-				} else if (!emptyLine(strings) && columnsNumber != strings.length) {
-					addErrorByFile(profile, "bad.columns.number", "" + (i + 1));
+//				} else if (!emptyLine(strings) && columnsNumber != strings.length) {
+//					addErrorByFile(profile, "bad.columns.number", "" + (i + 1));
 				}
 				i++;
 			}
@@ -619,7 +619,8 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 						}
 						switch (profile) {
 							case "Relative":
-								if ("Intitulé".equals(strings[0]) && "Adresse Organisme".equals(strings[1])) {
+								if (("Intitulé".equals(strings[0]) && "Adresse Organisme".equals(strings[1])) ||
+										("Intitulé".equals(strings[1]) && "Adresse Organisme".equals(strings[2]))) {
 									break csvParserWhile;
 								}
 								user.putArray("linkStudents", linkStudents);

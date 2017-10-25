@@ -175,7 +175,9 @@ public class ProfileColumnsMapper {
 			for (String profile: mapping.getFieldNames()) {
 				final JsonObject m = mapping.getObject(profile);
 				if (m != null) {
-					JsonObject j = new JsonObject().putString("externalid", "externalId");
+					JsonObject j = new JsonObject()
+							.putString("externalid", "externalId")
+							.putString("childexternalid", "childExternalId");
 					for (String attr : m.getFieldNames()) {
 						j.putString(cleanKey(attr), m.getString(attr));
 					}
@@ -232,7 +234,10 @@ public class ProfileColumnsMapper {
 	public JsonObject getColumsMapping(String profile, String[] strings) {
 		JsonObject mapping = new JsonObject();
 		for (String key : strings) {
-			if (isEmpty(key)) return null;
+			if (isEmpty(key)) {
+				mapping.putString("", "ignore");
+				continue;
+			}
 			String cm = columnsNameMapping(profile, key);
 			if (profilesNamesMapping.get(profile).containsValue(cm)) {
 				mapping.putString(key, cm);

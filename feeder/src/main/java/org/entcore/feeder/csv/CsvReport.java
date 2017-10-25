@@ -62,11 +62,18 @@ public class CsvReport extends Report {
 		this.columnsMapper = new ProfileColumnsMapper(getMappings());
 	}
 
-	public void addHeader(String profile, JsonArray header) {
+	public void addHeader(String profile, JsonArray h) {
 		JsonObject headers = result.getObject(HEADERS);
 		if (headers == null) {
 			headers = new JsonObject();
 			result.putObject(HEADERS, headers);
+		}
+		JsonArray header = new JsonArray();
+		for (int i = 0; i < h.size(); i++) {
+			final String v = h.get(i);
+			if (isNotEmpty(v)) {
+				header.add(v);
+			}
 		}
 		headers.putArray(profile, header);
 	}
@@ -231,6 +238,14 @@ public class CsvReport extends Report {
 		result.putObject("errors", new JsonObject())
 				.putObject(FILES, new JsonObject())
 				.putObject("softErrors", new JsonObject());
+	}
+
+	protected void setSeed(long seed) {
+		result.putNumber("seed", seed);
+	}
+
+	protected Long getSeed() {
+		return result.getLong("seed", new Random().nextLong());
 	}
 
 //	protected void setStructureExternalIdIfAbsent(String structureExternalId) {
