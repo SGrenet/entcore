@@ -19,13 +19,12 @@
 
 package org.entcore.common.storage;
 
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.AsyncResultHandler;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 public interface Storage {
 
@@ -60,6 +59,6 @@ public interface Storage {
 
 	String getBucket();
 
-	void stats(AsyncResultHandler<BucketStats> handler);
+	void stats(Handler<AsyncResult<BucketStats>> handler);
 
 }

@@ -28,11 +28,11 @@ import fr.wseduc.webutils.security.HmacSha1;
 import org.entcore.auth.services.OpenIdConnectServiceProvider;
 import org.entcore.auth.services.OpenIdServiceProviderFactory;
 import org.entcore.common.user.UserInfos;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.json.JsonElement;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonElement;
+import io.vertx.core.json.JsonObject;
 
 import java.util.UUID;
 
@@ -92,8 +92,8 @@ public class OpenIdConnectController extends AbstractFederateController {
 									.equals(res.left().getValue())) {
 								final String p = payload.encode();
 								try {
-									JsonObject params = new JsonObject().putString("payload", p)
-											.putString("key", HmacSha1.sign(p, signKey));
+									JsonObject params = new JsonObject().put("payload", p)
+											.put("key", HmacSha1.sign(p, signKey));
 									renderView(request, params, "mappingFederatedUser.html", null);
 								} catch (Exception e) {
 									log.error("Error loading mapping openid connect identity.", e);
@@ -119,8 +119,8 @@ public class OpenIdConnectController extends AbstractFederateController {
 			forbidden(request, "unauthorized.sub.mapping");
 			return;
 		}
-		request.expectMultiPart(true);
-		request.endHandler(new VoidHandler() {
+		request.setExpectMultipart(true);
+		request.endHandler(new Handler<Void>() {
 			@Override
 			protected void handle() {
 				final String login = request.formAttributes().get("login");

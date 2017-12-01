@@ -23,10 +23,10 @@ import org.entcore.feeder.dictionary.structures.User;
 import org.entcore.feeder.utils.Function;
 import org.entcore.feeder.utils.TransactionHelper;
 import org.entcore.feeder.utils.TransactionManager;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import javax.xml.stream.XMLEventFactory;
 import javax.xml.stream.XMLEventWriter;
@@ -43,7 +43,7 @@ public abstract class UserExportProcessing extends BaseExportProcessing {
 	protected UserExportProcessing(String mapping, int nbByFile, String basePath, JsonArray profiles,
 			String category, String date, String stdPrefix, boolean concat) {
 		super(mapping, nbByFile, basePath + File.separator + stdPrefix + "_Complet_" + date + "_" + category + "_", concat);
-		attributes = new JsonArray(exportMapping.getFieldNames().toArray()).add("externalId");
+		attributes = new JsonArray(exportMapping.fieldNames().toArray()).add("externalId");
 		this.profiles = profiles;
 		this.category = category;
 		this.basePath = basePath;
@@ -67,7 +67,7 @@ public abstract class UserExportProcessing extends BaseExportProcessing {
 
 			@Override
 			public void handle(Message<JsonObject> result) {
-				JsonArray r = result.body().getArray("results");
+				JsonArray r = result.body().getJsonArray("results");
 				if ("ok".equals(result.body().getString("status")) && r != null && r.size() == 1) {
 					JsonArray rs = r.get(0);
 					if (rs != null && rs.size() == 1) {
@@ -91,7 +91,7 @@ public abstract class UserExportProcessing extends BaseExportProcessing {
 
 			@Override
 			public void handle(Message<JsonObject> result) {
-				JsonArray r = result.body().getArray("results");
+				JsonArray r = result.body().getJsonArray("results");
 				if ("ok".equals(result.body().getString("status")) && r != null && r.size() == 1) {
 					JsonArray rs = r.get(0);
 					handler.handle(rs);

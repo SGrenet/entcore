@@ -29,11 +29,11 @@ import org.entcore.common.neo4j.Neo4j;
 import org.entcore.common.sql.Sql;
 import org.entcore.common.sql.SqlResult;
 import org.entcore.common.user.UserInfos;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import fr.wseduc.webutils.Either;
 import fr.wseduc.webutils.http.Binding;
@@ -61,12 +61,12 @@ public class VisiblesFilter implements ResourcesProvider{
 
 		RequestUtils.bodyToJson(request, new Handler<JsonObject>() {
 			public void handle(final JsonObject message) {
-				ids.addAll(message.getArray("to", new JsonArray()).toList());
-				ids.addAll(message.getArray("cc", new JsonArray()).toList());
+				ids.addAll(message.getJsonArray("to", new JsonArray()).toList());
+				ids.addAll(message.getJsonArray("cc", new JsonArray()).toList());
 
-				final VoidHandler checkHandler = new VoidHandler() {
+				final Handler<Void> checkHandler = new Handler<Void>() {
 					protected void handle() {
-						params.putArray("ids", new JsonArray(ids.toArray()));
+						params.put("ids", new JsonArray(ids.toArray()));
 						findVisibles(neo.getEventBus(), user.getUserId(), customReturn, params, true, true, true, new Handler<JsonArray>() {
 							public void handle(JsonArray visibles) {
 								handler.handle(visibles.size() == ids.size());
@@ -94,8 +94,8 @@ public class VisiblesFilter implements ResourcesProvider{
 
 							JsonObject parentMsg = parentMsgEvent.right().getValue();
 							ids.remove(parentMsg.getString("from"));
-							ids.removeAll(parentMsg.getArray("to", new JsonArray()).toList());
-							ids.removeAll(parentMsg.getArray("cc", new JsonArray()).toList());
+							ids.removeAll(parentMsg.getJsonArray("to", new JsonArray()).toList());
+							ids.removeAll(parentMsg.getJsonArray("cc", new JsonArray()).toList());
 
 							checkHandler.handle(null);
 						}

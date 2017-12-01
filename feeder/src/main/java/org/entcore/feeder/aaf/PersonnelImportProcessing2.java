@@ -19,11 +19,11 @@
 
 package org.entcore.feeder.aaf;
 
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -58,10 +58,10 @@ public class PersonnelImportProcessing2 extends PersonnelImportProcessing {
 
 	@Override
 	public void process(JsonObject object) {
-		List<String> c = object.getArray("classes") != null ? object.getArray("classes").toList() : new LinkedList<String>();
-		String[][] groups = createGroups(object.getArray("groups"), c);
+		List<String> c = object.getJsonArray("classes") != null ? object.getArray("classes").toList() : new LinkedList<String>();
+		String[][] groups = createGroups(object.getJsonArray("groups"), c);
 		String[][] classes = createClasses(new JsonArray(c));
-		JsonArray functions = object.getArray("functions");
+		JsonArray functions = object.getJsonArray("functions");
 		JsonArray structuresByFunctions = null;
 		if (functions != null) {
 			Set<String> s = new HashSet<>();

@@ -29,12 +29,12 @@ import org.entcore.feeder.dictionary.structures.*;
 import org.entcore.feeder.exceptions.TransactionException;
 import org.entcore.feeder.exceptions.ValidationException;
 import org.entcore.feeder.utils.*;
-import org.vertx.java.busmods.BusModBase;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.busmods.BusModBase;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.LoggerFactory;
 
 import java.io.*;
 import java.security.NoSuchAlgorithmException;
@@ -81,7 +81,7 @@ public class ManualFeeder extends BusModBase {
 		JsonObject struct = getMandatoryObject("data", message);
 		if (struct == null) return;
 		if (struct.getString("externalId") == null) {
-			struct.putString("externalId", UUID.randomUUID().toString());
+			struct.put("externalId", UUID.randomUUID().toString());
 		}
 		final String error = structureValidator.validate(struct);
 		if (error != null) {
@@ -96,7 +96,7 @@ public class ManualFeeder extends BusModBase {
 					"SET g.id = id(g)+'-'+timestamp() " +
 					"RETURN DISTINCT s.id as id ";
 			JsonObject params = new JsonObject()
-					.putObject("props", struct);
+					.put("props", struct);
 			neo4j.execute(query, params, new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> m) {
@@ -112,7 +112,7 @@ public class ManualFeeder extends BusModBase {
 		String structureId = getMandatoryString("structureId", message);
 		if (structureId == null) return;
 		if (c.getString("externalId") == null || c.getString("externalId").isEmpty()) {
-			c.putString("externalId", structureId + "$" + c.getString("name"));
+			c.put("externalId", structureId + "$" + c.getString("name"));
 		}
 		final String error = classValidator.validate(c);
 		if (error != null) {
@@ -129,8 +129,8 @@ public class ManualFeeder extends BusModBase {
 					"SET pg.id = id(pg)+'-'+timestamp() " +
 					"RETURN DISTINCT c.id as id ";
 			JsonObject params = new JsonObject()
-					.putString("structureId", structureId)
-					.putObject("props", c);
+					.put("structureId", structureId)
+					.put("props", c);
 			neo4j.execute(query, params, new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> m) {
@@ -162,7 +162,7 @@ public class ManualFeeder extends BusModBase {
 					"SET " + Neo4jUtils.nodeSetPropertiesFromJson("c", c) +
 					rename +
 					"RETURN DISTINCT c.id as id ";
-			JsonObject params = c.putString("classId", classId);
+			JsonObject params = c.put("classId", classId);
 			neo4j.execute(query, params, new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> m) {
@@ -176,7 +176,7 @@ public class ManualFeeder extends BusModBase {
 		final JsonObject user = getMandatoryObject("data", message);
 		if (user == null) return;
 		if (user.getString("externalId") == null) {
-			user.putString("externalId", UUID.randomUUID().toString());
+			user.put("externalId", UUID.randomUUID().toString());
 		}
 		final String profile = message.body().getString("profile", "");
 		if (!profiles.containsKey(profile)) {
@@ -185,7 +185,7 @@ public class ManualFeeder extends BusModBase {
 		}
 		JsonArray childrenIds = null;
 		if ("Relative".equals(profile)) {
-			childrenIds = user.getArray("childrenIds");
+			childrenIds = user.getJsonArray("childrenIds");
 		}
 		final String error = profiles.get(profile).validate(user);
 		if (error != null) {
@@ -193,7 +193,7 @@ public class ManualFeeder extends BusModBase {
 			sendError(message, error);
 			return;
 		}
-		user.putString("source", SOURCE);
+		user.put("source", SOURCE);
 		final String structureId = message.body().getString("structureId");
 		if (structureId != null && !structureId.trim().isEmpty()) {
 			createUserInStructure(message, user, profile, structureId, childrenIds);
@@ -211,9 +211,9 @@ public class ManualFeeder extends BusModBase {
 			final JsonObject user, String profile, String structureId, JsonArray childrenIds) {
 		String related = "";
 		JsonObject params = new JsonObject()
-				.putString("structureId", structureId)
-				.putString("profile", profile)
-				.putObject("props", user);
+				.put("structureId", structureId)
+				.put("profile", profile)
+				.put("props", user);
 		if (childrenIds != null && childrenIds.size() > 0) {
 			related =
 					"WITH u " +
@@ -221,7 +221,7 @@ public class ManualFeeder extends BusModBase {
 					"WHERE student.id IN {childrenIds} " +
 					"CREATE student-[:RELATED]->u " +
 					"SET student.relative = coalesce(student.relative, []) + (u.externalId + '$1$1$1$1$0') ";
-			params.putArray("childrenIds", childrenIds);
+			params.put("childrenIds", childrenIds);
 		}
 		String query =
 				"MATCH (s:Structure { id : {structureId}})<-[:DEPENDS]-" +
@@ -236,7 +236,7 @@ public class ManualFeeder extends BusModBase {
 				message.reply(m.body());
 				if ("ok".equals(m.body().getString("status"))) {
 					eventStore.createAndStoreEvent(Feeder.FeederEvent.CREATE_USER.name(),
-							(UserInfos) null, new JsonObject().putString("new-user", user.getString("id")));
+							(UserInfos) null, new JsonObject().put("new-user", user.getString("id")));
 				}
 			}
 		});
@@ -262,8 +262,8 @@ public class ManualFeeder extends BusModBase {
 	private void addUserInStructure(final Message<JsonObject> message,
 			String userId, String structureId) {
 		JsonObject params = new JsonObject()
-				.putString("structureId", structureId)
-				.putString("userId", userId);
+				.put("structureId", structureId)
+				.put("userId", userId);
 		String query =
 				"MATCH (u:User { id : {userId}})-[:IN]->(opg:ProfileGroup)-[:HAS_PROFILE]->(p:Profile) " +
 				"WITH u, p " +
@@ -302,8 +302,8 @@ public class ManualFeeder extends BusModBase {
 		try {
 			TransactionHelper tx = TransactionManager.getTransaction();
 			JsonObject params = new JsonObject()
-					.putString("structureId", structureId)
-					.putString("userId", userId);
+					.put("structureId", structureId)
+					.put("userId", userId);
 			final String query =
 					"MATCH (u:User { id : {userId}})-[r:IN|COMMUNIQUE]-(cpg:ProfileGroup)-[:DEPENDS*0..1]->" +
 							"(pg:ProfileGroup)-[:DEPENDS]->(s:Structure { id : {structureId}}), " +
@@ -329,9 +329,9 @@ public class ManualFeeder extends BusModBase {
 			tx.commit(new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> event) {
-					final JsonArray results = event.body().getArray("results");
+					final JsonArray results = event.body().getJsonArray("results");
 					if ("ok".equals(event.body().getString("status")) && results != null && results.size() > 0) {
-						message.reply(event.body().putArray("result", results.<JsonArray>get(0)));
+						message.reply(event.body().put("result", results.<JsonArray>get(0)));
 					} else {
 						message.reply(event.body());
 					}
@@ -347,9 +347,9 @@ public class ManualFeeder extends BusModBase {
 			final JsonObject user, String profile, String classId, JsonArray childrenIds) {
 		String related = "";
 		JsonObject params = new JsonObject()
-				.putString("classId", classId)
-				.putString("profile", profile)
-				.putObject("props", user);
+				.put("classId", classId)
+				.put("profile", profile)
+				.put("props", user);
 		if (childrenIds != null && childrenIds.size() > 0) {
 			related =
 					"WITH u " +
@@ -357,7 +357,7 @@ public class ManualFeeder extends BusModBase {
 					"WHERE student.id IN {childrenIds} " +
 					"CREATE student-[:RELATED]->u " +
 					"SET student.relative = coalesce(student.relative, []) + (u.externalId + '$1$1$1$1$0') ";
-			params.putArray("childrenIds", childrenIds);
+			params.put("childrenIds", childrenIds);
 		}
 		String query =
 				"MATCH (s:Class { id : {classId}})<-[:DEPENDS]-(cpg:ProfileGroup)-[:DEPENDS]->" +
@@ -372,7 +372,7 @@ public class ManualFeeder extends BusModBase {
 				message.reply(m.body());
 				if ("ok".equals(m.body().getString("status"))) {
 					eventStore.createAndStoreEvent(Feeder.FeederEvent.CREATE_USER.name(),
-							(UserInfos) null, new JsonObject().putString("new-user", user.getString("id")));
+							(UserInfos) null, new JsonObject().put("new-user", user.getString("id")));
 				}
 			}
 		});
@@ -381,8 +381,8 @@ public class ManualFeeder extends BusModBase {
 	private void addUserInClass(final Message<JsonObject> message,
 			String userId, String classId) {
 		JsonObject params = new JsonObject()
-				.putString("classId", classId)
-				.putString("userId", userId);
+				.put("classId", classId)
+				.put("userId", userId);
 		String query =
 				"MATCH (u:User { id : {userId}})-[:IN]->(opg:ProfileGroup)-[:HAS_PROFILE]->(p:Profile) " +
 				"WITH u, p " +
@@ -405,8 +405,8 @@ public class ManualFeeder extends BusModBase {
 	private void removeUserFromClass(final Message<JsonObject> message,
 								String userId, String classId) {
 		JsonObject params = new JsonObject()
-				.putString("classId", classId)
-				.putString("userId", userId);
+				.put("classId", classId)
+				.put("userId", userId);
 		String query =
 				"MATCH (u:User { id : {userId}})-[r:IN|COMMUNIQUE]-(cpg:ProfileGroup)-[:DEPENDS]->" +
 				"(c:Class  {id : {classId}}), cpg-[:DEPENDS]->(pg:ProfileGroup)-[:HAS_PROFILE]->(p:Profile), " +
@@ -431,10 +431,10 @@ public class ManualFeeder extends BusModBase {
 		String q =
 				"MATCH (u:User { id : {userId}})-[:IN]->(pg:ProfileGroup)-[:HAS_PROFILE]->(p:Profile) " +
 				"RETURN DISTINCT p.name as profile ";
-		neo4j.execute(q, new JsonObject().putString("userId", userId), new Handler<Message<JsonObject>>() {
+		neo4j.execute(q, new JsonObject().put("userId", userId), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> r) {
-				JsonArray res = r.body().getArray("result");
+				JsonArray res = r.body().getJsonArray("result");
 				if ("ok".equals(r.body().getString("status")) && res != null && res.size() > 0) {
 					for (Object o : res) {
 						if (!(o instanceof JsonObject)) continue;
@@ -455,7 +455,7 @@ public class ManualFeeder extends BusModBase {
 							"MATCH (u:User { id : {userId}}) " +
 							"SET " + Neo4jUtils.nodeSetPropertiesFromJson("u", user) +
 							"RETURN DISTINCT u.id as id ";
-					JsonObject params = user.putString("userId", userId);
+					JsonObject params = user.put("userId", userId);
 					neo4j.execute(query, params, new Handler<Message<JsonObject>>() {
 								@Override
 								public void handle(Message<JsonObject> m) {
@@ -470,7 +470,7 @@ public class ManualFeeder extends BusModBase {
 	}
 
 	public void deleteUser(final Message<JsonObject> message) {
-		final JsonArray users = message.body().getArray("users");
+		final JsonArray users = message.body().getJsonArray("users");
 		if (users == null || users.size() == 0) {
 			sendError(message, "Missing users.");
 			return;
@@ -479,10 +479,10 @@ public class ManualFeeder extends BusModBase {
 				"MATCH (u:User)" +
 				"WHERE u.id IN {users} AND (u.source IN ['MANUAL', 'CSV', 'CLASS_PARAM', 'BE1D'] OR HAS(u.disappearanceDate)) " +
 				"return count(*) as count ";
-		neo4j.execute(query, new JsonObject().putArray("users", users), new Handler<Message<JsonObject>>() {
+		neo4j.execute(query, new JsonObject().put("users", users), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
-				JsonArray res = event.body().getArray("result");
+				JsonArray res = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && res != null && res.size() == 1) {
 					JsonObject j = res.get(0);
 					if (users.size() == j.getInteger("count", 0)) {
@@ -506,7 +506,7 @@ public class ManualFeeder extends BusModBase {
 	}
 
 	public void restoreUser(final Message<JsonObject> message) {
-		final JsonArray users = message.body().getArray("users");
+		final JsonArray users = message.body().getJsonArray("users");
 		if (users == null || users.size() == 0) {
 			sendError(message, "Missing users.");
 			return;
@@ -534,10 +534,10 @@ public class ManualFeeder extends BusModBase {
 		}
 		String q = "MATCH (c:Class {id : {id}})-[:BELONGS]->(s:Structure) " +
 				   "RETURN c.externalId as cId, s.externalId as sId";
-		neo4j.execute(q, new JsonObject().putString("id", classId), new Handler<Message<JsonObject>>() {
+		neo4j.execute(q, new JsonObject().put("id", classId), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> r) {
-				JsonArray result = r.body().getArray("result");
+				JsonArray result = r.body().getJsonArray("result");
 				if ("ok".equals(r.body().getString("status")) && result != null && result.size() == 1) {
 					JsonObject j = result.get(0);
 					final String structureExternalId = j.getString("sId");
@@ -548,7 +548,7 @@ public class ManualFeeder extends BusModBase {
 					}
 
 					final StatementsBuilder statementsBuilder = new StatementsBuilder();
-					final JsonObject params = new JsonObject().putString("classId", classId);
+					final JsonObject params = new JsonObject().put("classId", classId);
 					final String query =
 							"MATCH (c:`Class` { id : {classId}})<-[:DEPENDS]-(csg:ProfileGroup)" +
 							"-[:DEPENDS]->(ssg:ProfileGroup)-[:HAS_PROFILE]->(p:Profile { name : 'Student'}) " +
@@ -567,27 +567,27 @@ public class ManualFeeder extends BusModBase {
 						while ((values = csvReader.readNext()) != null) {
 							int i = 0;
 							JsonObject props = new JsonObject();
-							props.putArray("profiles", new JsonArray().add("Student"));
+							props.put("profiles", new JsonArray().add("Student"));
 							while (i < values.length && !"#break#".equals(studentHeader[i])) {
 								if ("birthDate".equals(studentHeader[i]) && values[i] != null) {
 									Matcher m;
 									if (values[i] != null &&
 											(m = frenchDatePatter.matcher(values[i])).find()) {
-										props.putString(studentHeader[i],
+										props.put(studentHeader[i],
 												m.group(3) + "-" + m.group(2) + "-" + m.group(1));
 									} else {
-										props.putString(studentHeader[i], values[i].trim());
+										props.put(studentHeader[i], values[i].trim());
 									}
 								} else if (!"#skip#".equals(studentHeader[i])) {
 									if (values[i] != null && !values[i].trim().isEmpty()) {
-										props.putString(studentHeader[i], values[i].trim());
+										props.put(studentHeader[i], values[i].trim());
 									}
 								}
 								i++;
 							}
-							props.putArray("structures", new JsonArray().add(structureExternalId));
+							props.put("structures", new JsonArray().add(structureExternalId));
 							String c = props.getString("classes");
-							props.putArray("classes", new JsonArray().add(classExternalId));
+							props.put("classes", new JsonArray().add(classExternalId));
 							generateUserExternalId(props, c, structureExternalId);
 							String error = v.validate(props);
 							if (error != null) {
@@ -596,8 +596,8 @@ public class ManualFeeder extends BusModBase {
 								errors.add(e);
 								return;
 							}
-							props.putString("source", "CLASS_PARAM");
-							statementsBuilder.add(query, params.copy().putObject("props", props));
+							props.put("source", "CLASS_PARAM");
+							statementsBuilder.add(query, params.copy().put("props", props));
 						}
 					} catch (Exception e) {
 						logger.error("csv.exception", e);
@@ -632,10 +632,10 @@ public class ManualFeeder extends BusModBase {
 		}
 		String q = "MATCH (c:Class {id : {id}})-[:BELONGS]->(s:Structure) " +
 				   "RETURN c.externalId as cId, s.externalId as sId";
-		neo4j.execute(q, new JsonObject().putString("id", classId), new Handler<Message<JsonObject>>() {
+		neo4j.execute(q, new JsonObject().put("id", classId), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> r) {
-				JsonArray result = r.body().getArray("result");
+				JsonArray result = r.body().getJsonArray("result");
 				if ("ok".equals(r.body().getString("status")) && result != null && result.size() == 1) {
 					JsonObject j = result.get(0);
 					final String structureExternalId = j.getString("sId");
@@ -647,7 +647,7 @@ public class ManualFeeder extends BusModBase {
 
 
 					final StatementsBuilder statementsBuilder = new StatementsBuilder();
-					final JsonObject params = new JsonObject().putString("classId", classId);
+					final JsonObject params = new JsonObject().put("classId", classId);
 					final String query =
 							"MATCH (c:`Class` { id : {classId}})<-[:DEPENDS]-(csg:ProfileGroup)" +
 							"-[:DEPENDS]->(ssg:ProfileGroup)-[:HAS_PROFILE]->(p:Profile { name : 'Relative'}) " +
@@ -669,11 +669,11 @@ public class ManualFeeder extends BusModBase {
 						while ((values = csvReader.readNext()) != null) {
 							int i = 0;
 							JsonObject props = new JsonObject();
-							props.putArray("profiles", new JsonArray().add("Relative"));
+							props.put("profiles", new JsonArray().add("Relative"));
 							while (i < relativeHeader.length) {
 								if (!"#skip#".equals(relativeHeader[i])) {
 									if (values[i] != null && !values[i].trim().isEmpty()) {
-										props.putString(relativeHeader[i], values[i].trim());
+										props.put(relativeHeader[i], values[i].trim());
 									}
 								}
 								i++;
@@ -700,9 +700,9 @@ public class ManualFeeder extends BusModBase {
 								errors.add(e);
 								return;
 							}
-							props.putString("source", "CLASS_PARAM");
+							props.put("source", "CLASS_PARAM");
 							statementsBuilder.add(query, params.copy()
-									.putObject("props", props).putArray("linkStudents", linkStudents));
+									.put("props", props).put("linkStudents", linkStudents));
 						}
 					} catch (Exception e) {
 						logger.error("csv.exception", e);
@@ -730,7 +730,7 @@ public class ManualFeeder extends BusModBase {
 				props.getString("email","")+props.getString("title","")+
 				props.getString("homePhone","")+props.getString("mobile","")+c;
 		try {
-			props.putString("externalId", Hash.sha1(mapping.getBytes("UTF-8")));
+			props.put("externalId", Hash.sha1(mapping.getBytes("UTF-8")));
 		} catch (NoSuchAlgorithmException |UnsupportedEncodingException e) {
 			logger.error(e.getMessage(), e);
 		}
@@ -791,7 +791,7 @@ public class ManualFeeder extends BusModBase {
 	}
 
 	public void createFunctionGroup(Message<JsonObject> message) {
-		final JsonArray functions = message.body().getArray("functions");
+		final JsonArray functions = message.body().getJsonArray("functions");
 		if (functions == null || functions.size() == 0) {
 			sendError(message, "missing.functions");
 			return;
@@ -829,7 +829,7 @@ public class ManualFeeder extends BusModBase {
 		final String userId = getMandatoryString("userId", message);
 		final String function = message.body().getString("function");
 		if (userId == null || function == null) return;
-		final JsonArray scope = message.body().getArray("scope");
+		final JsonArray scope = message.body().getJsonArray("scope");
 		String inherit =  message.body().getString("inherit", "");
 		if (scope != null && ("s".equals(inherit) || "sc".equals(inherit))) {
 			String query;
@@ -842,12 +842,12 @@ public class ManualFeeder extends BusModBase {
 						"WHERE s.id IN {scope} " +
 						"RETURN COLLECT(scope.id) as ids ";
 			}
-			neo4j.execute(query, new JsonObject().putArray("scope", scope), new Handler<Message<JsonObject>>() {
+			neo4j.execute(query, new JsonObject().put("scope", scope), new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> event) {
-					JsonArray result = event.body().getArray("result");
+					JsonArray result = event.body().getJsonArray("result");
 					if ("ok".equals(event.body().getString("status")) && result != null && result.size() == 1) {
-						final JsonArray s = result.<JsonObject>get(0).getArray("ids");
+						final JsonArray s = result.<JsonObject>get(0).getJsonArray("ids");
 						executeTransaction(message, new VoidFunction<TransactionHelper>() {
 							@Override
 							public void apply(TransactionHelper tx) {
@@ -917,7 +917,7 @@ public class ManualFeeder extends BusModBase {
 	}
 
 	public void createGroup(Message<JsonObject> message) {
-		final JsonObject group = message.body().getObject("group");
+		final JsonObject group = message.body().getJsonObject("group");
 		if (group == null || group.size() == 0) {
 			sendError(message, "missing.group");
 			return;
@@ -987,7 +987,7 @@ public class ManualFeeder extends BusModBase {
 					"MATCH (s:`Structure` { id : {structureId}}) " +
 					rename + Neo4jUtils.nodeSetPropertiesFromJson("s", s) +
 					"RETURN DISTINCT s.id as id ";
-			JsonObject params = s.putString("structureId", structureId);
+			JsonObject params = s.put("structureId", structureId);
 			neo4j.execute(query, params, new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> m) {

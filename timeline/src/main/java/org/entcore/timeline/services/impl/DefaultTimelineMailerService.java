@@ -35,17 +35,17 @@ import org.entcore.common.notification.TimelineNotificationsLoader;
 import org.entcore.timeline.controllers.TimelineLambda;
 import org.entcore.timeline.services.TimelineConfigService;
 import org.entcore.timeline.services.TimelineMailerService;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
-import org.vertx.java.platform.Container;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.platform.Container;
 
 import java.io.StringReader;
 import java.io.Writer;
@@ -102,12 +102,12 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 						}
 						//Process template once by domain
 						final Map<String, Map<String, String>> processedTemplates = new HashMap<>();
-						templateParameters.putString("innerTemplate", notification.getString("template", ""));
+						templateParameters.put("innerTemplate", notification.getString("template", ""));
 
 						final Map<String, Map<String, List<Object>>> toByDomainLang = new HashMap<>();
 
 						final AtomicInteger userCount = new AtomicInteger(userList.size());
-						final VoidHandler templatesHandler = new VoidHandler(){
+						final Handler<Void> templatesHandler = new Handler<Void>(){
 							protected void handle() {
 								if(userCount.decrementAndGet() == 0){
 									if(toByDomainLang.size() > 0){
@@ -164,9 +164,9 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 							if(!processedTemplates.containsKey(userDomain))
 								processedTemplates.put(userDomain, new HashMap<String, String>());
 							JsonObject notificationPreference = userPref
-									.getObject("preferences", new JsonObject())
-									.getObject("config", new JsonObject())
-									.getObject(notificationName, new JsonObject());
+									.getJsonObject("preferences", new JsonObject())
+									.getJsonObject("config", new JsonObject())
+									.getJsonObject(notificationName, new JsonObject());
 							// If the frequency is IMMEDIATE
 							// and the restriction is not INTERNAL (timeline only)
 							// and if the user has provided an email
@@ -224,9 +224,9 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 					JsonObject notifConfig = (JsonObject) notifConfigObj;
 					if (notifConfig.getString("key", "")
 							.equals(notificationKey.toLowerCase())) {
-						notification.putString("defaultFrequency",
+						notification.put("defaultFrequency",
 								notifConfig.getString("defaultFrequency", ""));
-						notification.putString("restriction",
+						notification.put("restriction",
 								notifConfig.getString("restriction", ""));
 						break;
 					}
@@ -259,10 +259,10 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 	public void processTimelineTemplate(JsonObject parameters, String resourceName,
 			String template, String domain, String scheme, String language, boolean reader, final Handler<String> handler) {
 		final HttpServerRequest request = new JsonHttpServerRequest(new JsonObject()
-				.putObject("headers", new JsonObject()
-						.putString("Host", domain)
-						.putString("X-Forwarded-Proto", scheme)
-						.putString("Accept-Language", language)));
+				.put("headers", new JsonObject()
+						.put("Host", domain)
+						.put("X-Forwarded-Proto", scheme)
+						.put("Accept-Language", language)));
 		if(reader){
 			final StringReader templateReader = new StringReader(template);
 			processTemplate(request, parameters, resourceName, templateReader, new Handler<Writer>() {
@@ -291,8 +291,8 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 		dayDate.set(Calendar.MILLISECOND, 0);
 
 		final JsonObject results = new JsonObject()
-				.putNumber("mails.sent", 0)
-				.putNumber("users.ko", 0);
+				.put("mails.sent", 0)
+				.put("users.ko", 0);
 		final JsonObject notificationsDefaults = new JsonObject();
 		final List<String> notifiedUsers = new ArrayList<>();
 
@@ -309,7 +309,7 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 					}
 					final AtomicInteger usersCountdown = new AtomicInteger(nbUsers);
 
-					final VoidHandler usersEndHandler = new VoidHandler() {
+					final Handler<Void> usersEndHandler = new Handler<Void>() {
 						protected void handle() {
 							if(usersCountdown.decrementAndGet() <= 0){
 								log.info("[DailyMails] Page : " + userPagination.get() + "/" + endPage.get());
@@ -351,29 +351,29 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 											final String notificationName =
 													notification.getString("type","").toLowerCase() + "." +
 															notification.getString("event-type", "").toLowerCase();
-											if(notificationsDefaults.getObject(notificationName) == null)
+											if(notificationsDefaults.getJsonObject(notificationName) == null)
 												continue;
 
 											JsonObject notificationPreference = userPrefs
-													.getObject("preferences", new JsonObject())
-													.getObject("config", new JsonObject())
-													.getObject(notificationName, new JsonObject());
+													.getJsonObject("preferences", new JsonObject())
+													.getJsonObject("config", new JsonObject())
+													.getJsonObject(notificationName, new JsonObject());
 											if(TimelineNotificationsLoader.Frequencies.DAILY.name().equals(
-													notificationPrefsMixin("defaultFrequency", notificationPreference, notificationsDefaults.getObject(notificationName))) &&
+													notificationPrefsMixin("defaultFrequency", notificationPreference, notificationsDefaults.getJsonObject(notificationName))) &&
 													!TimelineNotificationsLoader.Restrictions.INTERNAL.name().equals(
-															notificationPrefsMixin("restriction", notificationPreference, notificationsDefaults.getObject(notificationName))) &&
+															notificationPrefsMixin("restriction", notificationPreference, notificationsDefaults.getJsonObject(notificationName))) &&
 													!TimelineNotificationsLoader.Restrictions.HIDDEN.name().equals(
-															notificationPrefsMixin("restriction", notificationPreference, notificationsDefaults.getObject(notificationName)))){
+															notificationPrefsMixin("restriction", notificationPreference, notificationsDefaults.getJsonObject(notificationName)))){
 												templates.add(new JsonObject()
-														.putString("template", notificationsDefaults.getObject(notificationName, new JsonObject()).getString("template", ""))
-														.putObject("params", notification.getObject("params", new JsonObject())));
-												dates.add(formatter.format(MongoDb.parseIsoDate(notification.getObject("date"))));
+														.put("template", notificationsDefaults.getJsonObject(notificationName, new JsonObject()).getString("template", ""))
+														.put("params", notification.getJsonObject("params", new JsonObject())));
+												dates.add(formatter.format(MongoDb.parseIsoDate(notification.getJsonObject("date"))));
 											}
 										}
 										if(templates.size() > 0){
 											JsonObject templateParams = new JsonObject()
-													.putArray("nestedTemplatesArray", templates)
-													.putArray("notificationDates", dates);
+													.put("nestedTemplatesArray", templates)
+													.put("notificationDates", dates);
 											processTimelineTemplate(templateParams, "", "notifications/daily-mail.html",
 													userDomain, userScheme, userLanguage, false, new Handler<String>() {
 														public void handle(final String processedTemplate) {
@@ -382,9 +382,9 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 																public void handle(Message<JsonObject> event) {
 																	if("error".equals(event.body().getString("status", "error"))){
 																		log.error("[Timeline daily emails] Error while sending mail : " + event.body());
-																		results.putNumber("users.ko", results.getInteger("users.ko") + 1);
+																		results.put("users.ko", results.getInteger("users.ko") + 1);
 																	} else {
-																		results.putNumber("mails.sent", results.getInteger("mails.sent") + 1);
+																		results.put("mails.sent", results.getInteger("mails.sent") + 1);
 																	}
 																	usersEndHandler.handle(null);
 																}
@@ -458,7 +458,7 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 						} else {
 							for (Object notifObj : notifications) {
 								final JsonObject notif = (JsonObject) notifObj;
-								notificationsDefaults.putObject(notif.getString("key", ""), notif);
+								notificationsDefaults.put(notif.getString("key", ""), notif);
 							}
 							userContinuationHandler.handle(true);
 						}
@@ -481,8 +481,8 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 		weekDate.set(Calendar.MILLISECOND, 0);
 
 		final JsonObject results = new JsonObject()
-				.putNumber("mails.sent", 0)
-				.putNumber("users.ko", 0);
+				.put("mails.sent", 0)
+				.put("users.ko", 0);
 		final JsonObject notificationsDefaults = new JsonObject();
 		final List<String> notifiedUsers = new ArrayList<>();
 
@@ -499,7 +499,7 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 					}
 					final AtomicInteger usersCountdown = new AtomicInteger(nbUsers);
 
-					final VoidHandler usersEndHandler = new VoidHandler() {
+					final Handler<Void> usersEndHandler = new Handler<Void>() {
 						protected void handle() {
 							if (usersCountdown.decrementAndGet() <= 0) {
 								log.info("[WeeklyMails] Page : " + userPagination.get() + "/" + endPage.get());
@@ -539,20 +539,20 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 											final String notificationName =
 													notification.getString("type", "").toLowerCase() + "." +
 															notification.getString("event-type", "").toLowerCase();
-											if (notificationsDefaults.getObject(notificationName) == null)
+											if (notificationsDefaults.getJsonObject(notificationName) == null)
 												continue;
 
 											JsonObject notificationPreference = userPrefs
-													.getObject("preferences", new JsonObject())
-													.getObject("config", new JsonObject())
-													.getObject(notificationName, new JsonObject());
+													.getJsonObject("preferences", new JsonObject())
+													.getJsonObject("config", new JsonObject())
+													.getJsonObject(notificationName, new JsonObject());
 											if (TimelineNotificationsLoader.Frequencies.WEEKLY.name().equals(
-													notificationPrefsMixin("defaultFrequency", notificationPreference, notificationsDefaults.getObject(notificationName))) &&
+													notificationPrefsMixin("defaultFrequency", notificationPreference, notificationsDefaults.getJsonObject(notificationName))) &&
 													!TimelineNotificationsLoader.Restrictions.INTERNAL.name().equals(
-															notificationPrefsMixin("restriction", notificationPreference, notificationsDefaults.getObject(notificationName))) &&
+															notificationPrefsMixin("restriction", notificationPreference, notificationsDefaults.getJsonObject(notificationName))) &&
 													!TimelineNotificationsLoader.Restrictions.HIDDEN.name().equals(
-															notificationPrefsMixin("restriction", notificationPreference, notificationsDefaults.getObject(notificationName)))) {
-												notification.putString("notificationName", notificationName);
+															notificationPrefsMixin("restriction", notificationPreference, notificationsDefaults.getJsonObject(notificationName)))) {
+												notification.put("notificationName", notificationName);
 												weeklyNotifications.add(notification);
 											}
 										}
@@ -562,25 +562,25 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 										for (Object notif : weeklyNotifications) {
 											JsonObject notification = (JsonObject) notif;
 											if (!weeklyNotificationsObj.containsField(notification.getString("type").toLowerCase()))
-												weeklyNotificationsObj.putObject(notification.getString("type").toLowerCase(), new JsonObject()
-														.putString("link", notificationsDefaults
-																.getObject(notification.getString("notificationName")).getString("app-address", ""))
-														.putArray("event-types", new JsonArray()));
+												weeklyNotificationsObj.put(notification.getString("type").toLowerCase(), new JsonObject()
+														.put("link", notificationsDefaults
+																.getJsonObject(notification.getString("notificationName")).getString("app-address", ""))
+														.put("event-types", new JsonArray()));
 											weeklyNotificationsObj
-													.getObject(notification.getString("type").toLowerCase())
-													.getArray(("event-types"), new JsonArray())
+													.getJsonObject(notification.getString("type").toLowerCase())
+													.getJsonArray(("event-types"), new JsonArray())
 													.add(notification);
 										}
 
 										for (String key : weeklyNotificationsObj.toMap().keySet()) {
 											weeklyNotificationsGroupedArray.add(new JsonObject()
-													.putString("type", key)
-													.putString("link", weeklyNotificationsObj.getObject(key).getString("link", ""))
-													.putArray("event-types", weeklyNotificationsObj.getObject(key).getArray("event-types")));
+													.put("type", key)
+													.put("link", weeklyNotificationsObj.getJsonObject(key).getString("link", ""))
+													.put("event-types", weeklyNotificationsObj.getJsonObject(key).getJsonArray("event-types")));
 										}
 
 										if (weeklyNotifications.size() > 0) {
-											JsonObject templateParams = new JsonObject().putArray("notifications", weeklyNotificationsGroupedArray);
+											JsonObject templateParams = new JsonObject().put("notifications", weeklyNotificationsGroupedArray);
 											processTimelineTemplate(templateParams, "", "notifications/weekly-mail.html",
 													userDomain, userScheme, userLanguage, false, new Handler<String>() {
 														public void handle(final String processedTemplate) {
@@ -589,9 +589,9 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 																public void handle(Message<JsonObject> event) {
 																	if ("error".equals(event.body().getString("status", "error"))) {
 																		log.error("[Timeline weekly emails] Error while sending mail : " + event.body());
-																		results.putNumber("users.ko", results.getInteger("users.ko") + 1);
+																		results.put("users.ko", results.getInteger("users.ko") + 1);
 																	} else {
-																		results.putNumber("mails.sent", results.getInteger("mails.sent") + 1);
+																		results.put("mails.sent", results.getInteger("mails.sent") + 1);
 																	}
 																	usersEndHandler.handle(null);
 																}
@@ -664,7 +664,7 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 						} else {
 							for (Object notifObj : notifications) {
 								final JsonObject notif = (JsonObject) notifObj;
-								notificationsDefaults.putObject(notif.getString("key", ""), notif);
+								notificationsDefaults.put(notif.getString("key", ""), notif);
 							}
 							userContinuationHandler.handle(true);
 						}
@@ -687,13 +687,13 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 					JsonArray notificationsList = new JsonArray();
 					for (String key : registeredNotifications.keySet()) {
 						JsonObject notif = new JsonObject(registeredNotifications.get(key));
-						notif.putString("key", key);
+						notif.put("key", key);
 						for (Object notifConfigObj : config) {
 							JsonObject notifConfig = (JsonObject) notifConfigObj;
 							if (notifConfig.getString("key", "").equals(key)) {
-								notif.putString("defaultFrequency",
+								notif.put("defaultFrequency",
 										notifConfig.getString("defaultFrequency", notif.getString("defaultFrequency")));
-								notif.putString("restriction",
+								notif.put("restriction",
 										notifConfig.getString("restriction", notif.getString("restriction")));
 								break;
 							}
@@ -714,15 +714,15 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 	 */
 	private void getUsersPreferences(JsonArray userIds, final Handler<JsonArray> handler){
 		eb.send(USERBOOK_ADDRESS, new JsonObject()
-				.putString("action", "get.userlist")
-				.putString("application", "timeline")
-				.putString("additionalMatch", ", u-[:IN]->(g:Group)-[:AUTHORIZED]->(r:Role)-[:AUTHORIZE]->(act:WorkflowAction) ")
-				.putString("additionalWhere", "AND act.name = \"org.entcore.timeline.controllers.TimelineController|mixinConfig\" ")
-				.putString("additionalCollectFields", ", language: uac.language")
-				.putArray("userIds", userIds), new Handler<Message<JsonObject>>() {
+				.put("action", "get.userlist")
+				.put("application", "timeline")
+				.put("additionalMatch", ", u-[:IN]->(g:Group)-[:AUTHORIZED]->(r:Role)-[:AUTHORIZE]->(act:WorkflowAction) ")
+				.put("additionalWhere", "AND act.name = \"org.entcore.timeline.controllers.TimelineController|mixinConfig\" ")
+				.put("additionalCollectFields", ", language: uac.language")
+				.put("userIds", userIds), new Handler<Message<JsonObject>>() {
 			public void handle(Message<JsonObject> event) {
 				if (!"error".equals(event.body().getString("status"))) {
-					handler.handle(event.body().getArray("results"));
+					handler.handle(event.body().getJsonArray("results"));
 				} else {
 					handler.handle(null);
 				}
@@ -744,17 +744,17 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 						.and("date").greaterThanEquals(from));
 
 		JsonObject keys = new JsonObject()
-				.putNumber("_id", 0)
-				.putNumber("type", 1)
-				.putNumber("event-type", 1)
-				.putNumber("params", 1)
-				.putNumber("date", 1);
+				.put("_id", 0)
+				.put("type", 1)
+				.put("event-type", 1)
+				.put("params", 1)
+				.put("date", 1);
 		mongo.find("timeline", matcher, null, keys, new Handler<Message<JsonObject>>() {
 			public void handle(Message<JsonObject> event) {
 				if("error".equals(event.body().getString("status", "error"))){
 					handler.handle(new JsonArray());
 				} else {
-					handler.handle(event.body().getArray("results"));
+					handler.handle(event.body().getJsonArray("results"));
 				}
 			}
 		});
@@ -776,16 +776,16 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 		final JsonObject aggregation = new JsonObject();
 		JsonArray pipeline = new JsonArray();
 		aggregation
-				.putString("aggregate", "timeline")
-				.putBoolean("allowDiskUse", true)
-				.putArray("pipeline", pipeline);
+				.put("aggregate", "timeline")
+				.put("allowDiskUse", true)
+				.put("pipeline", pipeline);
 
 		JsonObject matcher = MongoQueryBuilder.build(QueryBuilder.start("date").greaterThanEquals(from));
 		JsonObject grouper = new JsonObject("{ \"_id\" : \"notifiedUsers\", \"recipients\" : {\"$addToSet\" : \"$recipients.userId\"}}");
 
-		pipeline.addObject(new JsonObject().putObject("$match", matcher));
-		pipeline.add(new JsonObject().putString("$unwind", "$recipients"));
-		pipeline.add(new JsonObject().putObject("$group", grouper));
+		pipeline.add(new JsonObject().put("$match", matcher));
+		pipeline.add(new JsonObject().put("$unwind", "$recipients"));
+		pipeline.add(new JsonObject().put("$group", grouper));
 
 		mongo.command(aggregation.toString(), new Handler<Message<JsonObject>>() {
 			@Override
@@ -793,9 +793,9 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 				if ("error".equals(event.body().getString("status", "error"))) {
 					handler.handle(new JsonArray());
 				} else {
-					JsonArray r = event.body().getObject("result", new JsonObject()).getArray("result");
+					JsonArray r = event.body().getJsonObject("result", new JsonObject()).getJsonArray("result");
 					if (r != null && r.size() > 0) {
-						handler.handle(r.<JsonObject>get(0).getArray("recipients", new JsonArray()));
+						handler.handle(r.<JsonObject>get(0).getJsonArray("recipients", new JsonArray()));
 					} else {
 						handler.handle(new JsonArray());
 					}
@@ -827,7 +827,7 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 				"AND act.name = \"org.entcore.timeline.controllers.TimelineController|mixinConfig\"" +
 				"RETURN DISTINCT u.email as mail, u.id as id ";
 		JsonObject params = new JsonObject()
-				.putArray("notifiedUsers", new JsonArray(recipients.subList(fromIdx, toIdx).toArray()));
+				.put("notifiedUsers", new JsonArray(recipients.subList(fromIdx, toIdx).toArray()));
 		neo4j.execute(query, params, Neo4jResult.validResultHandler(handler));
 	}
 
@@ -843,9 +843,9 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 		final JsonObject aggregation = new JsonObject();
 		JsonArray pipeline = new JsonArray();
 		aggregation
-				.putString("aggregate", "timeline")
-				.putBoolean("allowDiskUse", true)
-				.putArray("pipeline", pipeline);
+				.put("aggregate", "timeline")
+				.put("allowDiskUse", true)
+				.put("pipeline", pipeline);
 
 		JsonObject matcher = MongoQueryBuilder.build(
 				QueryBuilder
@@ -854,9 +854,9 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 		JsonObject grouper = new JsonObject("{ \"_id\" : { \"type\": \"$type\", \"event-type\": \"$event-type\"}, \"count\": { \"$sum\": 1 } }");
 		JsonObject transformer = new JsonObject("{ \"type\": \"$_id.type\", \"event-type\": \"$_id.event-type\", \"count\": 1, \"_id\": 0 }");
 
-		pipeline.addObject(new JsonObject().putObject("$match", matcher));
-		pipeline.add(new JsonObject().putObject("$group", grouper));
-		pipeline.add(new JsonObject().putObject("$project", transformer));
+		pipeline.add(new JsonObject().put("$match", matcher));
+		pipeline.add(new JsonObject().put("$group", grouper));
+		pipeline.add(new JsonObject().put("$project", transformer));
 
 		mongo.command(aggregation.toString(), new Handler<Message<JsonObject>>() {
 			@Override
@@ -865,8 +865,8 @@ public class DefaultTimelineMailerService extends Renders implements TimelineMai
 					handler.handle(new JsonArray());
 				} else {
 					handler.handle(
-							event.body().getObject("result", new JsonObject())
-									.getArray("result", new JsonArray()));
+							event.body().getJsonObject("result", new JsonObject())
+									.getJsonArray("result", new JsonArray()));
 				}
 			}
 

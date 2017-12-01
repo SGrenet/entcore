@@ -33,11 +33,11 @@ import org.entcore.registry.filters.SuperAdminFilter;
 import org.entcore.registry.filters.WidgetLinkFilter;
 import org.entcore.registry.services.WidgetService;
 import org.entcore.registry.services.impl.DefaultWidgetService;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import fr.wseduc.bus.BusAddress;
 import fr.wseduc.rs.*;
@@ -190,24 +190,24 @@ public class WidgetController extends BaseController {
 
 	@BusAddress("wse.app.registry.widgets")
 	public void collectWidgets(final Message<JsonObject> message) {
-		final JsonArray widgets = message.body().getArray("widgets", new JsonArray());
+		final JsonArray widgets = message.body().getJsonArray("widgets", new JsonArray());
 		if(widgets.size() == 0 && message.body().containsField("widget")){
-			widgets.add(message.body().getObject("widget"));
+			widgets.add(message.body().getJsonObject("widget"));
 		} else if(widgets.size() == 0){
-			message.reply(new JsonObject().putString("status", "error").putString("message", "invalid.parameters"));
+			message.reply(new JsonObject().put("status", "error").putString("message", "invalid.parameters"));
 			return;
 		}
 
 		final AtomicInteger countdown = new AtomicInteger(widgets.size());
 		final JsonObject reply = new JsonObject()
-				.putString("status", "ok")
-				.putArray("errors", new JsonArray());
+				.put("status", "ok")
+				.put("errors", new JsonArray());
 
 		final Handler<JsonObject> replyHandler = new Handler<JsonObject>(){
 			public void handle(JsonObject res) {
 				if("error".equals(res.getString("status"))){
-					reply.putString("status", "error");
-					reply.getArray("errors").addString(reply.getString("message"));
+					reply.put("status", "error");
+					reply.getJsonArray("errors").add(reply.getString("message"));
 				}
 				if(countdown.decrementAndGet() == 0){
 					message.reply(reply);
@@ -223,22 +223,22 @@ public class WidgetController extends BaseController {
 	private void registerWidget(final JsonObject widget, final Handler<JsonObject> handler){
 		final String widgetName = widget.getString("name");
 		final String applicationName = widget.getString("applicationName");
-		widget.removeField("applicationName");
+		widget.remove("applicationName");
 		if (widgetName != null && !widgetName.trim().isEmpty()) {
 			service.createWidget(applicationName, widget, new Handler<Either<String, JsonObject>>() {
 				@Override
 				public void handle(Either<String, JsonObject> event) {
 					JsonObject j = new JsonObject();
 					if (event.isRight()) {
-						j.putString("status", "ok");
+						j.put("status", "ok");
 					} else {
-						j.putString("status", "error").putString("message", event.left().getValue());
+						j.put("status", "error").putString("message", event.left().getValue());
 					}
 					handler.handle(j);
 				}
 			});
 		} else {
-			handler.handle(new JsonObject().putString("status", "error").putString("message", "invalid.parameters"));
+			handler.handle(new JsonObject().put("status", "error").putString("message", "invalid.parameters"));
 		}
 	}
 }

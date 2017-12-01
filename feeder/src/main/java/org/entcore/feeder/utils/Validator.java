@@ -22,16 +22,16 @@ package org.entcore.feeder.utils;
 import fr.wseduc.webutils.I18n;
 import org.entcore.common.neo4j.Neo4j;
 import org.joda.time.DateTime;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.impl.VertxInternal;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
-import org.vertx.java.core.shareddata.ConcurrentSharedMap;
-import org.vertx.java.core.spi.cluster.ClusterManager;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.impl.VertxInternal;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.shareddata.ConcurrentSharedMap;
+import io.vertx.core.spi.cluster.ClusterManager;
 
 import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
@@ -81,10 +81,10 @@ public class Validator {
 		if (schema == null || schema.size() == 0) {
 			throw new IllegalArgumentException("Missing schema.");
 		}
-		this.validate = schema.getObject("validate");
-		this.generate = schema.getObject("generate");
-		this.required = schema.getArray("required");
-		this.modifiable = schema.getArray("modifiable");
+		this.validate = schema.getJsonObject("validate");
+		this.generate = schema.getJsonObject("generate");
+		this.required = schema.getJsonArray("required");
+		this.modifiable = schema.getJsonArray("modifiable");
 		if (validate == null || generate == null || required == null || modifiable == null) {
 			throw new IllegalArgumentException("Invalid schema.");
 		}
@@ -108,11 +108,11 @@ public class Validator {
 			return i18n.translate("null.object", I18n.DEFAULT_DOMAIN, acceptLanguage);
 		}
 		final StringBuilder calcChecksum = new StringBuilder();
-		final Set<String> attributes = new HashSet<>(object.getFieldNames());
+		final Set<String> attributes = new HashSet<>(object.fieldNames());
 		for (String attr : attributes) {
-			JsonObject v = validate.getObject(attr);
+			JsonObject v = validate.getJsonObject(attr);
 			if (v == null) {
-				object.removeField(attr);
+				object.remove(attr);
 			} else {
 				Object value = object.getValue(attr);
 				String validator = v.getString("validator");
@@ -133,7 +133,7 @@ public class Validator {
 				}
 				if (err != null) {
 					log.info(err);
-					object.removeField(attr);
+					object.remove(attr);
 					continue;
 				}
 				if (value instanceof JsonArray) {
@@ -158,12 +158,12 @@ public class Validator {
 		if (object == null) {
 			return "Null object.";
 		}
-		final Set<String> attributes = new HashSet<>(object.getFieldNames());
+		final Set<String> attributes = new HashSet<>(object.fieldNames());
 		JsonObject generatedAttributes = null;
 		for (String attr : attributes) {
-			JsonObject v = validate.getObject(attr);
+			JsonObject v = validate.getJsonObject(attr);
 			if (v == null || !modifiable.contains(attr)) {
-				object.removeField(attr);
+				object.remove(attr);
 			} else {
 				Object value = object.getValue(attr);
 				String validator = v.getString("validator");
@@ -196,12 +196,12 @@ public class Validator {
 					return err;
 				}
 				if (value != null && generate.containsField(attr)) {
-					JsonObject g = generate.getObject(attr);
+					JsonObject g = generate.getJsonObject(attr);
 					if (g != null && "displayName".equals(g.getString("generator"))) {
 						if (generatedAttributes == null) {
 							generatedAttributes = new JsonObject();
 						}
-						generatedAttributes.putString(attr + SEARCH_FIELD, removeAccents(value.toString()).toLowerCase());
+						generatedAttributes.put(attr + SEARCH_FIELD, removeAccents(value.toString()).toLowerCase());
 					}
 				}
 			}
@@ -209,7 +209,7 @@ public class Validator {
 		if (generatedAttributes != null) {
 			object.mergeIn(generatedAttributes);
 		}
-		JsonObject g = generate.getObject("modified");
+		JsonObject g = generate.getJsonObject("modified");
 		if (g != null) {
 			nowDate("modified", object);
 		}
@@ -218,7 +218,7 @@ public class Validator {
 
 	private void checksum(JsonObject object, String values) throws NoSuchAlgorithmException {
 		String checksum = Hash.sha1(values.getBytes());
-		object.putString("checksum", checksum);
+		object.put("checksum", checksum);
 	}
 
 	private String required(JsonObject object) {
@@ -236,9 +236,9 @@ public class Validator {
 	}
 
 	private void generate(JsonObject object) {
-		for (String attr : generate.getFieldNames()) {
+		for (String attr : generate.fieldNames()) {
 			if (object.containsField(attr)) continue;
-			JsonObject j = generate.getObject(attr);
+			JsonObject j = generate.getJsonObject(attr);
 			switch (j.getString("generator", "")) {
 				case "uuid4" :
 					uuid4(attr, object);
@@ -265,7 +265,7 @@ public class Validator {
 
 	private String[] getParameters(JsonObject object, JsonObject j) {
 		String[] v = null;
-		JsonArray args = j.getArray("args");
+		JsonArray args = j.getJsonArray("args");
 		if (args != null && args.size() > 0) {
 			v = new String[args.size()];
 			for (int i = 0; i < args.size(); i++) {
@@ -277,7 +277,7 @@ public class Validator {
 
 	private String getParameter(JsonObject object, JsonObject j) {
 		String v = null;
-		JsonArray args = j.getArray("args");
+		JsonArray args = j.getJsonArray("args");
 		if (args != null && args.size() == 1) {
 			v = object.getString((String) args.get(0));
 		}
@@ -285,12 +285,12 @@ public class Validator {
 	}
 
 	private void nowDate(String attr, JsonObject object) {
-		object.putString(attr, DateTime.now().toString());
+		object.put(attr, DateTime.now().toString());
 	}
 
 	private void sanitizeGenerator(String attr, JsonObject object, String field) {
 		if (isNotEmpty(field)) {
-			object.putString(attr, sanitize(field));
+			object.put(attr, sanitize(field));
 		}
 	}
 
@@ -308,7 +308,7 @@ public class Validator {
 			for(int i = 0; i < 8; i++) {
 				sb.append(alphabet[Integer.parseInt(Long.toString(Math.abs(Math.round(Math.random() * 27D))))]);
 			}
-			object.putString(attr, sb.toString());
+			object.put(attr, sb.toString());
 		}
 	}
 
@@ -318,8 +318,8 @@ public class Validator {
 			String lastName = in[1];
 			if (firstName != null && lastName != null) {
 				String displayName = firstName + " " + lastName;
-				object.putString(attr, displayName);
-				object.putString(attr + SEARCH_FIELD, removeAccents(displayName).toLowerCase());
+				object.put(attr, displayName);
+				object.put(attr + SEARCH_FIELD, removeAccents(displayName).toLowerCase());
 			}
 		}
 	}
@@ -339,7 +339,7 @@ public class Validator {
 						l = login + i++;
 					}
 				}
-				object.putString(attr, l);
+				object.put(attr, l);
 			}
 		}
 	}
@@ -350,7 +350,7 @@ public class Validator {
 	}
 
 	private void uuid4(String attr, JsonObject object) {
-		object.putString(attr, UUID.randomUUID().toString());
+		object.put(attr, UUID.randomUUID().toString());
 	}
 
 	private String validBoolean(String attr, Object value) {
@@ -411,7 +411,7 @@ public class Validator {
 	}
 
 	public String getType(String attr) {
-		JsonObject a = validate.getObject(attr);
+		JsonObject a = validate.getJsonObject(attr);
 		return a != null ? a.getString("type", "") : "";
 	}
 
@@ -435,9 +435,9 @@ public class Validator {
 		neo4j.execute(query, new JsonObject(), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> message) {
-				JsonArray r = message.body().getArray("result");
+				JsonArray r = message.body().getJsonArray("result");
 				if ("ok".equals(message.body().getString("status")) && r != null && r.size() == 1) {
-					JsonArray l = ((JsonObject) r.get(0)).getArray("logins");
+					JsonArray l = ((JsonObject) r.get(0)).getJsonArray("logins");
 					if (l != null) {
 						final Set<Object> tmp = new HashSet<>(l.toList());
 						if (remove) {

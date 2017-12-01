@@ -21,9 +21,9 @@ package org.entcore.auth.services;
 
 import fr.wseduc.webutils.Either;
 import org.opensaml.saml2.core.Assertion;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.json.JsonElement;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.json.JsonElement;
+import io.vertx.core.json.JsonObject;
 
 public interface SamlServiceProvider {
 

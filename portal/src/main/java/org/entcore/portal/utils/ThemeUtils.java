@@ -19,9 +19,9 @@
 
 package org.entcore.portal.utils;
 
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 
 import java.io.File;
 import java.util.*;

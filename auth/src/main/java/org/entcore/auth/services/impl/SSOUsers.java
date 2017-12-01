@@ -21,9 +21,9 @@ package org.entcore.auth.services.impl;
 
 import fr.wseduc.webutils.Either;
 import org.opensaml.saml2.core.Assertion;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.json.JsonElement;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.json.JsonElement;
+import io.vertx.core.json.JsonObject;
 
 public class SSOUsers extends AbstractSSOProvider {
 
@@ -33,7 +33,7 @@ public class SSOUsers extends AbstractSSOProvider {
 
 		String joinKey = getAttribute(assertion, "FrEduIdENT");
 		if (joinKey != null && !joinKey.trim().isEmpty()) {
-			executeQuery("MATCH (u:User {externalId:{joinKey}}) ", new JsonObject().putString("joinKey", joinKey),
+			executeQuery("MATCH (u:User {externalId:{joinKey}}) ", new JsonObject().put("joinKey", joinKey),
 					assertion, handler);
 		} else {
 			handler.handle(new Either.Left<String, JsonElement>("invalid.joinKey"));

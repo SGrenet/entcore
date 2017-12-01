@@ -26,15 +26,15 @@ import org.entcore.feeder.utils.Function;
 import org.entcore.feeder.utils.ResultMessage;
 import org.entcore.feeder.utils.TransactionHelper;
 import org.entcore.feeder.utils.TransactionManager;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import java.io.File;
 import java.text.DateFormat;
@@ -76,7 +76,7 @@ public class EliotExporter implements Exporter {
 
 			@Override
 			public void handle(Message<JsonObject> result) {
-				JsonArray r = result.body().getArray("results");
+				JsonArray r = result.body().getJsonArray("results");
 				if ("ok".equals(result.body().getString("status")) && r != null && r.size() == 2) {
 					final String tenant = r.<JsonArray>get(0).<JsonObject>get(0).getString("name");
 					final String academy = r.<JsonArray>get(0).<JsonObject>get(0).getString("academy", r.<JsonArray>get(1).<JsonObject>get(0).getString("academy"));
@@ -97,7 +97,7 @@ public class EliotExporter implements Exporter {
 														zipAndSend(path, handler);
 													} else {
 														log.warn("export not send");
-														message.body().putString("exportPath", path);
+														message.body().put("exportPath", path);
 														handler.handle(message);
 													}
 												} else {
@@ -133,9 +133,9 @@ public class EliotExporter implements Exporter {
 			public void handle(AsyncResult<String[]> asyncResult) {
 				if (asyncResult.succeeded()) {
 					JsonObject j = new JsonObject()
-							.putArray("path", new JsonArray(asyncResult.result()))
-							.putString("zipFile", zipPath)
-							.putBoolean("deletePath", true);
+							.put("path", new JsonArray(asyncResult.result()))
+							.put("zipFile", zipPath)
+							.put("deletePath", true);
 					vertx.eventBus().send(node + "entcore.zipper", j, new Handler<Message<JsonObject>>() {
 						@Override
 						public void handle(Message<JsonObject> event) {
@@ -160,10 +160,10 @@ public class EliotExporter implements Exporter {
 	private void sendWithWebDav(final String file, final Handler<Message<JsonObject>> handler) {
 		final EventBus eb = vertx.eventBus();
 		JsonObject j = new JsonObject()
-				.putString("action", "put")
-				.putString("uri", exportDestination +
+				.put("action", "put")
+				.put("uri", exportDestination +
 						file.substring(file.lastIndexOf(File.separator) + 1))
-				.putString("file", file);
+				.put("file", file);
 		eb.send(node + WEBDAV_ADDRESS, j, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> message) {

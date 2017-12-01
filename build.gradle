@@ -1,29 +1,25 @@
-apply from: "gradle/setup.gradle"
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
 
-subprojects {
-  apply plugin: 'eclipse'
-  apply plugin: 'java'
 
-  apply from: "$rootDir/gradle/vertx.gradle"
+subprojects {
+  apply plugin:'java'
+  apply plugin:'maven'
 
 	repositories {
-		maven {
-			credentials {
-				username 'admin'
-				password 'admin'
-			}
-			url "http://maven.web-education.net/nexus/content/groups/public"
-		}
+  mavenLocal()
+  jcenter()
+  maven {
+    url "https://oss.sonatype.org/content/repositories/iovertx-3720/"
+  }
 	}
 
   configurations.all {
     resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
   }
 
-  sourceCompatibility = 1.7
-  targetCompatibility = 1.7
+  sourceCompatibility = 1.8
+  targetCompatibility = 1.8
 
   compileJava {
     sourceCompatibility = project.sourceCompatibility
@@ -34,15 +30,12 @@ subprojects {
     sourceCompatibility = project.sourceCompatibility
     targetCompatibility = project.targetCompatibility
   }
-
   dependencies {
-    provided "io.vertx:vertx-core:$vertxVersion"
-    provided "io.vertx:vertx-platform:$vertxVersion"
-
+    compile "io.vertx:vertx-core:$vertxVersion"
     testCompile "junit:junit:$junitVersion"
-    testCompile "io.vertx:testtools:$toolsVersion"
   }
 
+/*
   javadoc {
     options.encoding = 'UTF-8'
     classpath = configurations.provided
@@ -60,8 +53,10 @@ subprojects {
 			rootProject.delete "mods/${project.ext.moduleName}"
 		}
 	}
+*/
 }
 
+/*
 def generateMissingI18n() {
   JsonSlurper jsonSlurper = new JsonSlurper()
   File rootDir = new File(".")
@@ -82,10 +77,10 @@ def generateMissingI18n() {
     }
   }
 }
-
 task generateI18n(description:'Generate missing keys in i18n files') << {
   generateMissingI18n()
 }
+*/
 
 project(':common') {
   dependencies {
@@ -95,7 +90,7 @@ project(':common') {
     compile "joda-time:joda-time:$jodaTimeVersion"
   }
 }
-
+/*
 project(':app-registry') {
   dependencies {
     compile project(':common')
@@ -291,3 +286,6 @@ gradle.taskGraph.afterTask { task, TaskState state ->
         tasks.stopEnt.execute()
     }
 }
+
+*/
+

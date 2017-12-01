@@ -37,17 +37,17 @@ import org.entcore.infra.services.EventStoreService;
 import org.entcore.infra.services.impl.ClamAvService;
 import org.entcore.infra.services.impl.ExecCommandWorker;
 import org.entcore.infra.services.impl.MongoDbEventStore;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.file.FileProps;
-import org.vertx.java.core.impl.VertxInternal;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.shareddata.ConcurrentSharedMap;
-import org.vertx.java.core.spi.cluster.ClusterManager;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.file.FileProps;
+import io.vertx.core.impl.VertxInternal;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.shareddata.ConcurrentSharedMap;
+import io.vertx.core.spi.cluster.ClusterManager;
 
 import java.io.File;
 import java.text.ParseException;
@@ -80,19 +80,19 @@ public class Starter extends BaseServer {
 			serverMap.put("cluster", cluster);
 			node = config.getString("node", "");
 			serverMap.put("node", node);
-			JsonObject swift = config.getObject("swift");
+			JsonObject swift = config.getJsonObject("swift");
 			if (swift != null) {
 				serverMap.put("swift", swift.encode());
 			}
-			JsonObject emailConfig = config.getObject("emailConfig");
+			JsonObject emailConfig = config.getJsonObject("emailConfig");
 			if (emailConfig != null) {
 				serverMap.put("emailConfig", emailConfig.encode());
 			}
-			JsonObject filesystem = config.getObject("file-system");
+			JsonObject filesystem = config.getJsonObject("file-system");
 			if (filesystem != null) {
 				serverMap.put("file-system", filesystem.encode());
 			}
-			JsonObject neo4jConfig = config.getObject("neo4jConfig");
+			JsonObject neo4jConfig = config.getJsonObject("neo4jConfig");
 			if (neo4jConfig != null) {
 				serverMap.put("neo4jConfig", neo4jConfig.encode());
 			}
@@ -104,14 +104,14 @@ public class Starter extends BaseServer {
 			initModulesHelpers(node);
 
 			/* sharedConf sub-object */
-			JsonObject sharedConf = config.getObject("sharedConf", new JsonObject());
-			for(String field : sharedConf.getFieldNames()){
+			JsonObject sharedConf = config.getJsonObject("sharedConf", new JsonObject());
+			for(String field : sharedConf.fieldNames()){
 				serverMap.put(field, sharedConf.getValue(field));
 			}
 
-			vertx.sharedData().getMap("skins").putAll(config.getObject("skins", new JsonObject()).toMap());
+			vertx.sharedData().getMap("skins").putAll(config.getJsonObject("skins", new JsonObject()).toMap());
 
-			deployPreRequiredModules(config.getArray("pre-required-modules"), new VoidHandler() {
+			deployPreRequiredModules(config.getJsonArray("pre-required-modules"), new Handler<Void>() {
 				@Override
 				protected void handle() {
 					JsonSchemaValidator validator = JsonSchemaValidator.getInstance();
@@ -119,12 +119,12 @@ public class Starter extends BaseServer {
 					validator.setAddress(node + "json.schema.validator");
 					validator.loadJsonSchema(getPathPrefix(config), vertx);
 
-					deployModule(config.getObject("app-registry"), false, false, new Handler<AsyncResult<String>>() {
+					deployModule(config.getJsonObject("app-registry"), false, false, new Handler<AsyncResult<String>>() {
 						@Override
 						public void handle(AsyncResult<String> event) {
 							if (event.succeeded()) {
-								deployModules(config.getArray("external-modules", new JsonArray()), false);
-								deployModules(config.getArray("one-modules", new JsonArray()), true);
+								deployModules(config.getJsonArray("external-modules", new JsonArray()), false);
+								deployModules(config.getJsonArray("one-modules", new JsonArray()), true);
 								registerGlobalWidgets(config.getString("widgets-path", "../../assets/widgets"));
 								loadInvalidEmails();
 							}
@@ -135,7 +135,7 @@ public class Starter extends BaseServer {
 		} catch (Exception ex) {
 			log.error(ex.getMessage());
 		}
-		JsonObject eventConfig = config.getObject("eventConfig", new JsonObject());
+		JsonObject eventConfig = config.getJsonObject("eventConfig", new JsonObject());
 		EventStoreService eventStoreService = new MongoDbEventStore();
 		EventStoreController eventStoreController = new EventStoreController(eventConfig);
 		eventStoreController.setEventStoreService(eventStoreService);
@@ -165,12 +165,12 @@ public class Starter extends BaseServer {
 		}
 		if (invalidEmails != null && invalidEmails.isEmpty()) {
 			MongoDb.getInstance().findOne(HardBounceTask.PLATEFORM_COLLECTION, new JsonObject()
-					.putString("type", HardBounceTask.PLATFORM_ITEM_TYPE), new Handler<Message<JsonObject>>() {
+					.put("type", HardBounceTask.PLATFORM_ITEM_TYPE), new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> event) {
-					JsonObject res = event.body().getObject("result");
-					if ("ok".equals(event.body().getString("status")) && res != null && res.getArray("invalid-emails") != null) {
-						for (Object o : res.getArray("invalid-emails")) {
+					JsonObject res = event.body().getJsonObject("result");
+					if ("ok".equals(event.body().getString("status")) && res != null && res.getJsonArray("invalid-emails") != null) {
+						for (Object o : res.getJsonArray("invalid-emails")) {
 							invalidEmails.put(o, "");
 						}
 					} else {
@@ -190,7 +190,7 @@ public class Starter extends BaseServer {
 		}
 	}
 
-	private void deployPreRequiredModules(final JsonArray array, final VoidHandler handler) {
+	private void deployPreRequiredModules(final JsonArray array, final Handler<Void> handler) {
 		if (array == null || array.size() == 0) {
 			handler.handle(null);
 			return;
@@ -261,10 +261,10 @@ public class Starter extends BaseServer {
 				return;
 			}
 		}
-		conf = conf.mergeIn(module.getObject("config", new JsonObject()));
+		conf = conf.mergeIn(module.getJsonObject("config", new JsonObject()));
 		String address = conf.getString("address");
 		if (overideBusAddress && !node.isEmpty() && address != null) {
-			conf.putString("address", node + address);
+			conf.put("address", node + address);
 		}
 		container.deployModule(module.getString("name"),
 				conf, module.getInteger("instances", 1), handler);
@@ -293,7 +293,7 @@ public class Starter extends BaseServer {
 					continue;
 				}
 			}
-			conf = conf.mergeIn(module.getObject("config", new JsonObject()));
+			conf = conf.mergeIn(module.getJsonObject("config", new JsonObject()));
 			container.deployModule(module.getString("name"),
 					conf, module.getInteger("instances", 1), new Handler<AsyncResult<String>>() {
 						@Override
@@ -309,20 +309,20 @@ public class Starter extends BaseServer {
 	private void registerWidget(final String widgetPath){
 		final String widgetName = new File(widgetPath).getName();
 		JsonObject widget = new JsonObject()
-				.putString("name", widgetName)
-				.putString("js", "/assets/widgets/"+widgetName+"/"+widgetName+".js")
-				.putString("path", "/assets/widgets/"+widgetName+"/"+widgetName+".html");
+				.put("name", widgetName)
+				.put("js", "/assets/widgets/"+widgetName+"/"+widgetName+".js")
+				.put("path", "/assets/widgets/"+widgetName+"/"+widgetName+".html");
 
 		if(vertx.fileSystem().existsSync(widgetPath+"/i18n")){
-			widget.putString("i18n", "/assets/widgets/"+widgetName+"/i18n");
+			widget.put("i18n", "/assets/widgets/"+widgetName+"/i18n");
 		}
 
 		JsonObject message = new JsonObject()
-				.putObject("widget", widget);
+				.put("widget", widget);
 		vertx.eventBus().send("wse.app.registry.widgets", message, new Handler<Message<JsonObject>>() {
 			public void handle(Message<JsonObject> event) {
 				if("error".equals(event.body().getString("status"))){
-					log.error("Error while registering widget "+widgetName+". "+event.body().getArray("errors"));
+					log.error("Error while registering widget "+widgetName+". "+event.body().getJsonArray("errors"));
 					return;
 				}
 				log.info("Successfully registered widget "+widgetName);

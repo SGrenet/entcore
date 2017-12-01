@@ -23,7 +23,7 @@ import org.entcore.common.neo4j.Neo4jUtils;
 import org.entcore.feeder.exceptions.ValidationException;
 import org.entcore.common.neo4j.Neo4j;
 import org.entcore.feeder.utils.TransactionHelper;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.json.JsonObject;
 
 import java.util.UUID;
 
@@ -37,7 +37,7 @@ public class Group {
 			final boolean create = (object.getString("id") == null || object.getString("id").trim().isEmpty());
 			final String id = create ? UUID.randomUUID().toString() : object.getString("id");
 			if (create) {
-				object.putString("id", id);
+				object.put("id", id);
 			}
 			String query =
 					"MERGE (t:Group:ManualGroup:Visible { id : {id}}) " +
@@ -50,8 +50,8 @@ public class Group {
 							"MATCH (s:Structure {id : {structureId}}), (g:Group {id : {groupId}}) " +
 							"CREATE UNIQUE s<-[:DEPENDS]-g";
 					JsonObject ps = new JsonObject()
-							.putString("groupId", id)
-							.putString("structureId", structureId);
+							.put("groupId", id)
+							.put("structureId", structureId);
 					transactionHelper.add(qs, ps);
 				}
 				if (classId != null && !classId.trim().isEmpty()) {
@@ -59,8 +59,8 @@ public class Group {
 							"MATCH (s:Class {id : {classId}}), (g:Group {id : {groupId}}) " +
 							"CREATE UNIQUE s<-[:DEPENDS]-g";
 					JsonObject ps = new JsonObject()
-							.putString("groupId", id)
-							.putString("classId", classId);
+							.put("groupId", id)
+							.put("classId", classId);
 					transactionHelper.add(qs, ps);
 				}
 			}
@@ -72,7 +72,7 @@ public class Group {
 				"MATCH (g:ManualGroup {id : {id}}) " +
 				"OPTIONAL MATCH g-[r]-() " +
 				"DELETE g, r";
-		transactionHelper.add(query, new JsonObject().putString("id", id));
+		transactionHelper.add(query, new JsonObject().put("id", id));
 	}
 
 }

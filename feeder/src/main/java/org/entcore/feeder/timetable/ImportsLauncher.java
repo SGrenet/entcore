@@ -24,13 +24,13 @@ import org.entcore.feeder.timetable.edt.EDTImporter;
 import org.entcore.feeder.timetable.edt.EDTUtils;
 import org.entcore.feeder.timetable.udt.UDTImporter;
 import org.entcore.feeder.utils.ResultMessage;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.regex.Matcher;
@@ -62,8 +62,8 @@ public class ImportsLauncher implements Handler<Long> {
 			@Override
 			public void handle(final AsyncResult<String[]> event) {
 				if (event.succeeded()) {
-					final VoidHandler[] handlers = new VoidHandler[event.result().length + 1];
-					handlers[handlers.length -1] = new VoidHandler() {
+					final Handler<Void>[] handlers = new Handler<Void>[event.result().length + 1];
+					handlers[handlers.length -1] = new Handler<Void>() {
 						@Override
 						protected void handle() {
 							postImport.execute();
@@ -72,7 +72,7 @@ public class ImportsLauncher implements Handler<Long> {
 					Arrays.sort(event.result());
 					for (int i = event.result().length - 1; i >= 0; i--) {
 						final int j = i;
-						handlers[i] = new VoidHandler() {
+						handlers[i] = new Handler<Void>() {
 							@Override
 							protected void handle() {
 								final String file = event.result()[j];

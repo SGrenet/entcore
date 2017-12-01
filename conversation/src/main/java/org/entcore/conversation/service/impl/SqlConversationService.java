@@ -32,11 +32,11 @@ import org.entcore.common.user.UserUtils;
 import org.entcore.common.utils.Config;
 import org.entcore.conversation.Conversation;
 import org.entcore.conversation.service.ConversationService;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import fr.wseduc.webutils.Either;
 import fr.wseduc.webutils.Server;
@@ -73,10 +73,10 @@ public class SqlConversationService implements ConversationService{
 
 	private void save(String parentMessageId, JsonObject message, UserInfos user, Handler<Either<String, JsonObject>> result){
 		message
-			.putString("id", UUID.randomUUID().toString())
-			.putString("from", user.getUserId())
-			.putNumber("date", System.currentTimeMillis())
-			.putString("state", State.DRAFT.name());
+			.put("id", UUID.randomUUID().toString())
+			.put("from", user.getUserId())
+			.put("date", System.currentTimeMillis())
+			.put("state", State.DRAFT.name());
 
 		JsonObject m = Utils.validAndGet(message, MESSAGE_FIELDS, DRAFT_REQUIRED_FIELDS);
 		if (validationError(user, m, result))
@@ -85,15 +85,15 @@ public class SqlConversationService implements ConversationService{
 		SqlStatementsBuilder builder = new SqlStatementsBuilder();
 
 		if(parentMessageId != null)
-			message.putString("parent_id", parentMessageId);
+			message.put("parent_id", parentMessageId);
 
 		// 1 - Insert message
 		builder.insert(messageTable, message, "id");
 
 		// 2 - Link message to the user
 		builder.insert(userMessageTable, new JsonObject()
-			.putString("user_id", user.getUserId())
-			.putString("message_id", message.getString("id")));
+			.put("user_id", user.getUserId())
+			.put("message_id", message.getString("id")));
 
 		sql.transaction(builder.build(), SqlResult.validUniqueResultHandler(0, result));
 	}
@@ -104,7 +104,7 @@ public class SqlConversationService implements ConversationService{
 	}
 
 	private void update(String messageId, JsonObject message, UserInfos user, Handler<Either<String, JsonObject>> result) {
-		message.putNumber("date", System.currentTimeMillis());
+		message.put("date", System.currentTimeMillis());
 		JsonObject m = Utils.validAndGet(message, UPDATE_DRAFT_FIELDS, UPDATE_DRAFT_REQUIRED_FIELDS);
 		if (validationError(user, m, result, messageId))
 			return;
@@ -112,7 +112,7 @@ public class SqlConversationService implements ConversationService{
 		StringBuilder sb = new StringBuilder();
 		JsonArray values = new JsonArray();
 
-		for (String attr : message.getFieldNames()) {
+		for (String attr : message.fieldNames()) {
 			if("to".equals(attr) || "cc".equals(attr) || "displayNames".equals(attr)){
 				sb.append("\"" + attr+ "\"").append(" = CAST(? AS JSONB),");
 			} else {
@@ -163,10 +163,10 @@ public class SqlConversationService implements ConversationService{
 					return;
 				}
 
-				JsonArray attachmentIds = event.right().getValue().getArray("attachmentids");
+				JsonArray attachmentIds = event.right().getValue().getJsonArray("attachmentids");
 				long totalQuota = event.right().getValue().getLong("totalquota");
 
-				final JsonArray ids = message.getArray("allUsers", new JsonArray());
+				final JsonArray ids = message.getJsonArray("allUsers", new JsonArray());
 
 				SqlStatementsBuilder builder = new SqlStatementsBuilder();
 
@@ -180,15 +180,15 @@ public class SqlConversationService implements ConversationService{
 						continue;
 
 					builder.insert(userMessageTable, new JsonObject()
-						.putString("user_id", toObj.toString())
-						.putString("message_id", draftId)
-						.putNumber("total_quota", totalQuota)
+						.put("user_id", toObj.toString())
+						.put("message_id", draftId)
+						.put("total_quota", totalQuota)
 					);
 					for(Object attachmentId : attachmentIds){
 						builder.insert(userMessageAttachmentTable, new JsonObject()
-							.putString("user_id", toObj.toString())
-							.putString("message_id", draftId)
-							.putString("attachment_id", attachmentId.toString())
+							.put("user_id", toObj.toString())
+							.put("message_id", draftId)
+							.put("attachment_id", attachmentId.toString())
 						);
 					}
 				}
@@ -372,11 +372,11 @@ public class SqlConversationService implements ConversationService{
 						return;
 					}
 
-					final JsonArray to = event.right().getValue().getArray("to");
-					final JsonArray cc = event.right().getValue().getArray("cc");
+					final JsonArray to = event.right().getValue().getJsonArray("to");
+					final JsonArray cc = event.right().getValue().getJsonArray("cc");
 
-					params.putArray("to", to)
-						.putArray("cc", cc);
+					params.put("to", to)
+						.put("cc", cc);
 
 					String customReturn =
 							"MATCH (v:Visible) " +
@@ -390,16 +390,16 @@ public class SqlConversationService implements ConversationService{
 						public void handle(JsonArray visibles) {
 							JsonArray users = new JsonArray();
 							JsonArray groups = new JsonArray();
-							visible.putArray("groups", groups).putArray("users", users);
+							visible.put("groups", groups).putArray("users", users);
 							for (Object o: visibles) {
 								if (!(o instanceof JsonObject)) continue;
 								JsonObject j = (JsonObject) o;
 								if (j.getString("name") != null) {
-									j.removeField("displayName");
+									j.remove("displayName");
 									UserUtils.groupDisplayName(j, acceptLanguage);
 									groups.add(j);
 								} else {
-									j.removeField("name");
+									j.remove("name");
 									users.add(j);
 								}
 							}
@@ -418,16 +418,16 @@ public class SqlConversationService implements ConversationService{
 				public void handle(JsonArray visibles) {
 					JsonArray users = new JsonArray();
 					JsonArray groups = new JsonArray();
-					visible.putArray("groups", groups).putArray("users", users);
+					visible.put("groups", groups).putArray("users", users);
 					for (Object o: visibles) {
 						if (!(o instanceof JsonObject)) continue;
 						JsonObject j = (JsonObject) o;
 						if (j.getString("name") != null) {
-							j.removeField("displayName");
+							j.remove("displayName");
 							UserUtils.groupDisplayName(j, acceptLanguage);
 							groups.add(j);
 						} else {
-							j.removeField("name");
+							j.remove("name");
 							users.add(j);
 						}
 					}
@@ -445,9 +445,9 @@ public class SqlConversationService implements ConversationService{
 
 		final SqlStatementsBuilder builder = new SqlStatementsBuilder();
 		final JsonObject messageObj = new JsonObject()
-			.putString("id", UUID.randomUUID().toString())
-			.putString("name", folderName)
-			.putString("user_id", user.getUserId());
+			.put("id", UUID.randomUUID().toString())
+			.put("name", folderName)
+			.put("user_id", user.getUserId());
 
 		if (parentFolderId != null) {
 			JsonArray values = new JsonArray()
@@ -467,8 +467,8 @@ public class SqlConversationService implements ConversationService{
 					}
 
 					messageObj
-						.putString("parent_id", parentFolderId)
-						.putNumber("depth", parentDepth + 1);
+						.put("parent_id", parentFolderId)
+						.put("depth", parentDepth + 1);
 
 					builder.insert(folderTable, messageObj);
 
@@ -661,25 +661,25 @@ public class SqlConversationService implements ConversationService{
 		if(validationParamsError(user, result, messageId))
 			return;
 
-		long attachmentSize = uploaded.getObject("metadata", new JsonObject()).getLong("size", 0);
+		long attachmentSize = uploaded.getJsonObject("metadata", new JsonObject()).getLong("size", 0);
 
 		SqlStatementsBuilder builder = new SqlStatementsBuilder();
 
 		JsonObject attParams = new JsonObject()
-			.putString("id", uploaded.getString("_id"))
-			.putString("name", uploaded.getObject("metadata").getString("name"))
-			.putString("filename", uploaded.getObject("metadata").getString("filename"))
-			.putString("contentType", uploaded.getObject("metadata").getString("content-type"))
-			.putString("contentTransferEncoding", uploaded.getObject("metadata").getString("content-transfer-encoding"))
-			.putString("charset", uploaded.getObject("metadata").getString("charset"))
-			.putNumber("size", attachmentSize);
+			.put("id", uploaded.getString("_id"))
+			.put("name", uploaded.getJsonObject("metadata").getString("name"))
+			.put("filename", uploaded.getJsonObject("metadata").getString("filename"))
+			.put("contentType", uploaded.getJsonObject("metadata").getString("content-type"))
+			.put("contentTransferEncoding", uploaded.getJsonObject("metadata").getString("content-transfer-encoding"))
+			.put("charset", uploaded.getJsonObject("metadata").getString("charset"))
+			.put("size", attachmentSize);
 
 		builder.insert(attachmentTable, attParams, "id");
 
 		JsonObject umaParams = new JsonObject()
-			.putString("user_id", user.getUserId())
-			.putString("message_id", messageId)
-			.putString("attachment_id", uploaded.getString("_id"));
+			.put("user_id", user.getUserId())
+			.put("message_id", messageId)
+			.put("attachment_id", uploaded.getString("_id"));
 
 		builder.insert(userMessageAttachmentTable, umaParams);
 
@@ -769,9 +769,9 @@ public class SqlConversationService implements ConversationService{
 							((JsonObject) ((JsonArray) results.get(1)).get(0)).getBoolean("deletioncheck", false) :
 							false;
 					JsonObject resultJson = new JsonObject()
-						.putBoolean("deletionCheck", deletionCheck)
-						.putString("fileId", attachment.getString("id"))
-						.putNumber("fileSize", attachment.getLong("size"));
+						.put("deletionCheck", deletionCheck)
+						.put("fileId", attachment.getString("id"))
+						.put("fileSize", attachment.getLong("size"));
 
 					result.handle(new Either.Right<String, JsonObject>(resultJson));
 				}

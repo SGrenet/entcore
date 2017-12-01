@@ -20,12 +20,13 @@
 package org.entcore.common.sql;
 
 import org.entcore.common.bus.ErrorMessage;
-import org.entcore.common.validation.StringValidation;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 
 public class Sql {
 
@@ -49,17 +50,17 @@ public class Sql {
 
 	public void prepared(String query, JsonArray values, Handler<Message<JsonObject>> handler) {
 		JsonObject j = new JsonObject()
-				.putString("action", "prepared")
-				.putString("statement", query)
-				.putArray("values", values);
-		eb.send(address, j, handler);
+				.put("action", "prepared")
+				.put("statement", query)
+				.put("values", values);
+		eb.send(address, j, handlerToAsyncHandler(handler));
 	}
 
 	public void raw(String query, Handler<Message<JsonObject>> handler) {
 		JsonObject j = new JsonObject()
-				.putString("action", "raw")
-				.putString("command", query);
-		eb.send(address, j, handler);
+				.put("action", "raw")
+				.put("command", query);
+		eb.send(address, j, handlerToAsyncHandler(handler));
 	}
 
 	public void insert(String table, JsonObject params, Handler<Message<JsonObject>> handler) {
@@ -73,11 +74,11 @@ public class Sql {
 		}
 		JsonArray fields = new JsonArray();
 		JsonArray values = new JsonArray();
-		for (String attr : params.getFieldNames()) {
+		for (String attr : params.fieldNames()) {
 			fields.add(attr);
 			values.add(params.getValue(attr));
 		}
-		insert(table, fields, new JsonArray().addArray(values), returning, handler);
+		insert(table, fields, new JsonArray().add(values), returning, handler);
 	}
 
 	public void insert(String table, JsonArray fields, JsonArray values, Handler<Message<JsonObject>> handler) {
@@ -87,29 +88,29 @@ public class Sql {
 	public void insert(String table, JsonArray fields, JsonArray values, String returning,
 			Handler<Message<JsonObject>> handler) {
 		JsonObject j = new JsonObject()
-				.putString("action", "insert")
-				.putString("table", table)
-				.putArray("fields", fields)
-				.putArray("values", values);
+				.put("action", "insert")
+				.put("table", table)
+				.put("fields", fields)
+				.put("values", values);
 		if (returning != null && !returning.trim().isEmpty()) {
-			j.putString("returning", returning);
+			j.put("returning", returning);
 		}
-		eb.send(address, j, handler);
+		eb.send(address, j, handlerToAsyncHandler(handler));
 	}
 
 	public void select(String table, JsonArray fields, Handler<Message<JsonObject>> handler) {
 		JsonObject j = new JsonObject()
-				.putString("action", "select")
-				.putString("table", table)
-				.putArray("fields", fields);
-		eb.send(address, j, handler);
+				.put("action", "select")
+				.put("table", table)
+				.put("fields", fields);
+		eb.send(address, j, handlerToAsyncHandler(handler));
 	}
 
 	public void transaction(JsonArray statements, Handler<Message<JsonObject>> handler) {
 		JsonObject j = new JsonObject()
-				.putString("action", "transaction")
-				.putArray("statements", statements);
-		eb.send(address, j, handler);
+				.put("action", "transaction")
+				.put("statements", statements);
+		eb.send(address, j, handlerToAsyncHandler(handler));
 	}
 
 	public static String upsert(String table, String updateQuery, String insertQuery) {

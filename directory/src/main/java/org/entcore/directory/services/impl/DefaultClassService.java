@@ -27,11 +27,11 @@ import org.entcore.common.user.UserInfos;
 import org.entcore.common.user.UserUtils;
 import org.entcore.directory.Directory;
 import org.entcore.directory.services.ClassService;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import java.util.List;
 
@@ -53,18 +53,18 @@ public class DefaultClassService implements ClassService {
 	@Override
 	public void create(String schoolId, JsonObject classe, final Handler<Either<String, JsonObject>> result) {
 		JsonObject action = new JsonObject()
-				.putString("action", "manual-create-class")
-				.putString("structureId", schoolId)
-				.putObject("data", classe);
+				.put("action", "manual-create-class")
+				.put("structureId", schoolId)
+				.put("data", classe);
 		eb.send(Directory.FEEDER, action, validUniqueResultHandler(result));
 	}
 
 	@Override
 	public void update(String classId, JsonObject classe, Handler<Either<String, JsonObject>> result) {
 		JsonObject action = new JsonObject()
-				.putString("action", "manual-update-class")
-				.putString("classId", classId)
-				.putObject("data", classe);
+				.put("action", "manual-update-class")
+				.put("classId", classId)
+				.put("data", classe);
 		eb.send(Directory.FEEDER, action, validUniqueResultHandler(result));
 	}
 
@@ -72,12 +72,12 @@ public class DefaultClassService implements ClassService {
 	public void findUsers(String classId, JsonArray expectedTypes,
 						  Handler<Either<String, JsonArray>> results) {
 		String filter;
-		JsonObject params = new JsonObject().putString("classId", classId);
+		JsonObject params = new JsonObject().put("classId", classId);
 		if (expectedTypes == null || expectedTypes.size() < 1) {
 			filter = "";
 		} else {
 			filter = "WHERE p.name IN {expected} ";
-			params.putArray("expected", expectedTypes);
+			params.put("expected", expectedTypes);
 		}
 		String query =
 				"MATCH (c:`Class` { id : {classId}})<-[:DEPENDS]-(cpg:ProfileGroup)" +
@@ -94,7 +94,7 @@ public class DefaultClassService implements ClassService {
 	public void get(String classId, Handler<Either<String, JsonObject>> result) {
 		if (validationParamsError(result, classId)) return;
 		String query = "MATCH (c:`Class` { id : {classId}}) RETURN c.id as id,  c.name as name, c.level as level";
-		neo.execute(query, new JsonObject().putString("classId", classId), validUniqueResultHandler(result));
+		neo.execute(query, new JsonObject().put("classId", classId), validUniqueResultHandler(result));
 	}
 
 	@Override
@@ -106,11 +106,11 @@ public class DefaultClassService implements ClassService {
 			return;
 		}
 		neo.execute("MATCH (u:`User` {id : {id}})-[:IN]->(pg:ProfileGroup)-[:HAS_PROFILE]->(p:Profile) " +
-				"RETURN distinct p.name as type", new JsonObject().putString("id", userId),
+				"RETURN distinct p.name as type", new JsonObject().put("id", userId),
 				new Handler<Message<JsonObject>>() {
 					@Override
 					public void handle(Message<JsonObject> r) {
-						JsonArray res = r.body().getArray("result");
+						JsonArray res = r.body().getJsonArray("result");
 						if ("ok".equals(r.body().getString("status")) && res != null && res.size() == 1) {
 							final String t = ((JsonObject)res.get(0)).getString("type");
 							String customReturn =
@@ -121,9 +121,9 @@ public class DefaultClassService implements ClassService {
 									"CREATE UNIQUE visibles-[:IN]->cpg " +
 									"RETURN DISTINCT visibles.id as id, s.id as schoolId";
 							JsonObject params = new JsonObject()
-									.putString("classId", classId)
-									.putString("uId", userId)
-									.putString("profile", t);
+									.put("classId", classId)
+									.put("uId", userId)
+									.put("profile", t);
 							UserUtils.findVisibleUsers(eb, user.getUserId(), false, customReturn, params,
 									new Handler<JsonArray>() {
 
@@ -139,8 +139,8 @@ public class DefaultClassService implements ClassService {
 													"RETURN count(relative) as relativeNb";
 
 											JsonObject params = new JsonObject()
-												.putString("classId", classId)
-												.putString("uId", userId);
+												.put("classId", classId)
+												.put("uId", userId);
 
 											neo.execute(query, params, Neo4jResult.validEmptyHandler(new Handler<Either<String,JsonObject>>() {
 												public void handle(Either<String, JsonObject> event) {
@@ -170,18 +170,18 @@ public class DefaultClassService implements ClassService {
 	@Override
 	public void link(String classId, String userId, Handler<Either<String, JsonObject>> result) {
 		JsonObject action = new JsonObject()
-				.putString("action", "manual-add-user")
-				.putString("classId", classId)
-				.putString("userId", userId);
+				.put("action", "manual-add-user")
+				.put("classId", classId)
+				.put("userId", userId);
 		eb.send(Directory.FEEDER, action, validUniqueResultHandler(result));
 	}
 
 	@Override
 	public void unlink(String classId, String userId, Handler<Either<String, JsonObject>> result) {
 		JsonObject action = new JsonObject()
-				.putString("action", "manual-remove-user")
-				.putString("classId", classId)
-				.putString("userId", userId);
+				.put("action", "manual-remove-user")
+				.put("classId", classId)
+				.put("userId", userId);
 		eb.send(Directory.FEEDER, action, validUniqueResultHandler(result));
 	}
 
@@ -204,7 +204,7 @@ public class DefaultClassService implements ClassService {
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition = "WHERE (s.id IN {scope} OR c.id IN {scope}";
-				params.putArray("scope", new JsonArray(scope.toArray()));
+				params.put("scope", new JsonArray(scope.toArray()));
 			}
 		}
 
@@ -214,7 +214,7 @@ public class DefaultClassService implements ClassService {
 			} else {
 				condition += ") AND s.id = {structure} ";
 			}
-			params.putString("structure", structureId);
+			params.put("structure", structureId);
 		} else if (!condition.isEmpty()) {
 			condition += ") ";
 		}

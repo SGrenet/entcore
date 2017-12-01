@@ -36,12 +36,12 @@ import fr.wseduc.webutils.request.filter.UserAuthFilter;
 import fr.wseduc.webutils.security.oauth.DefaultOAuthResourceProvider;
 import org.entcore.common.neo4j.Neo;
 import org.opensaml.xml.ConfigurationException;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.shareddata.ConcurrentSharedMap;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.shareddata.ConcurrentSharedMap;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 
@@ -74,19 +74,19 @@ public class Auth extends BaseServer {
 						try {
 							SamlController samlController = new SamlController();
 							JsonObject conf = new JsonObject()
-									.putString("saml-metadata-folder", samlMetadataFolder)
-									.putString("saml-private-key", config.getString("saml-private-key"))
-									.putString("saml-public-key", config.getString("saml-public-key"))
-									.putString("saml-issuer", config.getString("saml-issuer"))
-									.putString("saml-entng-idp-nq", config.getString("saml-entng-idp-nq"))
-									.putString("saml-slo-relayState", config.getString("saml-slo-relayState", "NULL"));
+									.put("saml-metadata-folder", samlMetadataFolder)
+									.put("saml-private-key", config.getString("saml-private-key"))
+									.put("saml-public-key", config.getString("saml-public-key"))
+									.put("saml-issuer", config.getString("saml-issuer"))
+									.put("saml-entng-idp-nq", config.getString("saml-entng-idp-nq"))
+									.put("saml-slo-relayState", config.getString("saml-slo-relayState", "NULL"));
 							container.deployWorkerVerticle(SamlValidator.class.getName(), conf);
 							samlController.setEventStore(eventStore);
 							samlController.setUserAuthAccount(userAuthAccount);
 							samlController.setServiceProviderFactory(new DefaultServiceProviderFactory(
-									config.getObject("saml-services-providers")));
+									config.getJsonObject("saml-services-providers")));
 							samlController.setSignKey((String) vertx.sharedData().getMap("server").get("signKey"));
-							samlController.setSamlWayfParams(config.getObject("saml-wayf"));
+							samlController.setSamlWayfParams(config.getJsonObject("saml-wayf"));
 							samlController.setIgnoreCallBackPattern(config.getString("ignoreCallBackPattern"));
 							addController(samlController);
 							ConcurrentSharedMap<Object, Object> server = vertx.sharedData().getMap("server");
@@ -107,8 +107,8 @@ public class Auth extends BaseServer {
 				}
 			});
 		}
-		final JsonObject openidFederate = config.getObject("openid-federate");
-		final JsonObject openidConnect = config.getObject("openid-connect");
+		final JsonObject openidFederate = config.getJsonObject("openid-federate");
+		final JsonObject openidConnect = config.getJsonObject("openid-connect");
 		final OpenIdConnectController openIdConnectController;
 		if (openidFederate != null || openidConnect != null) {
 			openIdConnectController = new OpenIdConnectController();
@@ -131,11 +131,11 @@ public class Auth extends BaseServer {
 			openIdConnectController.setUserAuthAccount(userAuthAccount);
 			openIdConnectController.setSignKey((String) vertx.sharedData().getMap("server").get("signKey"));
 			openIdConnectController.setOpenIdConnectServiceProviderFactory(
-					new DefaultOpenIdServiceProviderFactory(vertx, openidFederate.getObject("domains")));
+					new DefaultOpenIdServiceProviderFactory(vertx, openidFederate.getJsonObject("domains")));
 			openIdConnectController.setSubMapping(openidFederate.getBoolean("authorizeSubMapping", false));
 			addController(openIdConnectController);
 
-			final JsonArray authorizedHostsLogin = openidFederate.getArray("authorizedHostsLogin");
+			final JsonArray authorizedHostsLogin = openidFederate.getJsonArray("authorizedHostsLogin");
 			if (authorizedHostsLogin != null && authorizedHostsLogin.size() > 0) {
 				authController.setAuthorizedHostsLogin(authorizedHostsLogin);
 			}

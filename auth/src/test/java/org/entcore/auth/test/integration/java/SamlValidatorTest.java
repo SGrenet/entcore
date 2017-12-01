@@ -21,14 +21,14 @@ package org.entcore.auth.test.integration.java;
 
 import org.entcore.auth.security.SamlValidator;
 import org.junit.Test;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.AsyncResultHandler;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.json.impl.Base64;
-import org.vertx.testtools.TestVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler<AsyncResult>;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.impl.Base64;
+import io.vertx.testtools.TestVerticle;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -37,7 +37,7 @@ import java.net.URLDecoder;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
-import static org.vertx.testtools.VertxAssert.*;
+import static io.vertx.testtools.VertxAssert.*;
 
 public class SamlValidatorTest extends TestVerticle {
 
@@ -56,11 +56,11 @@ public class SamlValidatorTest extends TestVerticle {
 	public void start() {
 		initialize();
 		JsonObject conf = new JsonObject()
-				.putString("saml-metadata-folder", "../../federation/poitou-charentes/metadata")
-				.putString("saml-private-key", "../../federation/poitou-charentes/private/private-key.pk8")
-				.putString("saml-issuer", "urn:fi:ent:poitou-charentes:1.0");
+				.put("saml-metadata-folder", "../../federation/poitou-charentes/metadata")
+				.put("saml-private-key", "../../federation/poitou-charentes/private/private-key.pk8")
+				.put("saml-issuer", "urn:fi:ent:poitou-charentes:1.0");
 		eb = vertx.eventBus();
-		container.deployWorkerVerticle(SamlValidator.class.getName(), conf, 1, true, new AsyncResultHandler<String>() {
+		container.deployWorkerVerticle(SamlValidator.class.getName(), conf, 1, true, new Handler<AsyncResult><String>() {
 			@Override
 			public void handle(AsyncResult<String> asyncResult) {
 				if (asyncResult.succeeded()) {
@@ -76,7 +76,7 @@ public class SamlValidatorTest extends TestVerticle {
 	public void validateSamlSignature() throws Exception {
 		String assertion = new String(Base64.decode(samlResponse));
 		JsonObject j = new JsonObject()
-				.putString("action", "validate-signature").putString("response", assertion);
+				.put("action", "validate-signature").putString("response", assertion);
 		eb.send("saml", j, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
@@ -91,7 +91,7 @@ public class SamlValidatorTest extends TestVerticle {
 	public void invalidSamlSignature() throws Exception {
 		String assertion = new String(Base64.decode(modifiedResponse));
 		JsonObject j = new JsonObject()
-				.putString("action", "validate-signature").putString("response", assertion);
+				.put("action", "validate-signature").putString("response", assertion);
 		eb.send("saml", j, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
@@ -106,7 +106,7 @@ public class SamlValidatorTest extends TestVerticle {
 	public void validateSamlSignatureOfEncryptedResponse() throws Exception {
 		String assertion = new String(Base64.decode(encryptedResponse));
 		JsonObject j = new JsonObject()
-				.putString("action", "validate-signature").putString("response", assertion);
+				.put("action", "validate-signature").putString("response", assertion);
 		eb.send("saml", j, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
@@ -121,7 +121,7 @@ public class SamlValidatorTest extends TestVerticle {
 	public void decryptResponse() throws Exception {
 		String assertion = new String(Base64.decode(encryptedResponse));
 		JsonObject j = new JsonObject()
-				.putString("action", "decrypt-assertion").putString("response", assertion);
+				.put("action", "decrypt-assertion").putString("response", assertion);
 		eb.send("saml", j, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
@@ -136,7 +136,7 @@ public class SamlValidatorTest extends TestVerticle {
 	public void validateSignatureAndDecrypt() throws Exception {
 		String assertion = new String(Base64.decode(encryptedResponse));
 		JsonObject j = new JsonObject()
-				.putString("action", "validate-signature-decrypt").putString("response", assertion);
+				.put("action", "validate-signature-decrypt").putString("response", assertion);
 		eb.send("saml", j, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
@@ -153,7 +153,7 @@ public class SamlValidatorTest extends TestVerticle {
 	public void validateSignatureAndDecryptAgri() throws Exception {
 		String assertion = new String(Base64.decode(encryptedAgriResponse));
 		JsonObject j = new JsonObject()
-				.putString("action", "validate-signature-decrypt").putString("response", assertion);
+				.put("action", "validate-signature-decrypt").putString("response", assertion);
 		eb.send("saml", j, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
@@ -169,10 +169,10 @@ public class SamlValidatorTest extends TestVerticle {
 	public void generateLogoutRequest() throws Exception {
 		String assertion = new String(Base64.decode(encryptedAgriResponse));
 		JsonObject j = new JsonObject()
-				.putString("action", "generate-slo-request")
-				.putString("NameID", "e0710e87fc67dbf8af3303282160062b")
-				.putString("SessionIndex", "bc13317431f8b03b37185845e6578880")
-				.putString("IDP", "urn:fi:ac-poitiers:entts:1.0");
+				.put("action", "generate-slo-request")
+				.put("NameID", "e0710e87fc67dbf8af3303282160062b")
+				.put("SessionIndex", "bc13317431f8b03b37185845e6578880")
+				.put("IDP", "urn:fi:ac-poitiers:entts:1.0");
 		eb.send("saml", j, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
@@ -210,8 +210,8 @@ public class SamlValidatorTest extends TestVerticle {
 	public void generateAuthnRequest() throws Exception {
 		String assertion = new String(Base64.decode(encryptedAgriResponse));
 		JsonObject j = new JsonObject()
-				.putString("action", "generate-authn-request")
-				.putString("IDP", "urn:fi:ac-poitiers:entts:1.0");
+				.put("action", "generate-authn-request")
+				.put("IDP", "urn:fi:ac-poitiers:entts:1.0");
 		eb.send("saml", j, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {

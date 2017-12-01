@@ -25,10 +25,10 @@ import org.entcore.common.neo4j.Neo4j;
 import org.entcore.common.user.UserInfos;
 import org.entcore.directory.Directory;
 import org.entcore.directory.services.SchoolService;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import java.util.List;
 
@@ -48,15 +48,15 @@ public class DefaultSchoolService implements SchoolService {
 
 	@Override
 	public void create(JsonObject school, Handler<Either<String, JsonObject>> result) {
-		JsonObject action = new JsonObject().putString("action", "manual-create-structure")
-				.putObject("data", school);
+		JsonObject action = new JsonObject().put("action", "manual-create-structure")
+				.put("data", school);
 		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(result));
 	}
 
 	@Override
 	public void get(String id, Handler<Either<String, JsonObject>> result) {
 		String query = "match (s:`Structure`) where s.id = {id} return s.id as id, s.UAI as UAI, s.name as name";
-		neo.execute(query, new JsonObject().putString("id", id), validUniqueResultHandler(result));
+		neo.execute(query, new JsonObject().put("id", id), validUniqueResultHandler(result));
 	}
 
 	@Override
@@ -64,7 +64,7 @@ public class DefaultSchoolService implements SchoolService {
 		String query =
 				"match (c:`Class` {id : {id}})-[:BELONGS]->(s:`Structure`) " +
 				"return s.id as id, s.UAI as UAI, s.name as name";
-		neo.execute(query, new JsonObject().putString("id", classId), validUniqueResultHandler(result));
+		neo.execute(query, new JsonObject().put("id", classId), validUniqueResultHandler(result));
 	}
 
 	@Override
@@ -75,7 +75,7 @@ public class DefaultSchoolService implements SchoolService {
 				"WITH s, COLLECT(DISTINCT {id: ps.id, name: ps.name}) as parents " +
 				"RETURN DISTINCT s.id as id, s.UAI as UAI, s.name as name, " +
 				"CASE WHEN any(p in parents where p <> {id: null, name: null}) THEN parents END as parents";
-		neo.execute(query, new JsonObject().putString("id", userId), validResultHandler(results));
+		neo.execute(query, new JsonObject().put("id", userId), validResultHandler(results));
 	}
 
 	@Override
@@ -94,7 +94,7 @@ public class DefaultSchoolService implements SchoolService {
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition = "WHERE s.id IN {structures} ";
-				params.putArray("structures", new JsonArray(scope.toArray()));
+				params.put("structures", new JsonArray(scope.toArray()));
 			}
 		}
 		String query =
@@ -110,36 +110,36 @@ public class DefaultSchoolService implements SchoolService {
 	@Override
 	public void link(String structureId, String userId, Handler<Either<String, JsonObject>> result) {
 		JsonObject action = new JsonObject()
-				.putString("action", "manual-add-user")
-				.putString("structureId", structureId)
-				.putString("userId", userId);
+				.put("action", "manual-add-user")
+				.put("structureId", structureId)
+				.put("userId", userId);
 		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(result));
 	}
 
 	@Override
 	public void unlink(String structureId, String userId, Handler<Either<String, JsonObject>> result) {
 		JsonObject action = new JsonObject()
-				.putString("action", "manual-remove-user")
-				.putString("structureId", structureId)
-				.putString("userId", userId);
+				.put("action", "manual-remove-user")
+				.put("structureId", structureId)
+				.put("userId", userId);
 		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(result));
 	}
 
 	@Override
 	public void defineParent(String structureId, String parentStructureId, Handler<Either<String, JsonObject>> handler) {
 		JsonObject action = new JsonObject()
-				.putString("action", "manual-structure-attachment")
-				.putString("structureId", structureId)
-				.putString("parentStructureId", parentStructureId);
+				.put("action", "manual-structure-attachment")
+				.put("structureId", structureId)
+				.put("parentStructureId", parentStructureId);
 		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(0, handler));
 	}
 
 	@Override
 	public void removeParent(String structureId, String parentStructureId, Handler<Either<String, JsonObject>> handler) {
 		JsonObject action = new JsonObject()
-			.putString("action", "manual-structure-detachment")
-			.putString("structureId", structureId)
-			.putString("parentStructureId", parentStructureId);
+			.put("action", "manual-structure-detachment")
+			.put("structureId", structureId)
+			.put("parentStructureId", parentStructureId);
 		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(handler));
 	}
 
@@ -160,9 +160,9 @@ public class DefaultSchoolService implements SchoolService {
 	@Override
 	public void update(String structureId, JsonObject body, Handler<Either<String, JsonObject>> result) {
 		JsonObject action = new JsonObject()
-				.putString("action", "manual-update-structure")
-				.putString("structureId", structureId)
-				.putObject("data", body);
+				.put("action", "manual-update-structure")
+				.put("structureId", structureId)
+				.put("data", body);
 		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(result));
 	}
 
@@ -177,7 +177,7 @@ public class DefaultSchoolService implements SchoolService {
 				"WITH distinct u.level as name, collect(distinct {id: class.id, name: class.name}) as classes "+
 				"RETURN distinct name, classes";
 
-		JsonObject params = new JsonObject().putString("structureId", structureId);
+		JsonObject params = new JsonObject().put("structureId", structureId);
 
 		//Admin check
 		if (!userInfos.getFunctions().containsKey(SUPER_ADMIN) &&
@@ -190,14 +190,14 @@ public class DefaultSchoolService implements SchoolService {
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition += "AND s.id IN {scope} ";
-				params.putArray("scope", new JsonArray(scope.toArray()));
+				params.put("scope", new JsonArray(scope.toArray()));
 			}
 		} else if(userInfos.getFunctions().containsKey(CLASS_ADMIN)){
 			UserInfos.Function f = userInfos.getFunctions().get(CLASS_ADMIN);
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition = "AND class.id IN {scope} ";
-				params.putArray("scope", new JsonArray(scope.toArray()));
+				params.put("scope", new JsonArray(scope.toArray()));
 			}
 		}
 
@@ -222,7 +222,7 @@ public class DefaultSchoolService implements SchoolService {
 				"OPTIONAL MATCH (s)<-[:BELONGS]-(c:Class)<-[:DEPENDS]-(:ProfileGroup)<-[:IN]-(u) " +
 				"OPTIONAL MATCH (u)<-[:RELATED]-(child: User)-[:IN]->(:ProfileGroup)-[:DEPENDS]->(c) ";
 
-		JsonObject params = new JsonObject().putString("structureId", structureId);
+		JsonObject params = new JsonObject().put("structureId", structureId);
 
 		//Activation
 		if(filterObj.containsField("activated")){
@@ -239,23 +239,23 @@ public class DefaultSchoolService implements SchoolService {
 		}
 
 		//Profiles
-		if(filterObj.getArray("profiles").size() > 0){
+		if(filterObj.getJsonArray("profiles").size() > 0){
 			condition += "AND p.name IN {profilesArray} ";
-			params.putArray("profilesArray", filterObj.getArray("profiles"));
+			params.put("profilesArray", filterObj.getJsonArray("profiles"));
 		}
 
 		//Levels
-		if(filterObj.getArray("levels").size() > 0){
+		if(filterObj.getJsonArray("levels").size() > 0){
 			condition += " AND u.level IN {levelsArray} ";
-			params.putArray("levelsArray", filterObj.getArray("levels"));
+			params.put("levelsArray", filterObj.getJsonArray("levels"));
 		}
 
 		//Classes
-		if(filterObj.getArray("classes").size() > 0){
+		if(filterObj.getJsonArray("classes").size() > 0){
 			filter += ", (c:Class)<-[:DEPENDS]-(:ProfileGroup)<-[:IN]-(u) ";
 			optional = "OPTIONAL MATCH (u)<-[:RELATED]-(child: User)-[:IN]->(:ProfileGroup)-[:DEPENDS]->(c) ";
 			condition += " AND c.id IN {classesArray} ";
-			params.putArray("classesArray", filterObj.getArray("classes"));
+			params.put("classesArray", filterObj.getJsonArray("classes"));
 		}
 
 		//Email
@@ -279,10 +279,10 @@ public class DefaultSchoolService implements SchoolService {
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition += "AND s.id IN {scope} ";
-				params.putArray("scope", new JsonArray(scope.toArray()));
+				params.put("scope", new JsonArray(scope.toArray()));
 			}
 		} else if(userInfos.getFunctions().containsKey(CLASS_ADMIN)){
-			if(filterObj.getArray("classes").size() < 1){
+			if(filterObj.getJsonArray("classes").size() < 1){
 				results.handle(new Either.Left<String, JsonArray>("forbidden"));
 				return;
 			}
@@ -291,7 +291,7 @@ public class DefaultSchoolService implements SchoolService {
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition = "AND c.id IN {scope} ";
-				params.putArray("scope", new JsonArray(scope.toArray()));
+				params.put("scope", new JsonArray(scope.toArray()));
 			}
 		}
 
@@ -331,7 +331,7 @@ public class DefaultSchoolService implements SchoolService {
 
 		//Order by
 		String sort = "ORDER BY ";
-		for(Object sortObj: filterObj.getArray("sort")){
+		for(Object sortObj: filterObj.getJsonArray("sort")){
 			String sortstr = (String) sortObj;
 			sort += sortstr + ",";
 		}
@@ -354,7 +354,7 @@ public class DefaultSchoolService implements SchoolService {
 				"WITH p, length (active) as active, length(inactive) as inactive " +
 				"RETURN collect({profile: p.name, active: active, inactive: inactive}) as metrics";
 
-		JsonObject params = new JsonObject().putString("structureId", structureId);
+		JsonObject params = new JsonObject().put("structureId", structureId);
 
 		neo.execute(query.toString(), params, validUniqueResultHandler(results));
 	}

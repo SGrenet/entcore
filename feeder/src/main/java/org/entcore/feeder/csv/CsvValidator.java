@@ -24,13 +24,13 @@ import org.entcore.feeder.utils.*;
 import org.entcore.feeder.ImportValidator;
 import org.entcore.feeder.dictionary.structures.Structure;
 import org.entcore.feeder.utils.Joiner;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
@@ -92,8 +92,8 @@ public class CsvValidator extends Report implements ImportValidator {
 							final String[] importFiles = event.result();
 							Arrays.sort(importFiles, Collections.reverseOrder());
 							if (event.succeeded() && importFiles.length > 0) {
-								final VoidHandler[] handlers = new VoidHandler[importFiles.length + 1];
-								handlers[handlers.length -1] = new VoidHandler() {
+								final Handler<Void>[] handlers = new Handler<Void>[importFiles.length + 1];
+								handlers[handlers.length -1] = new Handler<Void>() {
 									@Override
 									protected void handle() {
 										handler.handle(result);
@@ -101,7 +101,7 @@ public class CsvValidator extends Report implements ImportValidator {
 								};
 								for (int i = importFiles.length - 1; i >= 0; i--) {
 									final int j = i;
-									handlers[i] = new VoidHandler() {
+									handlers[i] = new Handler<Void>() {
 										@Override
 										protected void handle() {
 											final String file = importFiles[j];
@@ -174,7 +174,7 @@ public class CsvValidator extends Report implements ImportValidator {
 					}
 				} else if (filterExternalId.get() >= 0 && !emptyLine(strings)) {
 					if (strings[filterExternalId.get()] != null && !strings[filterExternalId.get()].isEmpty()) {
-						externalIds.addString(strings[filterExternalId.get()]);
+						externalIds.add(strings[filterExternalId.get()]);
 					} else if (findUsersEnabled) { // TODO add check to empty lines
 						findUsersEnabled = false;
 						final int eii = filterExternalId.get();
@@ -217,7 +217,7 @@ public class CsvValidator extends Report implements ImportValidator {
 					for (Object o: errors) {
 						if (!(o instanceof JsonObject)) continue;
 						JsonObject j = (JsonObject) o;
-						JsonArray p = j.getArray("params");
+						JsonArray p = j.getJsonArray("params");
 						log.info(j.encode());
 						if (p != null && p.size() > 0) {
 							addErrorByFile(profile, j.getString("key"), p.encode().substring(1, p.encode().length() - 1)
@@ -239,12 +239,12 @@ public class CsvValidator extends Report implements ImportValidator {
 
 	private void filterExternalIdExists(JsonArray externalIds, final Handler<JsonArray> handler) {
 		String query = "MATCH (u:User) where u.externalId in {externalIds} return collect(u.externalId) as ids";
-		TransactionManager.getNeo4jHelper().execute(query, new JsonObject().putArray("externalIds", externalIds), new Handler<Message<JsonObject>>() {
+		TransactionManager.getNeo4jHelper().execute(query, new JsonObject().put("externalIds", externalIds), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
-				JsonArray result = event.body().getArray("result");
+				JsonArray result = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && result.size() == 1) {
-					handler.handle(result.<JsonObject>get(0).getArray("ids"));
+					handler.handle(result.<JsonObject>get(0).getJsonArray("ids"));
 				} else {
 					handler.handle(null);
 				}
@@ -289,8 +289,8 @@ public class CsvValidator extends Report implements ImportValidator {
 //						}
 						final JsonArray classesNames = new JsonArray();
 						JsonObject user = new JsonObject();
-						user.putArray("structures", new JsonArray().add(structure.getExternalId()));
-						user.putArray("profiles", new JsonArray().add(profile));
+						user.put("structures", new JsonArray().add(structure.getExternalId()));
+						user.put("profiles", new JsonArray().add(profile));
 						List<String[]> classes = new ArrayList<>();
 						for (int j = 0; j < strings.length; j++) {
 							if (j >= columns.size()) {
@@ -305,19 +305,19 @@ public class CsvValidator extends Report implements ImportValidator {
 									if ("birthDate".equals(c)) {
 										Matcher m = frenchDatePatter.matcher(v);
 										if (m.find()) {
-											user.putString(c, m.group(3) + "-" + m.group(2) + "-" + m.group(1));
+											user.put(c, m.group(3) + "-" + m.group(2) + "-" + m.group(1));
 										} else {
-											user.putString(c, v);
+											user.put(c, v);
 										}
 									} else {
-										user.putString(c, v);
+										user.put(c, v);
 									}
 									break;
 								case "array-string":
-									JsonArray a = user.getArray(c);
+									JsonArray a = user.getJsonArray(c);
 									if (a == null) {
 										a = new JsonArray();
-										user.putArray(c, a);
+										user.put(c, a);
 									}
 									if (("classes".equals(c) || "subjectTaught".equals(c) || "functions".equals(c)) &&
 											!v.startsWith(structure.getExternalId() + "$")) {
@@ -327,7 +327,7 @@ public class CsvValidator extends Report implements ImportValidator {
 									}
 									break;
 								case "boolean":
-									user.putBoolean(c, "true".equals(v.toLowerCase()));
+									user.put(c, "true".equals(v.toLowerCase()));
 									break;
 								default:
 									Object o = user.getValue(c);
@@ -343,10 +343,10 @@ public class CsvValidator extends Report implements ImportValidator {
 										} else {
 											JsonArray array = new JsonArray();
 											array.add(o).add(v2);
-											user.putArray(c, array);
+											user.put(c, array);
 										}
 									} else {
-										user.putString(c, v2);
+										user.put(c, v2);
 									}
 							}
 							if ("classes".equals(c)) {
@@ -355,7 +355,7 @@ public class CsvValidator extends Report implements ImportValidator {
 								classId[0] = structure.getExternalId();
 								classId[1] = eId;
 								classes.add(classId);
-								classesNames.addString(v);
+								classesNames.add(v);
 							}
 						}
 						String ca;
@@ -395,8 +395,8 @@ public class CsvValidator extends Report implements ImportValidator {
 								if ("Intitulé".equals(strings[0]) && "Adresse Organisme".equals(strings[1])) {
 									break csvParserWhile;
 								}
-								user.putArray("linkStudents", linkStudents);
-								for (String attr : user.getFieldNames()) {
+								user.put("linkStudents", linkStudents);
+								for (String attr : user.fieldNames()) {
 									if ("childExternalId".equals(attr)) {
 										Object o = user.getValue(attr);
 										if (o instanceof JsonArray) {
@@ -437,7 +437,7 @@ public class CsvValidator extends Report implements ImportValidator {
 											handler.handle(result);
 											return;
 										}
-									} else if ("childLastName".equals(attr) && !user.getFieldNames().contains("childUsername")) {
+									} else if ("childLastName".equals(attr) && !user.fieldNames().contains("childUsername")) {
 										Object childLastName = user.getValue(attr);
 										Object childFirstName = user.getValue("childFirstName");
 										Object childClasses = user.getValue("childClasses");
@@ -471,7 +471,7 @@ public class CsvValidator extends Report implements ImportValidator {
 								for (Object o : linkStudents) {
 									if (!(o instanceof String)) continue;
 									if (classesNamesMapping.get(o) != null) {
-										classesNames.addString(classesNamesMapping.get(o));
+										classesNames.add(classesNamesMapping.get(o));
 									}
 								}
 								if (classesNames.size() == 0) {
@@ -487,9 +487,9 @@ public class CsvValidator extends Report implements ImportValidator {
 						} else {
 							final String classesStr = Joiner.on(", ").join(classesNames);
 							classesNamesMapping.put(user.getString("externalId"), classesStr);
-							addUser(profile, user.putString("state", translate(state.name()))
-									.putString("translatedProfile", translate(profile))
-									.putString("classesStr", classesStr));
+							addUser(profile, user.put("state", translate(state.name()))
+									.put("translatedProfile", translate(profile))
+									.put("classesStr", classesStr));
 						}
 						i++;
 					}
@@ -506,10 +506,10 @@ public class CsvValidator extends Report implements ImportValidator {
 	private void getStructure(final String path, final Handler<Structure> handler) {
 		String query = "MATCH (s:Structure {externalId:{id}})" +
 				"return s.id as id, s.externalId as externalId, s.UAI as UAI, s.name as name";
-		TransactionManager.getNeo4jHelper().execute(query, new JsonObject().putString("id", structureId), new Handler<Message<JsonObject>>() {
+		TransactionManager.getNeo4jHelper().execute(query, new JsonObject().put("id", structureId), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
-				JsonArray result = event.body().getArray("result");
+				JsonArray result = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && result != null && result.size() == 1) {
 					handler.handle(new Structure(result.<JsonObject>get(0)));
 				} else {

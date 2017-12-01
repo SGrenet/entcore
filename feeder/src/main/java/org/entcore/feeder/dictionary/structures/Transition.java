@@ -24,13 +24,13 @@ import org.entcore.feeder.exceptions.TransactionException;
 import org.entcore.feeder.utils.ResultMessage;
 import org.entcore.feeder.utils.TransactionHelper;
 import org.entcore.feeder.utils.TransactionManager;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -99,7 +99,7 @@ public class Transition {
 				@Override
 				public void handle(Message<JsonObject> m) {
 					if ("ok".equals(m.body().getString("status"))) {
-						JsonArray r = m.body().getArray("result", new JsonArray());
+						JsonArray r = m.body().getJsonArray("result", new JsonArray());
 						groupsUsers.addAll(r.toList());
 						Structure s = GraphData.getStructures().get(structuresExternalId[j]);
 						if (s == null) {
@@ -133,7 +133,7 @@ public class Transition {
 			@Override
 			public void handle(Message<JsonObject> m) {
 				if ("ok".equals(m.body().getString("status"))) {
-					JsonArray r = m.body().getArray("result", new JsonArray());
+					JsonArray r = m.body().getJsonArray("result", new JsonArray());
 					groupsUsers.addAll(r.toList());
 					try {
 						TransactionManager.getInstance().persist(GRAPH_DATA_UPDATE, false,
@@ -190,8 +190,8 @@ public class Transition {
 	public static void publishDeleteGroups(EventBus eb, Logger logger, JsonArray groups) {
 		logger.info("Delete groups : " + groups.encode());
 		eb.publish(Feeder.USER_REPOSITORY, new JsonObject()
-				.putString("action", "delete-groups")
-				.putArray("old-groups", groups));
+				.put("action", "delete-groups")
+				.put("old-groups", groups));
 	}
 
 }

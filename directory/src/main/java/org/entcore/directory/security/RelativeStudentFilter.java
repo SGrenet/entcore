@@ -25,11 +25,11 @@ import org.entcore.common.neo4j.Neo4j;
 import org.entcore.common.neo4j.StatementsBuilder;
 import org.entcore.common.user.DefaultFunctions;
 import org.entcore.common.user.UserInfos;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import java.util.Map;
 
@@ -63,19 +63,19 @@ public class RelativeStudentFilter implements ResourcesProvider {
 		JsonArray scope = new JsonArray(adminLocal.getScope().toArray());
 		StatementsBuilder s = new StatementsBuilder()
 				.add(query, new JsonObject()
-						.putString("id", studentId)
-						.putArray("scope", scope)
+						.put("id", studentId)
+						.put("scope", scope)
 				)
 				.add(query, new JsonObject()
-						.putString("id", relativeId)
-						.putArray("scope", scope)
+						.put("id", relativeId)
+						.put("scope", scope)
 				);
 		request.pause();
 		Neo4j.getInstance().executeTransaction(s.build(), null, true, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> r) {
 				request.resume();
-				JsonArray res = r.body().getArray("results");
+				JsonArray res = r.body().getJsonArray("results");
 				handler.handle(
 						"ok".equals(r.body().getString("status")) &&
 								res.size() == 2 &&

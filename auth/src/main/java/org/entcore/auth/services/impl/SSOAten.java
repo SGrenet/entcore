@@ -21,10 +21,10 @@ package org.entcore.auth.services.impl;
 
 import fr.wseduc.webutils.Either;
 import org.opensaml.saml2.core.Assertion;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonElement;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonElement;
+import io.vertx.core.json.JsonObject;
 
 import java.util.List;
 
@@ -62,17 +62,17 @@ public class SSOAten extends AbstractSSOProvider {
 					"WHERE HEAD(u.profiles) = 'Relative' AND s.UAI IN {UAI} AND student.attachmentId IN {attachmentId} " +
 					"AND u.firstName IN {firstName} AND u.lastName IN {lastName} AND NOT(HAS(u.mergedWith)) ";
 			JsonObject params = new JsonObject()
-					.putArray("attachmentId", attachmentId)
-					.putArray("UAI", uais)
-					.putArray("firstName", firstName)
-					.putArray("lastName", lastName);
+					.put("attachmentId", attachmentId)
+					.put("UAI", uais)
+					.put("firstName", firstName)
+					.put("lastName", lastName);
 			executeMultiVectorQuery(query, params, assertion, handler);
 		} else {
 			String values[] = vectors.get(0).split("\\|");
 			if (values.length > 4 && !values[3].trim().isEmpty() && !values[4].trim().isEmpty()) { // Eleve, PersRelEleve
 				JsonObject params = new JsonObject()
-						.putString("attachmentId", values[3])
-						.putString("UAI", values[4]);
+						.put("attachmentId", values[3])
+						.put("UAI", values[4]);
 				String query;
 				switch (values[0]) {
 					case "1": // PersRelEleve 1d
@@ -81,7 +81,7 @@ public class SSOAten extends AbstractSSOProvider {
 								"-[:DEPENDS]->(s:Structure) " +
 								"WHERE HEAD(u.profiles) = 'Relative' AND s.UAI = {UAI} " +
 								"AND u.firstName = {firstName} AND u.lastName = {lastName} ";
-						params.putString("firstName", values[2]).putString("lastName", values[1]);
+						params.put("firstName", values[2]).putString("lastName", values[1]);
 						break;
 					case "3": // Eleve 1d
 					case "4": // Eleve 2d

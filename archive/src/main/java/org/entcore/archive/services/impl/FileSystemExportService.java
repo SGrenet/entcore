@@ -33,16 +33,16 @@ import org.entcore.common.storage.Storage;
 import org.entcore.common.user.UserInfos;
 import org.entcore.common.utils.Config;
 import org.entcore.common.utils.Zip;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.file.FileSystem;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.file.FileSystem;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import java.io.File;
 import java.util.*;
@@ -94,13 +94,13 @@ public class FileSystemExportService implements ExportService {
 									public void handle(JsonArray objects) {
 										g.addAll(objects.toList());
 										JsonObject j = new JsonObject()
-												.putString("action", "export")
-												.putString("exportId", exportId)
-												.putString("userId", user.getUserId())
-												.putArray("groups", new JsonArray(g.toArray()))
-												.putString("path", exportDirectory)
-												.putString("locale", locale)
-												.putString("host", Renders.getScheme(request) + "://" + request.headers().get("Host"));
+												.put("action", "export")
+												.put("exportId", exportId)
+												.put("userId", user.getUserId())
+												.put("groups", new JsonArray(g.toArray()))
+												.put("path", exportDirectory)
+												.put("locale", locale)
+												.put("host", Renders.getScheme(request) + "://" + request.headers().get("Host"));
 										eb.publish("user.repository", j);
 										handler.handle(new Either.Right<String, String>(exportId));
 									}
@@ -165,8 +165,8 @@ public class FileSystemExportService implements ExportService {
 		if (!"ok".equals(status)) {
 			log.error("Error in export " + exportId);
 			JsonObject j = new JsonObject()
-					.putString("status", "error")
-					.putString("message", "export.error");
+					.put("status", "error")
+					.put("message", "export.error");
 			eb.publish("export." + exportId, j);
 			fs.delete(exportDirectory, true, new Handler<AsyncResult<Void>>() {
 				@Override
@@ -200,7 +200,7 @@ public class FileSystemExportService implements ExportService {
 								if (!"ok".equals(event.body().getString("status"))) {
 									log.error("Zip export " + exportId + " error : " +
 											event.body().getString("message"));
-									event.body().putString("message", "zip.export.error");
+									event.body().put("message", "zip.export.error");
 									userExportInProgress.remove(getUserId(exportId));
 									fs.delete(exportDirectory, true, new Handler<AsyncResult<Void>>() {
 										@Override
@@ -223,14 +223,14 @@ public class FileSystemExportService implements ExportService {
 										if (!"ok".equals(res.getString("status"))) {
 											log.error("Zip storage " + exportId + " error : "
 													+ res.getString("message"));
-											event.body().putString("message", "zip.saving.error");
+											event.body().put("message", "zip.saving.error");
 											userExportInProgress.remove(getUserId(exportId));
 											publish(event);
 										} else {
 											userExportInProgress.put(getUserId(exportId), -1l);
 											MongoDb.getInstance().save(Archive.ARCHIVES, new JsonObject()
-													.putString("file_id", exportId)
-													.putObject("date", MongoDb.now()), new Handler<Message<JsonObject>>() {
+													.put("file_id", exportId)
+													.put("date", MongoDb.now()), new Handler<Message<JsonObject>>() {
 												@Override
 												public void handle(Message<JsonObject> res) {
 													publish(event);
@@ -291,7 +291,7 @@ public class FileSystemExportService implements ExportService {
 				}
 			}
 		});
-		MongoDb.getInstance().delete(Archive.ARCHIVES, new JsonObject().putString("file_id", exportId));
+		MongoDb.getInstance().delete(Archive.ARCHIVES, new JsonObject().put("file_id", exportId));
 		String userId = getUserId(exportId);
 		userExportInProgress.remove(userId);
 	}
@@ -320,33 +320,33 @@ public class FileSystemExportService implements ExportService {
 		List<String> recipients = new ArrayList<>();
 		recipients.add(userId);
 		final JsonObject params = new JsonObject()
-				.putString("resourceUri", "/archive/export/" + exportId)
-				.putString("resourceName", exportId + ".zip");
+				.put("resourceUri", "/archive/export/" + exportId)
+				.put("resourceName", exportId + ".zip");
 
-		timeline.notifyTimeline(new JsonHttpServerRequest(new JsonObject().putObject("headers", new JsonObject().putString("Accept-Language", locale))),
+		timeline.notifyTimeline(new JsonHttpServerRequest(new JsonObject().put("headers", new JsonObject().put("Accept-Language", locale))),
 				"archive.archives" +  "_" + status, null, recipients, params);
 	}
 
 	private void sendExportEmail(final String exportId, final String locale, final String status, final String host) {
 		final String userId = getUserId(exportId);
 		String query = "MATCH (u:User {id : {userId}}) RETURN u.email as email ";
-		JsonObject params = new JsonObject().putString("userId", userId);
+		JsonObject params = new JsonObject().put("userId", userId);
 		Neo4j.getInstance().execute(query, params, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
-				JsonArray res = event.body().getArray("result");
+				JsonArray res = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && res != null && res.size() == 1) {
 					JsonObject e = res.get(0);
 					String email = e.getString("email");
 					if (email != null && !email.trim().isEmpty()) {
 						HttpServerRequest r = new JsonHttpServerRequest(new JsonObject()
-								.putObject("headers", new JsonObject().putString("Accept-Language", locale)));
+								.put("headers", new JsonObject().put("Accept-Language", locale)));
 						String subject, template;
 						JsonObject p = new JsonObject();
 						if ("ok".equals(status)) {
 							subject = "email.export.ok";
 							template = "email/export.ok.html";
-							p.putString("download", host + "/archive/export/" + exportId);
+							p.put("download", host + "/archive/export/" + exportId);
 							if (log.isDebugEnabled()) {
 								log.debug(host + "/archive/export/" + exportId);
 							}

@@ -39,19 +39,19 @@ import org.entcore.common.storage.Storage;
 import org.entcore.common.storage.StorageFactory;
 import org.entcore.common.user.UserInfos;
 import org.entcore.common.user.UserUtils;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.AsyncResultHandler;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.http.RouteMatcher;
-import org.vertx.java.core.impl.VertxInternal;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.shareddata.ConcurrentSharedMap;
-import org.vertx.java.core.spi.cluster.ClusterManager;
-import org.vertx.java.platform.Container;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler<AsyncResult>;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.RouteMatcher;
+import io.vertx.core.impl.VertxInternal;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.shareddata.ConcurrentSharedMap;
+import io.vertx.core.spi.cluster.ClusterManager;
+import io.vertx.platform.Container;
 
 import java.util.*;
 
@@ -69,7 +69,7 @@ public class ArchiveController extends BaseController {
 		String exportPath = container.config()
 				.getString("export-path", System.getProperty("java.io.tmpdir"));
 		Set<String> expectedExports = new HashSet<>();
-		final JsonArray e = container.config().getArray("expected-exports");
+		final JsonArray e = container.config().getJsonArray("expected-exports");
 		for (Object o : e) {
 			if (o instanceof String) {
 				expectedExports.add((String) o);
@@ -127,8 +127,8 @@ public class ArchiveController extends BaseController {
 						public void handle(Either<String, String> event) {
 							if (event.isRight()) {
 								renderJson(request, new JsonObject()
-										.putString("message", "export.in.progress")
-										.putString("exportId", event.right().getValue())
+										.put("message", "export.in.progress")
+										.put("exportId", event.right().getValue())
 								);
 							} else {
 								badRequest(request, event.left().getValue());
@@ -158,10 +158,10 @@ public class ArchiveController extends BaseController {
 							String path = event.body().getString("destZip");
 							if ("ok".equals(event.body().getString("status")) && path != null) {
 								log.debug("Download export " + exportId);
-								event.reply(new JsonObject().putString("status", "ok"));
+								event.reply(new JsonObject().put("status", "ok"));
 								downloadExport(request, exportId);
 							} else {
-								event.reply(new JsonObject().putString("status", "error"));
+								event.reply(new JsonObject().put("status", "error"));
 								renderError(request, event.body());
 							}
 							eb.unregisterHandler(address, this);
@@ -187,7 +187,7 @@ public class ArchiveController extends BaseController {
 
 	private void downloadExport(final HttpServerRequest request, final String exportId) {
 		exportService.setDownloadInProgress(exportId);
-		storage.sendFile(exportId, exportId + ".zip", request, false, null, new AsyncResultHandler<Void>() {
+		storage.sendFile(exportId, exportId + ".zip", request, false, null, new Handler<AsyncResult><Void>() {
 			@Override
 			public void handle(AsyncResult<Void> event) {
 				if (event.succeeded() && request.response().getStatusCode() == 200) {

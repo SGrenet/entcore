@@ -55,15 +55,15 @@ import org.entcore.workspace.dao.DocumentDao;
 import org.entcore.workspace.dao.GenericDao;
 import org.entcore.workspace.service.impl.DefaultFolderService;
 import org.entcore.common.storage.Storage;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.http.RouteMatcher;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.platform.Container;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.RouteMatcher;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.platform.Container;
 
 import com.mongodb.QueryBuilder;
 
@@ -135,7 +135,7 @@ public class WorkspaceService extends BaseController {
 						public void handle(Either<String, JsonObject> r) {
 							if (r.isRight()) {
 								JsonObject j = r.right().getValue();
-								for (String attr : j.getFieldNames()) {
+								for (String attr : j.fieldNames()) {
 									UserUtils.addSessionAttribute(eb, user.getUserId(), attr, j.getLong(attr), null);
 								}
 							}
@@ -175,14 +175,14 @@ public class WorkspaceService extends BaseController {
 			@Override
 			public void handle(Either<String, JsonObject> event) {
 				if (event.isRight()) {
-					JsonObject n = event.right().getValue().getObject("notify-timeline");
+					JsonObject n = event.right().getValue().getJsonObject("notify-timeline");
 					if (n != null) {
 						notifyShare(request, id, user, new JsonArray().add(n));
 					}
 					renderJson(request, event.right().getValue());
 				} else {
 					JsonObject error = new JsonObject()
-							.putString("error", event.left().getValue());
+							.put("error", event.left().getValue());
 					renderJson(request, error, 400);
 				}
 			}
@@ -215,16 +215,16 @@ public class WorkspaceService extends BaseController {
 					Handler<Either<String, JsonObject>> finalHandler = new Handler<Either<String, JsonObject>>() {
 						public void handle(Either<String, JsonObject> event) {
 							if (event.isRight()) {
-								JsonObject n = event.right().getValue().getObject("notify-timeline");
+								JsonObject n = event.right().getValue().getJsonObject("notify-timeline");
 								if (n != null) {
 									notifyShare(request, id, user, new JsonArray().add(n), true);
 								} else {
 									n = new JsonObject();
 								}
-								n.putNumber("number", number+1).putNumber("number-errors", errorsNb);
+								n.put("number", number+1).putNumber("number-errors", errorsNb);
 								renderJson(request, n);
 							} else {
-								JsonObject error = new JsonObject().putString("error", event.left().getValue());
+								JsonObject error = new JsonObject().put("error", event.left().getValue());
 								renderJson(request, error, 400);
 							}
 						}
@@ -245,7 +245,7 @@ public class WorkspaceService extends BaseController {
 					}
 
 				} else {
-					JsonObject error = new JsonObject().putString("error", event.left().getValue());
+					JsonObject error = new JsonObject().put("error", event.left().getValue());
 					renderJson(request, error, 400);
 				}
 			}
@@ -263,8 +263,8 @@ public class WorkspaceService extends BaseController {
 			badRequest(request);
 			return;
 		}
-		request.expectMultiPart(true);
-		request.endHandler(new VoidHandler() {
+		request.setExpectMultipart(true);
+		request.endHandler(new Handler<Void>() {
 			@Override
 			protected void handle() {
 				final List<String> actions = request.formAttributes().getAll("actions");
@@ -277,11 +277,11 @@ public class WorkspaceService extends BaseController {
 				getUserInfos(eb, request, new Handler<UserInfos>() {
 					@Override
 					public void handle(final UserInfos user) {
-						mongo.findOne(DocumentDao.DOCUMENTS_COLLECTION, new JsonObject().putString("_id", id), new Handler<Message<JsonObject>>() {
+						mongo.findOne(DocumentDao.DOCUMENTS_COLLECTION, new JsonObject().put("_id", id), new Handler<Message<JsonObject>>() {
 							@Override
 							public void handle(Message<JsonObject> event) {
-								if ("ok".equals(event.body().getString("status")) && event.body().getObject("result") != null) {
-									final boolean isFolder = !event.body().getObject("result").containsField("file");
+								if ("ok".equals(event.body().getString("status")) && event.body().getJsonObject("result") != null) {
+									final boolean isFolder = !event.body().getJsonObject("result").containsField("file");
 									if(isFolder)
 										shareFolderAction(request, id, user, actions, groupId, userId, false);
 									else
@@ -306,8 +306,8 @@ public class WorkspaceService extends BaseController {
 			return;
 		}
 
-		request.expectMultiPart(true);
-		request.endHandler(new VoidHandler() {
+		request.setExpectMultipart(true);
+		request.endHandler(new Handler<Void>() {
 			@Override
 			protected void handle() {
 				final List<String> actions = request.formAttributes().getAll("actions");
@@ -317,11 +317,11 @@ public class WorkspaceService extends BaseController {
 					@Override
 					public void handle(final UserInfos user) {
 						if (user != null) {
-							mongo.findOne(DocumentDao.DOCUMENTS_COLLECTION, new JsonObject().putString("_id", id), new Handler<Message<JsonObject>>() {
+							mongo.findOne(DocumentDao.DOCUMENTS_COLLECTION, new JsonObject().put("_id", id), new Handler<Message<JsonObject>>() {
 								@Override
 								public void handle(Message<JsonObject> event) {
-									if ("ok".equals(event.body().getString("status")) && event.body().getObject("result") != null) {
-										final boolean isFolder = !event.body().getObject("result").containsField("file");
+									if ("ok".equals(event.body().getString("status")) && event.body().getJsonObject("result") != null) {
+										final boolean isFolder = !event.body().getJsonObject("result").containsField("file");
 										if (isFolder)
 											shareFolderAction(request, id, user, actions, groupId, userId, true);
 										else
@@ -382,24 +382,24 @@ public class WorkspaceService extends BaseController {
 
 	private void sendNotify(final HttpServerRequest request, final String resource, final UserInfos user, final List<String> recipients, final boolean isFolder) {
 		final JsonObject params = new JsonObject()
-		.putString("uri", "/userbook/annuaire#" + user.getUserId() + "#" + user.getType())
-		.putString("username", user.getUsername())
-		.putString("appPrefix", pathPrefix+"/workspace");
+		.put("uri", "/userbook/annuaire#" + user.getUserId() + "#" + user.getType())
+		.put("username", user.getUsername())
+		.put("appPrefix", pathPrefix+"/workspace");
 
 		if(isFolder){
-			params.putString("resourceUri", pathPrefix + "/workspace#/shared/folder/" + resource);
+			params.put("resourceUri", pathPrefix + "/workspace#/shared/folder/" + resource);
 		} else {
-			params.putString("resourceUri", pathPrefix + "/document/" + resource);
+			params.put("resourceUri", pathPrefix + "/document/" + resource);
 		}
 
 		final String notificationName = WORKSPACE_NAME.toLowerCase() + "." + (isFolder ? "share-folder" : "share");
 
-		mongo.findOne(DocumentDao.DOCUMENTS_COLLECTION, new JsonObject().putString("_id", resource),
-				new JsonObject().putNumber("name", 1), new Handler<Message<JsonObject>>() {
+		mongo.findOne(DocumentDao.DOCUMENTS_COLLECTION, new JsonObject().put("_id", resource),
+				new JsonObject().put("name", 1), new Handler<Message<JsonObject>>() {
 					@Override
 					public void handle(Message<JsonObject> event) {
-						if ("ok".equals(event.body().getString("status")) && event.body().getObject("result") != null) {
-							params.putString("resourceName", event.body().getObject("result").getString("name", ""));
+						if ("ok".equals(event.body().getString("status")) && event.body().getJsonObject("result") != null) {
+							params.put("resourceName", event.body().getJsonObject("result").getString("name", ""));
 							notification.notifyTimeline(request, notificationName, user, recipients, resource, params);
 						} else {
 							log.error("Unable to send timeline notification : missing name on resource " + resource);
@@ -418,19 +418,19 @@ public class WorkspaceService extends BaseController {
 				if (userInfos != null) {
 					final JsonObject doc = new JsonObject();
 					String now = MongoDb.formatDate(new Date());
-					doc.putString("created", now);
-					doc.putString("modified", now);
-					doc.putString("owner", userInfos.getUserId());
-					doc.putString("ownerName", userInfos.getUsername());
+					doc.put("created", now);
+					doc.put("modified", now);
+					doc.put("owner", userInfos.getUserId());
+					doc.put("ownerName", userInfos.getUsername());
 					String application = request.params().get("application");
 					String protectedContent = request.params().get("protected");
 					String publicContent = request.params().get("public");
 					if (application != null && !application.trim().isEmpty() &&
 							"true".equals(protectedContent)) {
-						doc.putBoolean("protected", true);
+						doc.put("protected", true);
 					} else if (application != null && !application.trim().isEmpty() &&
 							"true".equals(publicContent)) {
-						doc.putBoolean("public", true);
+						doc.put("public", true);
 					}
 					request.pause();
 					emptySize(userInfos, new Handler<Long>() {
@@ -461,7 +461,7 @@ public class WorkspaceService extends BaseController {
 						if (j != null) {
 							long quota = j.getLong("quota", 0l);
 							long storage = j.getLong("storage", 0l);
-							for (String attr : j.getFieldNames()) {
+							for (String attr : j.fieldNames()) {
 								UserUtils.addSessionAttribute(eb, userInfos.getUserId(), attr, j.getLong(attr), null);
 							}
 							emptySizeHandler.handle(quota - storage);
@@ -481,7 +481,7 @@ public class WorkspaceService extends BaseController {
 					if (j != null) {
 						long quota = j.getLong("quota", 0l);
 						long storage = j.getLong("storage", 0l);
-						for (String attr : j.getFieldNames()) {
+						for (String attr : j.fieldNames()) {
 							UserUtils.addSessionAttribute(eb, userId, attr, j.getLong(attr), null);
 						}
 						emptySizeHandler.handle(quota - storage);
@@ -500,9 +500,9 @@ public class WorkspaceService extends BaseController {
 					compressImage(uploaded, request.params().get("quality"), new Handler<Integer>() {
 						@Override
 						public void handle(Integer size) {
-							JsonObject meta = uploaded.getObject("metadata");
+							JsonObject meta = uploaded.getJsonObject("metadata");
 							if (size != null && meta != null) {
-								meta.putNumber("size", size);
+								meta.put("size", size);
 							}
 							addAfterUpload(uploaded, doc, request
 											.params().get("name"), request.params().get("application"),
@@ -529,18 +529,18 @@ public class WorkspaceService extends BaseController {
 	private void addAfterUpload(final JsonObject uploaded, final JsonObject doc, String name, String application,
 			final List<String> thumbs, final String mongoCollection,
 			final Handler<Message<JsonObject>> handler) {
-		doc.putString("name", getOrElse(name, uploaded.getObject("metadata")
+		doc.put("name", getOrElse(name, uploaded.getJsonObject("metadata")
 				.getString("filename"), false));
-		doc.putObject("metadata", uploaded.getObject("metadata"));
-		doc.putString("file", uploaded.getString("_id"));
-		doc.putString("application", getOrElse(application, WORKSPACE_NAME)); // TODO check if application name is valid
+		doc.put("metadata", uploaded.getJsonObject("metadata"));
+		doc.put("file", uploaded.getString("_id"));
+		doc.put("application", getOrElse(application, WORKSPACE_NAME)); // TODO check if application name is valid
 		log.debug(doc.encodePrettily());
 		mongo.save(mongoCollection, doc, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> res) {
 				if ("ok".equals(res.body().getString("status"))) {
 					incrementStorage(doc);
-					createRevision(res.body().getString("_id"), uploaded.getString("_id"), doc.getString("name"), doc.getString("owner"), doc.getString("owner"), doc.getString("ownerName"), doc.getObject("metadata"));
+					createRevision(res.body().getString("_id"), uploaded.getString("_id"), doc.getString("name"), doc.getString("owner"), doc.getString("owner"), doc.getString("ownerName"), doc.getJsonObject("metadata"));
 					createThumbnailIfNeeded(mongoCollection, uploaded,
 							res.body().getString("_id"), null, thumbs);
 				}
@@ -585,7 +585,7 @@ public class WorkspaceService extends BaseController {
 			for (Object o : addeds) {
 				if (!(o instanceof JsonObject)) continue;
 				JsonObject added = (JsonObject) o;
-				Long size = added.getObject("metadata", new JsonObject()).getLong("size", 0l);
+				Long size = added.getJsonObject("metadata", new JsonObject()).getLong("size", 0l);
 				String userId = (added.containsField("to")) ? added.getString("to") : added.getString("owner");
 				if (userId == null) {
 					log.info("UserId is null when update storage size");
@@ -604,7 +604,7 @@ public class WorkspaceService extends BaseController {
 			for (Object o : removeds) {
 				if (!(o instanceof JsonObject)) continue;
 				JsonObject removed = (JsonObject) o;
-				Long size = removed.getObject("metadata", new JsonObject()).getLong("size", 0l);
+				Long size = removed.getJsonObject("metadata", new JsonObject()).getLong("size", 0l);
 				String userId = (removed.containsField("to")) ? removed.getString("to") : removed.getString("owner");
 				if (userId == null) {
 					log.info("UserId is null when update storage size");
@@ -652,8 +652,8 @@ public class WorkspaceService extends BaseController {
 	@Post("/folder")
 	@SecuredAction("workspace.folder.add")
 	public void addFolder(final HttpServerRequest request) {
-		request.expectMultiPart(true);
-		request.endHandler(new VoidHandler() {
+		request.setExpectMultipart(true);
+		request.endHandler(new Handler<Void>() {
 			@Override
 			protected void handle() {
 				final String name = replaceUnderscore(request.formAttributes().get("name"));
@@ -680,8 +680,8 @@ public class WorkspaceService extends BaseController {
 	@Put("/folder/copy/:id")
 	@SecuredAction(value = "workspace.folder.copy", type = ActionType.AUTHENTICATED)
 	public void copyFolder(final HttpServerRequest request) {
-		request.expectMultiPart(true);
-		request.endHandler(new VoidHandler() {
+		request.setExpectMultipart(true);
+		request.endHandler(new Handler<Void>() {
 			@Override
 			protected void handle() {
 				final String id = request.params().get("id");
@@ -705,7 +705,7 @@ public class WorkspaceService extends BaseController {
 													if (r.isRight()) {
 														incrementStorage(r.right().getValue());
 														renderJson(request, new JsonObject()
-																.putNumber("number", r.right().getValue().size()));
+																.put("number", r.right().getValue().size()));
 													} else {
 														badRequest(request, r.left().getValue());
 													}
@@ -726,8 +726,8 @@ public class WorkspaceService extends BaseController {
 	@Put("/folder/move/:id")
 	@SecuredAction(value = "workspace.folder.move", type = ActionType.AUTHENTICATED)
 	public void moveFolder(final HttpServerRequest request) {
-		request.expectMultiPart(true);
-		request.endHandler(new VoidHandler() {
+		request.setExpectMultipart(true);
+		request.endHandler(new Handler<Void>() {
 			@Override
 			protected void handle() {
 				final String id = request.params().get("id");
@@ -821,7 +821,7 @@ public class WorkspaceService extends BaseController {
 								//Decrement storage
 								decrementStorage(r.right().getValue());
 								renderJson(request, new JsonObject()
-										.putNumber("number", r.right().getValue().size()), 204);
+										.put("number", r.right().getValue().size()), 204);
 							} else {
 								badRequest(request, r.left().getValue());
 							}
@@ -859,7 +859,7 @@ public class WorkspaceService extends BaseController {
 			createThumbnails(thumbs, srcFile, collection, documentId);
 		}
 		if (oldThumbnail != null) {
-			for (String attr: oldThumbnail.getFieldNames()) {
+			for (String attr: oldThumbnail.fieldNames()) {
 				storage.removeFile(oldThumbnail.getString(attr), null);
 			}
 		}
@@ -875,15 +875,15 @@ public class WorkspaceService extends BaseController {
 					int width = Integer.parseInt(m.group(1));
 					int height = Integer.parseInt(m.group(2));
 					if (width == 0 && height == 0) continue;
-					JsonObject j = new JsonObject().putString("dest",
+					JsonObject j = new JsonObject().put("dest",
 							storage.getProtocol() + "://" + storage.getBucket());
 					if (width != 0) {
-						j.putNumber("width", width);
+						j.put("width", width);
 					}
 					if (height != 0) {
-						j.putNumber("height", height);
+						j.put("height", height);
 					}
-					outputs.addObject(j);
+					outputs.add(j);
 				} catch (NumberFormatException e) {
 					log.error("Invalid thumbnail size.", e);
 				}
@@ -891,18 +891,18 @@ public class WorkspaceService extends BaseController {
 		}
 		if (outputs.size() > 0) {
 			JsonObject json = new JsonObject()
-					.putString("action", "resizeMultiple")
-					.putString("src", storage.getProtocol() + "://" + storage.getBucket() + ":"
+					.put("action", "resizeMultiple")
+					.put("src", storage.getProtocol() + "://" + storage.getBucket() + ":"
 							+ srcFile.getString("_id"))
-					.putArray("destinations", outputs);
+					.put("destinations", outputs);
 			eb.send(imageResizerAddress, json, new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> event) {
-					JsonObject thumbnails = event.body().getObject("outputs");
+					JsonObject thumbnails = event.body().getJsonObject("outputs");
 					if ("ok".equals(event.body().getString("status")) && thumbnails != null) {
-						mongo.update(collection, new JsonObject().putString("_id", documentId),
-								new JsonObject().putObject("$set", new JsonObject()
-										.putObject("thumbnails", thumbnails)));
+						mongo.update(collection, new JsonObject().put("_id", documentId),
+								new JsonObject().put("$set", new JsonObject()
+										.put("thumbnails", thumbnails)));
 					}
 				}
 			});
@@ -926,10 +926,10 @@ public class WorkspaceService extends BaseController {
 			q = 0.8f;
 		}
 		JsonObject json = new JsonObject()
-				.putString("action", "compress")
-				.putNumber("quality", q)
-				.putString("src", storage.getProtocol() + "://" + storage.getBucket() + ":" + srcFile.getString("_id"))
-				.putString("dest", storage.getProtocol() + "://" + storage.getBucket() + ":" + srcFile.getString("_id"));
+				.put("action", "compress")
+				.put("quality", q)
+				.put("src", storage.getProtocol() + "://" + storage.getBucket() + ":" + srcFile.getString("_id"))
+				.put("dest", storage.getProtocol() + "://" + storage.getBucket() + ":" + srcFile.getString("_id"));
 		eb.send(imageResizerAddress, json, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
@@ -956,7 +956,7 @@ public class WorkspaceService extends BaseController {
 								return;
 							}
 
-							final String userId = event.getObject("result").getString("owner");
+							final String userId = event.getJsonObject("result").getString("owner");
 
 							emptySize(userId, new Handler<Long>() {
 								@Override
@@ -970,9 +970,9 @@ public class WorkspaceService extends BaseController {
 													compressImage(uploaded, request.params().get("quality"), new Handler<Integer>() {
 														@Override
 														public void handle(Integer size) {
-															JsonObject meta = uploaded.getObject("metadata");
+															JsonObject meta = uploaded.getJsonObject("metadata");
 															if (size != null && meta != null) {
-																meta.putNumber("size", size);
+																meta.put("size", size);
 															}
 															updateAfterUpload(documentId, request.params().get("name"),
 																	uploaded, request.params().getAll("thumbnail"), user,
@@ -1010,29 +1010,29 @@ public class WorkspaceService extends BaseController {
 			@Override
 			public void handle(final JsonObject old) {
 				if ("ok".equals(old.getString("status"))) {
-					final JsonObject metadata = uploaded.getObject("metadata");
+					final JsonObject metadata = uploaded.getJsonObject("metadata");
 					JsonObject set = new JsonObject();
 					final JsonObject doc = new JsonObject();
-					doc.putString("name", getOrElse(name, metadata.getString("filename")));
+					doc.put("name", getOrElse(name, metadata.getString("filename")));
 					final String now = MongoDb.formatDate(new Date());
-					doc.putString("modified", now);
-					doc.putObject("metadata", metadata);
-					doc.putString("file", uploaded.getString("_id"));
-					final JsonObject thumbs = old.getObject("result", new JsonObject())
-							.getObject("thumbnails");
+					doc.put("modified", now);
+					doc.put("metadata", metadata);
+					doc.put("file", uploaded.getString("_id"));
+					final JsonObject thumbs = old.getJsonObject("result", new JsonObject())
+							.getJsonObject("thumbnails");
 
 					String query = "{ \"_id\": \"" + id + "\"}";
-					set.putObject("$set", doc).putObject("$unset", new JsonObject().putString("thumbnails", ""));
+					set.put("$set", doc).putObject("$unset", new JsonObject().put("thumbnails", ""));
 					mongo.update(DocumentDao.DOCUMENTS_COLLECTION, new JsonObject(query), set,
 							new Handler<Message<JsonObject>>() {
 								@Override
 								public void handle(final Message<JsonObject> res) {
 									String status = res.body().getString("status");
-									JsonObject result = old.getObject("result");
+									JsonObject result = old.getJsonObject("result");
 									if ("ok".equals(status) && result != null) {
 										String userId = user != null ? user.getUserId() : result.getString("owner");
 										String userName = user != null ? user.getUsername() : result.getString("ownerName");
-										doc.putString("owner", result.getString("owner"));
+										doc.put("owner", result.getString("owner"));
 										incrementStorage(doc);
 										createRevision(id, doc.getString("file"), doc.getString("name"), result.getString("owner"), userId, userName, metadata);
 										createThumbnailIfNeeded(DocumentDao.DOCUMENTS_COLLECTION,
@@ -1068,12 +1068,12 @@ public class WorkspaceService extends BaseController {
 			@Override
 			public void handle(JsonObject res) {
 				String status = res.getString("status");
-				JsonObject result = res.getObject("result");
+				JsonObject result = res.getJsonObject("result");
 				String thumbSize = request.params().get("thumbnail");
 				if ("ok".equals(status) && result != null) {
 					String file;
 					if (thumbSize != null && !thumbSize.trim().isEmpty()) {
-						file = result.getObject("thumbnails", new JsonObject())
+						file = result.getJsonObject("thumbnails", new JsonObject())
 								.getString(thumbSize, result.getString("file"));
 					} else {
 						file = result.getString("file");
@@ -1084,10 +1084,10 @@ public class WorkspaceService extends BaseController {
 							notModified(request, file);
 						} else {
 							storage.sendFile(file, result.getString("name"), request,
-									inline, result.getObject("metadata"));
+									inline, result.getJsonObject("metadata"));
 						}
 						eventStore.createAndStoreEvent(WokspaceEvent.GET_RESOURCE.name(), request,
-								new JsonObject().putString("resource", request.params().get("id")));
+								new JsonObject().put("resource", request.params().get("id")));
 					} else {
 						request.response().setStatusCode(404).end();
 					}
@@ -1099,7 +1099,7 @@ public class WorkspaceService extends BaseController {
 	}
 
 	private boolean inlineDocumentResponse(JsonObject doc, String application) {
-		JsonObject metadata = doc.getObject("metadata");
+		JsonObject metadata = doc.getJsonObject("metadata");
 		String storeApplication = doc.getString("application");
 		return metadata != null && !"WORKSPACE".equals(storeApplication) && (
 				"image/jpeg".equals(metadata.getString("content-type")) ||
@@ -1116,7 +1116,7 @@ public class WorkspaceService extends BaseController {
 		if (doc == null) {
 			return false;
 		}
-		JsonObject metadata = doc.getObject("metadata");
+		JsonObject metadata = doc.getJsonObject("metadata");
 		return metadata != null && (
 				"image/jpeg".equals(metadata.getString("content-type")) ||
 						"image/gif".equals(metadata.getString("content-type")) ||
@@ -1137,13 +1137,13 @@ public class WorkspaceService extends BaseController {
 			@Override
 			public void handle(JsonObject res) {
 				String status = res.getString("status");
-				final JsonObject result = res.getObject("result");
+				final JsonObject result = res.getJsonObject("result");
 				if ("ok".equals(status) && result != null && result.getString("file") != null) {
 
 					final String file = result.getString("file");
 					Set<Entry<String, Object>> thumbnails = new HashSet<Entry<String, Object>>();
 					if(result.containsField("thumbnails")){
-						thumbnails = result.getObject("thumbnails").toMap().entrySet();
+						thumbnails = result.getJsonObject("thumbnails").toMap().entrySet();
 					}
 
 					storage.removeFile(file,
@@ -1227,8 +1227,8 @@ public class WorkspaceService extends BaseController {
 				@Override
 				public void handle(Message<JsonObject> r) {
 					JsonObject src = r.body();
-					if ("ok".equals(src.getString("status")) && src.getArray("results") != null) {
-						final JsonArray origs = src.getArray("results");
+					if ("ok".equals(src.getString("status")) && src.getJsonArray("results") != null) {
+						final JsonArray origs = src.getJsonArray("results");
 						final JsonArray insert = new JsonArray();
 						final AtomicInteger number = new AtomicInteger(origs.size());
 						emptySize(user, new Handler<Long>() {
@@ -1237,7 +1237,7 @@ public class WorkspaceService extends BaseController {
 								long size = 0;
 								for (Object o: origs) {
 									if (!(o instanceof JsonObject)) continue;
-									JsonObject metadata = ((JsonObject) o).getObject("metadata");
+									JsonObject metadata = ((JsonObject) o).getJsonObject("metadata");
 									if (metadata != null) {
 										size += metadata.getLong("size", 0l);
 									}
@@ -1250,29 +1250,29 @@ public class WorkspaceService extends BaseController {
 									JsonObject orig = (JsonObject) o;
 									final JsonObject dest = orig.copy();
 									String now = MongoDb.formatDate(new Date());
-									dest.removeField("_id");
-									dest.removeField("protected");
-									dest.removeField("comments");
-									dest.putString("application", WORKSPACE_NAME);
+									dest.remove("_id");
+									dest.remove("protected");
+									dest.remove("comments");
+									dest.put("application", WORKSPACE_NAME);
 									if (owner != null) {
-										dest.putString("owner", owner);
-										dest.putString("ownerName", dest.getString("toName"));
-										dest.removeField("to");
-										dest.removeField("from");
-										dest.removeField("toName");
-										dest.removeField("fromName");
+										dest.put("owner", owner);
+										dest.put("ownerName", dest.getString("toName"));
+										dest.remove("to");
+										dest.remove("from");
+										dest.remove("toName");
+										dest.remove("fromName");
 									} else if (user != null) {
-										dest.putString("owner", user.getUserId());
-										dest.putString("ownerName", user.getUsername());
-										dest.putArray("shared", new JsonArray());
+										dest.put("owner", user.getUserId());
+										dest.put("ownerName", user.getUsername());
+										dest.put("shared", new JsonArray());
 									}
-									dest.putString("_id", UUID.randomUUID().toString());
-									dest.putString("created", now);
-									dest.putString("modified", now);
+									dest.put("_id", UUID.randomUUID().toString());
+									dest.put("created", now);
+									dest.put("modified", now);
 									if (folder != null && !folder.trim().isEmpty()) {
-										dest.putString("folder", folder);
+										dest.put("folder", folder);
 									} else {
-										dest.removeField("folder");
+										dest.remove("folder");
 									}
 									insert.add(dest);
 									final String filePath = orig.getString("file");
@@ -1300,13 +1300,13 @@ public class WorkspaceService extends BaseController {
 														null : event.right().getValue();
 
 												if(parentSharedRights != null && parentSharedRights.size() > 0)
-													dest.putArray("shared", parentSharedRights);
+													dest.put("shared", parentSharedRights);
 												if (filePath != null) {
 													storage.copyFile(filePath, new Handler<JsonObject>() {
 														@Override
 														public void handle(JsonObject event) {
 															if (event != null && "ok".equals(event.getString("status"))) {
-																dest.putString("file", event.getString("_id"));
+																dest.put("file", event.getString("_id"));
 																persist(insert, number.decrementAndGet());
 															}
 														}
@@ -1322,7 +1322,7 @@ public class WorkspaceService extends BaseController {
 											@Override
 											public void handle(JsonObject event) {
 												if (event != null && "ok".equals(event.getString("status"))) {
-													dest.putString("file", event.getString("_id"));
+													dest.put("file", event.getString("_id"));
 													persist(insert, number.decrementAndGet());
 												}
 											}
@@ -1354,7 +1354,7 @@ public class WorkspaceService extends BaseController {
 												json.getString("owner"),
 												json.getString("owner"),
 												json.getString("ownerName"),
-												json.getObject("metadata"));
+												json.getJsonObject("metadata"));
 									}
 									renderJson(request, inserted.body());
 								} else {
@@ -1398,34 +1398,34 @@ public class WorkspaceService extends BaseController {
 
 			@Override
 			public void handle(JsonObject src) {
-				if ("ok".equals(src.getString("status")) && src.getObject("result") != null) {
-					JsonObject orig = src.getObject("result");
-					if (orig.getObject("metadata", new JsonObject()).getLong("size", 0l) > emptySize) {
+				if ("ok".equals(src.getString("status")) && src.getJsonObject("result") != null) {
+					JsonObject orig = src.getJsonObject("result");
+					if (orig.getJsonObject("metadata", new JsonObject()).getLong("size", 0l) > emptySize) {
 						badRequest(request, "file.too.large");
 						return;
 					}
 					final JsonObject dest = orig.copy();
 					String now = MongoDb.formatDate(new Date());
-					dest.removeField("_id");
-					dest.removeField("protected");
-					dest.putString("application", WORKSPACE_NAME);
+					dest.remove("_id");
+					dest.remove("protected");
+					dest.put("application", WORKSPACE_NAME);
 					if (owner != null) {
-						dest.putString("owner", owner);
-						dest.putString("ownerName", dest.getString("toName"));
-						dest.removeField("to");
-						dest.removeField("from");
-						dest.removeField("toName");
-						dest.removeField("fromName");
+						dest.put("owner", owner);
+						dest.put("ownerName", dest.getString("toName"));
+						dest.remove("to");
+						dest.remove("from");
+						dest.remove("toName");
+						dest.remove("fromName");
 					}
-					dest.putString("created", now);
-					dest.putString("modified", now);
+					dest.put("created", now);
+					dest.put("modified", now);
 					String folder = getOrElse(request.params().get("folder"), "");
 					try {
 						folder = URLDecoder.decode(folder, "UTF-8");
 					} catch (UnsupportedEncodingException e) {
 						log.warn(e.getMessage(), e);
 					}
-					dest.putString("folder", folder);
+					dest.put("folder", folder);
 					String filePath = orig.getString("file");
 					if (filePath != null) {
 						storage.copyFile(filePath, new Handler<JsonObject>() {
@@ -1433,7 +1433,7 @@ public class WorkspaceService extends BaseController {
 							@Override
 							public void handle(JsonObject event) {
 								if (event != null && "ok".equals(event.getString("status"))) {
-									dest.putString("file", event.getString("_id"));
+									dest.put("file", event.getString("_id"));
 									persist(dest);
 								}
 							}
@@ -1509,7 +1509,7 @@ public class WorkspaceService extends BaseController {
 								@Override
 								public void handle(Message<JsonObject> res) {
 									if ("ok".equals(res.body().getString("status"))) {
-										JsonArray values = res.body().getArray("values", new JsonArray("[]"));
+										JsonArray values = res.body().getJsonArray("values", new JsonArray("[]"));
 										JsonArray out = values;
 										if (hierarchical != null) {
 											Set<String> folders = new HashSet<String>();
@@ -1548,19 +1548,19 @@ public class WorkspaceService extends BaseController {
 
 	private void notifyComment(final HttpServerRequest request, final String id, final UserInfos user, final boolean isFolder) {
 		final JsonObject params = new JsonObject()
-			.putString("userUri", "/userbook/annuaire#" + user.getUserId() + "#" + user.getType())
-			.putString("userName", user.getUsername())
-			.putString("appPrefix", pathPrefix+"/workspace");
+			.put("userUri", "/userbook/annuaire#" + user.getUserId() + "#" + user.getType())
+			.put("userName", user.getUsername())
+			.put("appPrefix", pathPrefix+"/workspace");
 
 		final String notifyName = WORKSPACE_NAME.toLowerCase() + "." + (isFolder ? "comment-folder" : "comment");
 
 		//Retrieve the document from DB
-		mongo.findOne(DocumentDao.DOCUMENTS_COLLECTION, new JsonObject().putString("_id", id), new Handler<Message<JsonObject>>() {
+		mongo.findOne(DocumentDao.DOCUMENTS_COLLECTION, new JsonObject().put("_id", id), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
-				if ("ok".equals(event.body().getString("status")) && event.body().getObject("result") != null) {
-					final JsonObject document = event.body().getObject("result");
-					params.putString("resourceName", document.getString("name", ""));
+				if ("ok".equals(event.body().getString("status")) && event.body().getJsonObject("result") != null) {
+					final JsonObject document = event.body().getJsonObject("result");
+					params.put("resourceName", document.getString("name", ""));
 
 					//Handle the parent folder id (null if document is at root level)
 					final Handler<String> folderIdHandler = new Handler<String>() {
@@ -1572,9 +1572,9 @@ public class WorkspaceService extends BaseController {
 									JsonObject sharedNotifParams = params.copy();
 
 									if(folderId != null){
-										sharedNotifParams.putString("resourceUri", pathPrefix + "/workspace#/shared/folder/" + folderId);
+										sharedNotifParams.put("resourceUri", pathPrefix + "/workspace#/shared/folder/" + folderId);
 									} else {
-										sharedNotifParams.putString("resourceUri", pathPrefix + "/workspace#/shared");
+										sharedNotifParams.put("resourceUri", pathPrefix + "/workspace#/shared");
 									}
 
 									// don't send comment with share uri at owner
@@ -1587,7 +1587,7 @@ public class WorkspaceService extends BaseController {
 							};
 
 							//'Flatten' the share users & group into a user id list (excluding the current user)
-							flattenShareIds(document.getArray("shared", new JsonArray()), user, shareNotificationHandler);
+							flattenShareIds(document.getJsonArray("shared", new JsonArray()), user, shareNotificationHandler);
 
 							//If the user commenting is not the owner, send a notification to the owner
 							if(!document.getString("owner").equals(user.getUserId())){
@@ -1596,9 +1596,9 @@ public class WorkspaceService extends BaseController {
 								ownerList.add(document.getString("owner"));
 
 								if(folderId != null){
-									ownerNotif.putString("resourceUri", pathPrefix + "/workspace#/folder/" + folderId);
+									ownerNotif.put("resourceUri", pathPrefix + "/workspace#/folder/" + folderId);
 								} else {
-									ownerNotif.putString("resourceUri", pathPrefix + "/workspace");
+									ownerNotif.put("resourceUri", pathPrefix + "/workspace");
 								}
 								notification.notifyTimeline(request, notifyName, user, ownerList, id, null, ownerNotif, true);
 							}
@@ -1609,12 +1609,12 @@ public class WorkspaceService extends BaseController {
 					//Handle the parent folder result from DB
 					Handler<Message<JsonObject>> folderHandler = new Handler<Message<JsonObject>>() {
 						public void handle(Message<JsonObject> event) {
-							if(!"ok".equals(event.body().getString("status")) || event.body().getObject("result") == null){
+							if(!"ok".equals(event.body().getString("status")) || event.body().getJsonObject("result") == null){
 								log.error("Unable to send timeline notification : invalid parent folder on resource " + id);
 								return;
 							}
 
-							final JsonObject folder = event.body().getObject("result");
+							final JsonObject folder = event.body().getJsonObject("result");
 							final String folderId = folder.getString("_id");
 
 							folderIdHandler.handle(folderId);
@@ -1693,28 +1693,28 @@ public class WorkspaceService extends BaseController {
 			@Override
 			public void handle(final UserInfos user) {
 				if (user != null) {
-					request.expectMultiPart(true);
-					request.endHandler(new VoidHandler() {
+					request.setExpectMultipart(true);
+					request.endHandler(new Handler<Void>() {
 						@Override
 						protected void handle() {
 							String comment = request.formAttributes().get("comment");
 							if (comment != null && !comment.trim().isEmpty()) {
 								final String id = UUID.randomUUID().toString();
 								JsonObject query = new JsonObject()
-									.putObject("$push", new JsonObject()
-										.putObject("comments", new JsonObject()
-											.putString("id", id)
-											.putString("author", user.getUserId())
-											.putString("authorName", user.getUsername())
-											.putString("posted", MongoDb.formatDate(new Date()))
-											.putString("comment", comment)));
+									.put("$push", new JsonObject()
+										.put("comments", new JsonObject()
+											.put("id", id)
+											.put("author", user.getUserId())
+											.put("authorName", user.getUsername())
+											.put("posted", MongoDb.formatDate(new Date()))
+											.put("comment", comment)));
 								documentDao.update(request.params().get("id"), query,
 										new Handler<JsonObject>() {
 									@Override
 									public void handle(JsonObject res) {
 										if ("ok".equals(res.getString("status"))) {
 											notifyComment(request, request.params().get("id"), user, false);
-											renderJson(request, res.putString("id", id));
+											renderJson(request, res.put("id", id));
 										} else {
 											renderError(request, res);
 										}
@@ -1739,28 +1739,28 @@ public class WorkspaceService extends BaseController {
 			@Override
 			public void handle(final UserInfos user) {
 				if (user != null) {
-					request.expectMultiPart(true);
-					request.endHandler(new VoidHandler() {
+					request.setExpectMultipart(true);
+					request.endHandler(new Handler<Void>() {
 						@Override
 						protected void handle() {
 							String comment = request.formAttributes().get("comment");
 							if (comment != null && !comment.trim().isEmpty()) {
 								final String id = UUID.randomUUID().toString();
 								JsonObject query = new JsonObject()
-									.putObject("$push", new JsonObject()
-										.putObject("comments", new JsonObject()
-											.putString("id", id)
-											.putString("author", user.getUserId())
-											.putString("authorName", user.getUsername())
-											.putString("posted", MongoDb.formatDate(new Date()))
-											.putString("comment", comment)));
+									.put("$push", new JsonObject()
+										.put("comments", new JsonObject()
+											.put("id", id)
+											.put("author", user.getUserId())
+											.put("authorName", user.getUsername())
+											.put("posted", MongoDb.formatDate(new Date()))
+											.put("comment", comment)));
 								documentDao.update(request.params().get("id"), query,
 										new Handler<JsonObject>() {
 									@Override
 									public void handle(JsonObject res) {
 										if ("ok".equals(res.getString("status"))) {
 											notifyComment(request, request.params().get("id"), user, true);
-											renderJson(request, res.putString("id", id));
+											renderJson(request, res.put("id", id));
 										} else {
 											renderError(request, res);
 										}
@@ -1785,7 +1785,7 @@ public class WorkspaceService extends BaseController {
 		final String commentId = request.params().get("commentId");
 
 		QueryBuilder query = QueryBuilder.start("_id").is(id);
-		MongoUpdateBuilder queryUpdate = new MongoUpdateBuilder().pull("comments", new JsonObject().putString("id", commentId));
+		MongoUpdateBuilder queryUpdate = new MongoUpdateBuilder().pull("comments", new JsonObject().put("id", commentId));
 
 		mongo.update(DocumentDao.DOCUMENTS_COLLECTION, MongoQueryBuilder.build(query), queryUpdate.build(), MongoDbResult.validActionResultHandler(defaultResponseHandler(request)));
 	}
@@ -1967,7 +1967,7 @@ public class WorkspaceService extends BaseController {
 						@Override
 						public void handle(Message<JsonObject> res) {
 							String status = res.body().getString("status");
-							JsonArray results = res.body().getArray("results");
+							JsonArray results = res.body().getJsonArray("results");
 							if ("ok".equals(status) && results != null) {
 								renderJson(request, results);
 							} else {
@@ -2025,7 +2025,7 @@ public class WorkspaceService extends BaseController {
 						@Override
 						public void handle(Message<JsonObject> res) {
 							String status = res.body().getString("status");
-							JsonArray results = res.body().getArray("results");
+							JsonArray results = res.body().getJsonArray("results");
 							if ("ok".equals(status) && results != null) {
 								renderJson(request, results);
 							} else {
@@ -2054,13 +2054,13 @@ public class WorkspaceService extends BaseController {
 				@Override
 				public void handle(JsonObject res) {
 					if ("ok".equals(res.getString("status"))) {
-						JsonObject doc = res.getObject("result");
+						JsonObject doc = res.getJsonObject("result");
 						if (doc.getString("old-folder") != null) {
-							doc.putString("folder", doc.getString("old-folder"));
+							doc.put("folder", doc.getString("old-folder"));
 						} else {
-							doc.removeField("folder");
+							doc.remove("folder");
 						}
-						doc.removeField("old-folder");
+						doc.remove("old-folder");
 						dao.update(id, doc, to, new Handler<JsonObject>() {
 							@Override
 							public void handle(JsonObject res) {
@@ -2097,8 +2097,8 @@ public class WorkspaceService extends BaseController {
 			case "getDocument" : getDocument(message);
 				break;
 			default:
-				message.reply(new JsonObject().putString("status", "error")
-						.putString("message", "invalid.action"));
+				message.reply(new JsonObject().put("status", "error")
+						.put("message", "invalid.action"));
 		}
 	}
 
@@ -2112,16 +2112,16 @@ public class WorkspaceService extends BaseController {
 	}
 
 	private void addDocument(final Message<JsonObject> message) {
-		JsonObject uploaded = message.body().getObject("uploaded");
-		JsonObject doc = message.body().getObject("document");
+		JsonObject uploaded = message.body().getJsonObject("uploaded");
+		JsonObject doc = message.body().getJsonObject("document");
 		if (doc == null || uploaded == null) {
-			message.reply(new JsonObject().putString("status", "error")
-					.putString("message", "missing.attribute"));
+			message.reply(new JsonObject().put("status", "error")
+					.put("message", "missing.attribute"));
 			return;
 		}
 		String name = message.body().getString("name");
 		String application = message.body().getString("application");
-		JsonArray t = message.body().getArray("thumbs", new JsonArray());
+		JsonArray t = message.body().getJsonArray("thumbs", new JsonArray());
 		List<String> thumbs = new ArrayList<>();
 		for (int i = 0; i < t.size(); i++) {
 			thumbs.add((String) t.get(i));
@@ -2138,15 +2138,15 @@ public class WorkspaceService extends BaseController {
 	}
 
 	private void updateDocument(final Message<JsonObject> message) {
-		JsonObject uploaded = message.body().getObject("uploaded");
+		JsonObject uploaded = message.body().getJsonObject("uploaded");
 		String id = message.body().getString("id");
 		if (uploaded == null || id == null || id.trim().isEmpty()) {
-			message.reply(new JsonObject().putString("status", "error")
-					.putString("message", "missing.attribute"));
+			message.reply(new JsonObject().put("status", "error")
+					.put("message", "missing.attribute"));
 			return;
 		}
 		String name = message.body().getString("name");
-		JsonArray t = message.body().getArray("thumbs", new JsonArray());
+		JsonArray t = message.body().getJsonArray("thumbs", new JsonArray());
 		List<String> thumbs = new ArrayList<>();
 		for (int i = 0; i < t.size(); i++) {
 			thumbs.add((String) t.get(i));
@@ -2246,10 +2246,10 @@ public class WorkspaceService extends BaseController {
 					if (ETag.check(request, file)) {
 						notModified(request, file);
 					} else {
-						storage.sendFile(file, result.getString("name"), request, false, result.getObject("metadata"));
+						storage.sendFile(file, result.getString("name"), request, false, result.getJsonObject("metadata"));
 					}
 					eventStore.createAndStoreEvent(WokspaceEvent.GET_RESOURCE.name(), request,
-							new JsonObject().putString("resource", documentId));
+							new JsonObject().put("resource", documentId));
 				} else {
 					notFound(request);
 				}
@@ -2260,14 +2260,14 @@ public class WorkspaceService extends BaseController {
 	private void createRevision(final String id, final String file, final String name, String ownerId, String userId, String userName, JsonObject metadata){
 		JsonObject document = new JsonObject();
 		document
-			.putString("documentId", id)
-			.putString("file", file)
-			.putString("name", name)
-			.putString("owner", ownerId)
-			.putString("userId", userId)
-			.putString("userName", userName)
-			.putObject("date", MongoDb.now())
-			.putObject("metadata", metadata);
+			.put("documentId", id)
+			.put("file", file)
+			.put("name", name)
+			.put("owner", ownerId)
+			.put("userId", userId)
+			.put("userName", userName)
+			.put("date", MongoDb.now())
+			.put("metadata", metadata);
 
 		mongo.save(DOCUMENT_REVISION_COLLECTION, document, MongoDbResult.validResultHandler(new Handler<Either<String,JsonObject>>() {
 			public void handle(Either<String, JsonObject> event) {
@@ -2335,7 +2335,7 @@ public class WorkspaceService extends BaseController {
 						JsonObject json = (JsonObject) obj;
 						String id = json.getString("file");
 						if (id != null && !alreadyDeleted.contains(id)) {
-							ids.addString(id);
+							ids.add(id);
 						}
 					}
 					storage.removeFiles(ids, new Handler<JsonObject>() {

@@ -25,10 +25,10 @@ import org.entcore.common.user.UserUtils;
 import fr.wseduc.webutils.Either;
 import fr.wseduc.webutils.security.ActionType;
 import fr.wseduc.webutils.security.SecuredAction;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import java.util.*;
 
@@ -57,19 +57,19 @@ public abstract class GenericShareService implements ShareService {
 		JsonObject resourceActions = new JsonObject();
 		for (SecuredAction action: securedActions.values()) {
 			if (ActionType.RESOURCE.name().equals(action.getType()) && !action.getDisplayName().isEmpty()) {
-				JsonObject a = resourceActions.getObject(action.getDisplayName());
+				JsonObject a = resourceActions.getJsonObject(action.getDisplayName());
 				if (a == null) {
 					a = new JsonObject()
-							.putArray("name", new JsonArray().add(action.getName().replaceAll("\\.", "-")))
-							.putString("displayName", action.getDisplayName())
-							.putString("type", action.getType());
-					resourceActions.putObject(action.getDisplayName(), a);
+							.put("name", new JsonArray().add(action.getName().replaceAll("\\.", "-")))
+							.put("displayName", action.getDisplayName())
+							.put("type", action.getType());
+					resourceActions.put(action.getDisplayName(), a);
 				} else {
-					a.getArray("name").add(action.getName().replaceAll("\\.", "-"));
+					a.getJsonArray("name").add(action.getName().replaceAll("\\.", "-"));
 				}
 			}
 		}
-		this.resourceActions = new JsonArray(resourceActions.toMap().values().toArray());
+		this.resourceActions = new JsonArray(new ArrayList<>(resourceActions.getMap().values()));
 		return this.resourceActions;
 	}
 
@@ -84,8 +84,8 @@ public abstract class GenericShareService implements ShareService {
 				"MATCH (g:Group) WHERE g.id in {groupIds} " +
 				"RETURN distinct g.id as id, g.name as name, g.groupDisplayName as groupDisplayName " +
 				"ORDER BY name ";
-		final JsonObject params = new JsonObject().putArray("groupIds",
-				new JsonArray(groupCheckedActions.getFieldNames().toArray()));
+		final JsonObject params = new JsonObject().put("groupIds",
+				new JsonArray(new ArrayList<>(groupCheckedActions.fieldNames())));
 		final String q2 =
 				"RETURN distinct visibles.id as id, visibles.login as login, visibles.displayName as username, " +
 				"visibles.lastName as lastName, visibles.firstName as firstName, visibles.profiles[0] as profile " +
@@ -95,14 +95,14 @@ public abstract class GenericShareService implements ShareService {
 				"RETURN distinct u.id as id, u.login as login, u.displayName as username, " +
 				"u.lastName as lastName, u.firstName as firstName, u.profiles[0] as profile  " +
 				"ORDER BY username ";
-		final JsonObject params2 = new JsonObject().putArray("userIds",
-				new JsonArray(userCheckedActions.getFieldNames().toArray()));
+		final JsonObject params2 = new JsonObject().put("userIds",
+				new JsonArray(new ArrayList<>(userCheckedActions.fieldNames())));
 		UserUtils.findVisibleProfilsGroups(eb, userId, q, params, new Handler<JsonArray>() {
 			@Override
 			public void handle(JsonArray visibleGroups) {
 				final JsonObject groups = new JsonObject();
-				groups.putArray("visibles", visibleGroups);
-				groups.putObject("checked", groupCheckedActions);
+				groups.put("visibles", visibleGroups);
+				groups.put("checked", groupCheckedActions);
 				for (Object u : visibleGroups) {
 					if (!(u instanceof JsonObject)) continue;
 					JsonObject group = (JsonObject) u;
@@ -112,12 +112,12 @@ public abstract class GenericShareService implements ShareService {
 					@Override
 					public void handle(JsonArray visibleUsers) {
 						JsonObject users = new JsonObject();
-						users.putArray("visibles", visibleUsers);
-						users.putObject("checked", userCheckedActions);
+						users.put("visibles", visibleUsers);
+						users.put("checked", userCheckedActions);
 						JsonObject share = new JsonObject()
-								.putArray("actions", actions)
-								.putObject("groups", groups)
-								.putObject("users", users);
+								.put("actions", actions)
+								.put("groups", groups)
+								.put("users", users);
 						handler.handle(share);
 					}
 				});
@@ -136,7 +136,7 @@ public abstract class GenericShareService implements ShareService {
 			public void handle(JsonArray visibleGroups) {
 				final List<String> visibleGroupsIds = new ArrayList<>();
 				for (int i = 0; i < visibleGroups.size(); i++) {
-					JsonObject j = visibleGroups.get(i);
+					JsonObject j = visibleGroups.getJsonObject(i);
 					if (j != null && j.getString("id") != null) {
 						visibleGroupsIds.add(j.getString("id"));
 					}
@@ -156,7 +156,7 @@ public abstract class GenericShareService implements ShareService {
 			public void handle(JsonArray visibleUsers) {
 				final List<String> visibleUsersIds = new ArrayList<>();
 				for (int i = 0; i < visibleUsers.size(); i++) {
-					JsonObject j = visibleUsers.get(i);
+					JsonObject j = visibleUsers.getJsonObject(i);
 					if (j != null && j.getString("id") != null) {
 						visibleUsersIds.add(j.getString("id"));
 					}

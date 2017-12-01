@@ -25,9 +25,9 @@ import fr.wseduc.webutils.security.Md5;
 import fr.wseduc.webutils.security.Sha256;
 import org.entcore.auth.services.OpenIdConnectServiceProvider;
 import org.entcore.common.neo4j.Neo4j;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.json.JsonElement;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.json.JsonElement;
+import io.vertx.core.json.JsonObject;
 
 import java.security.NoSuchAlgorithmException;
 
@@ -82,9 +82,9 @@ public class FranceConnectServiceProvider implements OpenIdConnectServiceProvide
 
 	private void federateWithPivot(JsonObject payload, final Handler<Either<String, JsonElement>> handler) {
 		if (!payload.containsField("preferred_username")) {
-			payload.putString("preferred_username", "");
+			payload.put("preferred_username", "");
 		}
-		payload.putBoolean("setFederated", setFederated);
+		payload.put("setFederated", setFederated);
 		neo4j.execute(QUERY_PIVOT_FC, payload, validUniqueResultHandler(new Handler<Either<String, JsonObject>>() {
 			@Override
 			public void handle(final Either<String, JsonObject> event) {
@@ -101,7 +101,7 @@ public class FranceConnectServiceProvider implements OpenIdConnectServiceProvide
 
 	@Override
 	public void mappingUser(String login, final String password, final JsonObject payload, final Handler<Either<String, JsonElement>> handler) {
-		final JsonObject params = new JsonObject().putString("login", login).putString("password", password);
+		final JsonObject params = new JsonObject().put("login", login).putString("password", password);
 		neo4j.execute(QUERY_MAPPING_FC, params, validUniqueResultHandler(new Handler<Either<String, JsonObject>>() {
 			@Override
 			public void handle(Either<String, JsonObject> event) {
@@ -125,8 +125,8 @@ public class FranceConnectServiceProvider implements OpenIdConnectServiceProvide
 						}
 					}
 					if (success) {
-						params.putBoolean("setFederated", setFederated);
-						neo4j.execute(QUERY_SET_MAPPING_FC, params.putString("sub", payload.getString("sub")),
+						params.put("setFederated", setFederated);
+						neo4j.execute(QUERY_SET_MAPPING_FC, params.put("sub", payload.getString("sub")),
 								validUniqueResultHandler(new Handler<Either<String, JsonObject>>() {
 							@Override
 							public void handle(final Either<String, JsonObject> event) {

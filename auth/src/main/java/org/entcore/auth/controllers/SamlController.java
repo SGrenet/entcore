@@ -42,17 +42,17 @@ import org.opensaml.saml2.core.AuthnStatement;
 import org.opensaml.saml2.core.Response;
 import org.opensaml.xml.ConfigurationException;
 import org.opensaml.xml.io.MarshallingException;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.http.RouteMatcher;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonElement;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.json.impl.Base64;
-import org.vertx.java.platform.Container;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.RouteMatcher;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonElement;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.impl.Base64;
+import io.vertx.platform.Container;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -117,8 +117,8 @@ public class SamlController extends AbstractFederateController {
 		if (samlWayfParams != null) {
 			if (samlWayfMustacheFormat == null) {
 				final JsonArray wmf = new JsonArray();
-				for (String attr : samlWayfParams.getFieldNames()) {
-					JsonObject i = samlWayfParams.getObject(attr);
+				for (String attr : samlWayfParams.fieldNames()) {
+					JsonObject i = samlWayfParams.getJsonObject(attr);
 					if (i == null) continue;
 					final String acs = i.getString("acs");
 					if (isEmpty(acs)) continue;
@@ -130,12 +130,12 @@ public class SamlController extends AbstractFederateController {
 						continue;
 					}
 					JsonObject o = new JsonObject()
-							.putString("name", attr)
-							.putString("uri", uri.getScheme() + "://" + uri.getHost() +
+							.put("name", attr)
+							.put("uri", uri.getScheme() + "://" + uri.getHost() +
 									(attr.startsWith("login") ? "/auth/login" : "/auth/saml/authn/" + attr));
-					wmf.addObject(o);
+					wmf.add(o);
 				}
-				samlWayfMustacheFormat = new JsonObject().putArray("providers", wmf);
+				samlWayfMustacheFormat = new JsonObject().put("providers", wmf);
 			}
 			String callBack = request.params().get("callBack");
 			final JsonObject swmf;
@@ -146,11 +146,11 @@ public class SamlController extends AbstractFederateController {
 					log.error("Error encode wayf callback.", e);
 				}
 				swmf = samlWayfMustacheFormat.copy();
-				for (Object o: swmf.getArray("providers")) {
+				for (Object o: swmf.getJsonArray("providers")) {
 					if (!(o instanceof JsonObject)) continue;
 					final String uri = ((JsonObject) o).getString("uri");
 					if (isNotEmpty(uri) && !uri.contains("callBack")) {
-						((JsonObject) o).putString("uri", uri + (uri.contains("?") ? "&" : "?") + "callBack=" + callBack);
+						((JsonObject) o).put("uri", uri + (uri.contains("?") ? "&" : "?") + "callBack=" + callBack);
 					}
 				}
 			} else {
@@ -165,12 +165,12 @@ public class SamlController extends AbstractFederateController {
 
 	@Get("/saml/authn/:providerId")
 	public void auth(final HttpServerRequest request) {
-		final JsonObject item = samlWayfParams.getObject(request.params().get("providerId"));
+		final JsonObject item = samlWayfParams.getJsonObject(request.params().get("providerId"));
 		if (item == null) {
 			forbidden(request, "invalid.provider");
 			return;
 		}
-		final JsonObject event = item.copy().putString("action", "generate-authn-request");
+		final JsonObject event = item.copy().put("action", "generate-authn-request");
 		vertx.eventBus().send("saml", event, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
@@ -218,11 +218,11 @@ public class SamlController extends AbstractFederateController {
 
 				// Send to the bus to generate the SAMLResponse
 				JsonObject event = new JsonObject()
-						.putString("action", "generate-saml-response")
-						.putString("SP", serviceProviderId)
-						.putString("userId", user.getUserId())
-						.putString("nameid", sessionId)
-						.putString("host", getScheme(request) + "://" + getHost(request));
+						.put("action", "generate-saml-response")
+						.put("SP", serviceProviderId)
+						.put("userId", user.getUserId())
+						.put("nameid", sessionId)
+						.put("host", getScheme(request) + "://" + getHost(request));
 				vertx.eventBus().send("saml", event, new Handler<Message<JsonObject>>() {
 					@Override
 					public void handle(Message<JsonObject> event) {
@@ -259,19 +259,19 @@ public class SamlController extends AbstractFederateController {
 	 */
 	private void renderSamlResponse(UserInfos user,String samlResponse64,String providerId, String destination,HttpServerRequest request) {
 		JsonObject paramsFED = new JsonObject();
-		paramsFED.putString("SAMLResponse",samlResponse64);
-		JsonObject relayStateMap = container.config().getObject("relay-state");
+		paramsFED.put("SAMLResponse",samlResponse64);
+		JsonObject relayStateMap = container.config().getJsonObject("relay-state");
 		if(relayStateMap != null) {
 			String relayState = relayStateMap.getString(providerId);
 			if(relayState != null) {
-				paramsFED.putString("RelayState",relayState);
+				paramsFED.put("RelayState",relayState);
 			} else {
 				log.error("Error loading relay-state for providerId : " + providerId);
 			}
 		} else {
 			log.error("Error loading relay-state properties.");
 		}
-		paramsFED.putString("Destination",destination);
+		paramsFED.put("Destination",destination);
 		renderView(request, paramsFED, "fed.html", null);
 	}
 
@@ -280,10 +280,10 @@ public class SamlController extends AbstractFederateController {
 		if(federatedAuthenticateError) {
 			final JsonObject context = new JsonObject();
 			if (error != null && !error.trim().isEmpty()) {
-				context.putObject("error", new JsonObject()
-						.putString("message", I18n.getInstance().translate(error, getHost(request), I18n.acceptLanguage(request))));
+				context.put("error", new JsonObject()
+						.put("message", I18n.getInstance().translate(error, getHost(request), I18n.acceptLanguage(request))));
 			}
-			context.putBoolean("notLoggedIn", true);
+			context.put("notLoggedIn", true);
 			renderView(request, context, "login.html", null);
 		}else{
 			redirect(request, LOGIN_PAGE);
@@ -323,12 +323,12 @@ public class SamlController extends AbstractFederateController {
 							// if we only disconnect him to the ENT (no nameid)
 							final String sessionId = CookieHelper.getInstance().getSigned("oneSessionId", request);
 
-//							final JsonObject query = new JsonObject().putString("_id", sessionId);
-//							mongo.findOne(SESSIONS_COLLECTION, query, new org.vertx.java.core.Handler<Message<JsonObject>>() {
-							federationService.getMongoDbSession(sessionId, new org.vertx.java.core.Handler<Message<JsonObject>>() {
+//							final JsonObject query = new JsonObject().put("_id", sessionId);
+//							mongo.findOne(SESSIONS_COLLECTION, query, new io.vertx.core.Handler<Message<JsonObject>>() {
+							federationService.getMongoDbSession(sessionId, new io.vertx.core.Handler<Message<JsonObject>>() {
 								@Override
 								public void handle(Message<JsonObject> eventMongo) {
-									JsonObject res = eventMongo.body().getObject("result");
+									JsonObject res = eventMongo.body().getJsonObject("result");
 									String userId;
 									if ("ok".equals(eventMongo.body().getString("status")) && res != null &&
 											(userId = res.getString("userId")) != null && !userId.trim().isEmpty()) {
@@ -408,8 +408,8 @@ public class SamlController extends AbstractFederateController {
 	@Override
 	protected void afterDropSession(JsonObject event, final HttpServerRequest request, UserInfos user, final String c) {
 		request.headers().remove("Cookie");
-		event.putString("action", "generate-slo-request");
-		event.putString("IDP", (String) user.getOtherProperties().get("federatedIDP"));
+		event.put("action", "generate-slo-request");
+		event.put("IDP", (String) user.getOtherProperties().get("federatedIDP"));
 		if (log.isDebugEnabled()) {
 			log.debug("Session metadata : " + event.encodePrettily());
 		}
@@ -420,7 +420,7 @@ public class SamlController extends AbstractFederateController {
 				Matcher academyMatcher = NAME_QUALIFIER_PATTERN.matcher(nameID);
 				if (academyMatcher.find()) {
 					String nameQualifier = academyMatcher.group(1);
-					JsonObject confSoftSlo = container.config().getObject("soft-slo-redirect");
+					JsonObject confSoftSlo = container.config().getJsonObject("soft-slo-redirect");
 					if(confSoftSlo != null) {
 						String redirectIDP = confSoftSlo.getString(nameQualifier);
 						if(redirectIDP != null) {
@@ -463,14 +463,14 @@ public class SamlController extends AbstractFederateController {
 
 	@Post("/saml/selectUser")
 	public  void selectUser(final HttpServerRequest request) {
-		request.expectMultiPart(true);
-		request.endHandler(new VoidHandler() {
+		request.setExpectMultipart(true);
+		request.endHandler(new Handler<Void>() {
 			@Override
 			protected void handle() {
 				final JsonObject j = new JsonObject();
 				for (String attr : request.formAttributes().names()) {
 					if (isNotEmpty(request.formAttributes().get(attr))) {
-						j.putString(attr, request.formAttributes().get(attr));
+						j.put(attr, request.formAttributes().get(attr));
 					}
 				}
 				final String nameId = j.getString("nameId", "").replaceAll("\\r", "");
@@ -495,11 +495,11 @@ public class SamlController extends AbstractFederateController {
 		for (Object o : array) {
 			if (!(o instanceof JsonObject)) continue;
 			JsonObject j = (JsonObject) o;
-			j.putString("key", HmacSha1.sign(sessionIndex + nameId + j.getString("login") + j.getString("id"), signKey));
-			j.putString("nameId", nameId);
-			j.putString("sessionIndex", sessionIndex);
+			j.put("key", HmacSha1.sign(sessionIndex + nameId + j.getString("login") + j.getString("id"), signKey));
+			j.put("nameId", nameId);
+			j.put("sessionIndex", sessionIndex);
 		}
-		return new JsonObject().putArray("users", array);
+		return new JsonObject().put("users", array);
 	}
 
 	private String getSessionId(Assertion assertion) {
@@ -519,7 +519,7 @@ public class SamlController extends AbstractFederateController {
 			public void handle(final String samlResponse) {
 				if (samlResponse != null && samlResponse.contains("EncryptedAssertion")) {
 					JsonObject j = new JsonObject()
-							.putString("action", "validate-signature-decrypt").putString("response", samlResponse);
+							.put("action", "validate-signature-decrypt").putString("response", samlResponse);
 					vertx.eventBus().send("saml", j, new Handler<Message<JsonObject>>() {
 						@Override
 						public void handle(Message<JsonObject> event) {
@@ -539,7 +539,7 @@ public class SamlController extends AbstractFederateController {
 					});
 				} else if (samlResponse != null) {
 					JsonObject j = new JsonObject()
-							.putString("action", "validate-signature").putString("response", samlResponse);
+							.put("action", "validate-signature").putString("response", samlResponse);
 					vertx.eventBus().send("saml", j, new Handler<Message<JsonObject>>() {
 						@Override
 						public void handle(Message<JsonObject> event) {
@@ -571,8 +571,8 @@ public class SamlController extends AbstractFederateController {
 		if (log.isDebugEnabled()) {
 			log.debug("getSamlResponse");
 		}
-		request.expectMultiPart(true);
-		request.endHandler(new VoidHandler() {
+		request.setExpectMultipart(true);
+		request.endHandler(new Handler<Void>() {
 			@Override
 			protected void handle() {
 				if (samlWayfParams != null) {

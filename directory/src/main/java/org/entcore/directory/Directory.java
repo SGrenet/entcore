@@ -33,9 +33,9 @@ import org.entcore.directory.security.UserbookCsrfFilter;
 import org.entcore.directory.security.DirectoryResourcesProvider;
 import org.entcore.directory.services.*;
 import org.entcore.directory.services.impl.*;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.http.HttpServerRequest;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.http.HttpServerRequest;
 
 public class Directory extends BaseServer {
 
@@ -121,7 +121,7 @@ public class Directory extends BaseServer {
 		timetableController.setTimetableService(new DefaultTimetableService(eb));
 		addController(timetableController);
 
-		vertx.eventBus().registerLocalHandler("user.repository",
+		vertx.eventBus().localConsumer("user.repository",
 				new RepositoryHandler(new UserbookRepositoryEvents(), eb));
 	}
 

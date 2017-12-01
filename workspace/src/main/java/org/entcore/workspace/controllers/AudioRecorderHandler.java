@@ -36,20 +36,20 @@ import org.entcore.common.storage.Storage;
 import org.entcore.common.storage.StorageFactory;
 import org.entcore.common.user.UserUtils;
 import org.entcore.workspace.service.impl.AudioRecorderWorker;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.AsyncResultHandler;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.http.ServerWebSocket;
-import org.vertx.java.core.http.WebSocketFrame;
-import org.vertx.java.core.http.impl.ws.DefaultWebSocketFrame;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler<AsyncResult>;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.ServerWebSocket;
+import io.vertx.core.http.WebSocketFrame;
+import io.vertx.core.http.impl.ws.DefaultWebSocketFrame;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import java.io.*;
 import java.nio.ByteBuffer;
@@ -85,7 +85,7 @@ public class AudioRecorderHandler implements Handler<ServerWebSocket> {
 				}
 				final String id = ws.path().replaceFirst("/audio/", "");
 				eb.send(AudioRecorderWorker.class.getSimpleName(),
-						new JsonObject().putString("action", "open").putString("id", id), new Handler<Message<JsonObject>>() {
+						new JsonObject().put("action", "open").putString("id", id), new Handler<Message<JsonObject>>() {
 					@Override
 					public void handle(Message<JsonObject> m) {
 						if ("ok".equals(m.body().getString("status"))) {
@@ -96,7 +96,7 @@ public class AudioRecorderHandler implements Handler<ServerWebSocket> {
 										log.debug("frame handler");
 										eb.sendWithTimeout(AudioRecorderWorker.class.getSimpleName() + id,
 												((DefaultWebSocketFrame) frame).getBinaryData().array(), TIMEOUT,
-												new AsyncResultHandler<Message<JsonObject>>() {
+												new Handler<AsyncResult><Message<JsonObject>>() {
 													@Override
 													public void handle(AsyncResult<Message<JsonObject>> ar) {
 														if (ar.failed() || !"ok".equals(ar.result().body().getString("status"))) {
@@ -133,10 +133,10 @@ public class AudioRecorderHandler implements Handler<ServerWebSocket> {
 	}
 
 	private void save(String id, String name, JsonObject infos, final ServerWebSocket ws) {
-		JsonObject message = new JsonObject().putString("action", "save")
-				.putString("id", id).putObject("session", infos);
+		JsonObject message = new JsonObject().put("action", "save")
+				.put("id", id).put("session", infos);
 		if (isNotEmpty(name)) {
-			message.putString("name", name);
+			message.put("name", name);
 		}
 		eb.send(AudioRecorderWorker.class.getSimpleName(), message,
 				new Handler<Message<JsonObject>>() {
@@ -155,7 +155,7 @@ public class AudioRecorderHandler implements Handler<ServerWebSocket> {
 
 	private void cancel(String id, final ServerWebSocket ws) {
 		eb.send(AudioRecorderWorker.class.getSimpleName(),
-				new JsonObject().putString("action", "cancel").putString("id", id),
+				new JsonObject().put("action", "cancel").putString("id", id),
 				new Handler<Message<JsonObject>>() {
 
 					@Override
@@ -174,7 +174,7 @@ public class AudioRecorderHandler implements Handler<ServerWebSocket> {
 
 	private void disableCompression(String id, final ServerWebSocket ws) {
 		eb.send(AudioRecorderWorker.class.getSimpleName(),
-				new JsonObject().putString("action", "rawdata").putString("id", id),
+				new JsonObject().put("action", "rawdata").putString("id", id),
 				new Handler<Message<JsonObject>>() {
 
 					@Override

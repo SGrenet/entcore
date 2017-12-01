@@ -22,16 +22,16 @@ package org.entcore.feeder.csv;
 import org.entcore.common.utils.FileUtils;
 import org.entcore.feeder.dictionary.structures.PostImport;
 import org.entcore.feeder.utils.TransactionManager;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.file.FileSystem;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.file.FileSystem;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,7 +55,7 @@ public class CsvImportsLauncher implements Handler<Long> {
 	public CsvImportsLauncher(Vertx vertx, String path, JsonObject config, PostImport postImport) {
 		this.vertx = vertx;
 		this.path = path;
-		this.profiles = config.getObject("profiles");
+		this.profiles = config.getJsonObject("profiles");
 		this.namePattern = Pattern.compile(config.getString("namePattern"));
 		this.postImport = postImport;
 		this.preDelete = config.getBoolean("preDelete", false);
@@ -69,8 +69,8 @@ public class CsvImportsLauncher implements Handler<Long> {
 			public void handle(final AsyncResult<String[]> event) {
 				if (event.succeeded()) {
 					Arrays.sort(event.result());
-					final VoidHandler[] handlers = new VoidHandler[event.result().length + 1];
-					handlers[handlers.length - 1] = new VoidHandler() {
+					final Handler<Void>[] handlers = new Handler<Void>[event.result().length + 1];
+					handlers[handlers.length - 1] = new Handler<Void>() {
 						@Override
 						protected void handle() {
 							postImport.execute();
@@ -78,7 +78,7 @@ public class CsvImportsLauncher implements Handler<Long> {
 					};
 					for (int i = event.result().length - 1; i >= 0; i--) {
 						final int j = i;
-						handlers[i] = new VoidHandler() {
+						handlers[i] = new Handler<Void>() {
 							@Override
 							protected void handle() {
 								final String file = event.result()[j];
@@ -91,11 +91,11 @@ public class CsvImportsLauncher implements Handler<Long> {
 									final String structureName = nameMatcher.group(1);
 									TransactionManager.getNeo4jHelper()
 											.execute("MATCH (s:Structure {UAI:{uai}}) return s.externalId as externalId",
-													new JsonObject().putString("uai", uai), new Handler<Message<JsonObject>>() {
+													new JsonObject().put("uai", uai), new Handler<Message<JsonObject>>() {
 										@Override
 										public void handle(Message<JsonObject> event) {
 											final String structureExternalId;
-											JsonArray res = event.body().getArray("result");
+											JsonArray res = event.body().getJsonArray("result");
 											if ("ok".equals(event.body().getString("status")) && res.size() > 0) {
 												structureExternalId = res.<JsonObject>get(0).getString("externalId");
 											} else {
@@ -135,7 +135,7 @@ public class CsvImportsLauncher implements Handler<Long> {
 	}
 
 	private void moveCsvFiles(final String structureExternalId, final FileSystem fs, final String dirName, final String parentDir,
-			final VoidHandler[] handlers, final int j) {
+			final Handler<Void>[] handlers, final int j) {
 		fs.readDir(dirName, ".*.csv", new Handler<AsyncResult<String[]>>() {
 			@Override
 			public void handle(final AsyncResult<String[]> l) {
@@ -150,7 +150,7 @@ public class CsvImportsLauncher implements Handler<Long> {
 					final AtomicInteger count = new AtomicInteger(size);
 					for (final String f : l.result()) {
 						String profile = null;
-						for (String profilePattern : profiles.getFieldNames()) {
+						for (String profilePattern : profiles.fieldNames()) {
 							if (f.contains(profilePattern)) {
 								profile = profiles.getString(profilePattern);
 								break;
@@ -194,15 +194,15 @@ public class CsvImportsLauncher implements Handler<Long> {
 	}
 
 	private void importFiles(AtomicInteger validFilesCount, final String dirName, String structureExternalId,
-			final VoidHandler[] handlers, final int j, final FileSystem fs) {
+			final Handler<Void>[] handlers, final int j, final FileSystem fs) {
 		if (validFilesCount.get() > 0) {
 			JsonObject action = new JsonObject()
-					.putString("action", "import")
-					.putString("feeder", "CSV")
-					.putString("path", dirName)
-					.putString("structureExternalId", structureExternalId)
-					.putBoolean("postImport", false)
-					.putBoolean("preDelete", preDelete);
+					.put("action", "import")
+					.put("feeder", "CSV")
+					.put("path", dirName)
+					.put("structureExternalId", structureExternalId)
+					.put("postImport", false)
+					.put("preDelete", preDelete);
 			vertx.eventBus().send("entcore.feeder", action, new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> event) {
@@ -220,7 +220,7 @@ public class CsvImportsLauncher implements Handler<Long> {
 		}
 	}
 
-	private void emptyDirectory(FileSystem fs, String dirName, VoidHandler[] handlers, int j) {
+	private void emptyDirectory(FileSystem fs, String dirName, Handler<Void>[] handlers, int j) {
 		fs.delete(dirName, true, null);
 		log.error("Empty directory : " + dirName);
 		handlers[j + 1].handle(null);

@@ -8,14 +8,14 @@ import org.entcore.common.user.UserInfos;
 import org.entcore.common.user.UserUtils;
 import org.entcore.infra.services.EmbedService;
 import org.entcore.infra.services.impl.MongoDbEmbedService;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.http.RouteMatcher;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.platform.Container;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.RouteMatcher;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.platform.Container;
 
 import fr.wseduc.rs.*;
 import fr.wseduc.security.ActionType;
@@ -72,7 +72,7 @@ public class EmbedController extends BaseController {
 	public void refreshDefaultEmbed(final HttpServerRequest request){
 		boolean success = this.refreshDefault();
 		if(success)
-			renderJson(request, new JsonObject().putString("status", "ok"));
+			renderJson(request, new JsonObject().put("status", "ok"));
 		else
 			renderError(request);
 

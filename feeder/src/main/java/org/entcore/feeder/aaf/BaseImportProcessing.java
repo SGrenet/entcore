@@ -21,14 +21,14 @@ package org.entcore.feeder.aaf;
 
 import org.apache.commons.lang3.text.translate.*;
 import org.entcore.feeder.dictionary.structures.Importer;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
@@ -66,8 +66,8 @@ public abstract class BaseImportProcessing implements ImportProcessing {
 		initAcademyPrefix(path);
 		final String [] files = vertx.fileSystem()
 				.readDirSync(path, getFileRegex());
-		final VoidHandler[] handlers = new VoidHandler[files.length + 1];
-		handlers[handlers.length -1] = new VoidHandler() {
+		final Handler<Void>[] handlers = new Handler<Void>[files.length + 1];
+		handlers[handlers.length -1] = new Handler<Void>() {
 			@Override
 			protected void handle() {
 				next(handler, importProcessing);
@@ -76,7 +76,7 @@ public abstract class BaseImportProcessing implements ImportProcessing {
 		Arrays.sort(files);
 		for (int i = files.length - 1; i >= 0; i--) {
 			final int j = i;
-			handlers[i] = new VoidHandler() {
+			handlers[i] = new Handler<Void>() {
 				@Override
 				protected void handle() {
 					try {

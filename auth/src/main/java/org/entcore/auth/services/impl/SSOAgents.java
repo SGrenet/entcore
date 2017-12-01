@@ -22,9 +22,9 @@ package org.entcore.auth.services.impl;
 import fr.wseduc.webutils.Either;
 import org.entcore.common.validation.StringValidation;
 import org.opensaml.saml2.core.Assertion;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.json.JsonElement;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.json.JsonElement;
+import io.vertx.core.json.JsonObject;
 
 public class SSOAgents extends AbstractSSOProvider {
 
@@ -42,7 +42,7 @@ public class SSOAgents extends AbstractSSOProvider {
 		}
 
 		if (StringValidation.isEmail(mail)) { // PersEducNat
-			executeQuery("MATCH (u:User {emailAcademy:{email}}) ", new JsonObject().putString("email", mail),
+			executeQuery("MATCH (u:User {emailAcademy:{email}}) ", new JsonObject().put("email", mail),
 					assertion, handler);
 		} else {
 			handler.handle(new Either.Left<String, JsonElement>("invalid.email"));

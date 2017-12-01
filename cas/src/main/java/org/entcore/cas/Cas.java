@@ -28,7 +28,7 @@ import org.entcore.common.http.BaseServer;
 import fr.wseduc.cas.endpoint.CasValidator;
 import fr.wseduc.cas.endpoint.Credential;
 import fr.wseduc.cas.endpoint.SamlValidator;
-import org.vertx.java.core.Handler;
+import io.vertx.core.Handler;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 

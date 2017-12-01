@@ -23,12 +23,12 @@ import org.entcore.common.neo4j.Neo4jUtils;
 import org.entcore.common.neo4j.Neo4j;
 import org.entcore.feeder.utils.TransactionHelper;
 import org.entcore.feeder.utils.TransactionManager;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import java.util.*;
 
@@ -99,25 +99,25 @@ public class Structure {
 				"CREATE p<-[:HAS_PROFILE]-(g:Group:ProfileGroup {name : s.name+'-'+p.name})-[:DEPENDS]->s " +
 				"SET g.id = id(g)+'-'+timestamp() ";
 		JsonObject params = new JsonObject()
-				.putString("id", id)
-				.putString("externalId", externalId)
-				.putObject("props", struct);
+				.put("id", id)
+				.put("externalId", externalId)
+				.put("props", struct);
 		getTransaction().add(query, params);
 	}
 
 
 	public synchronized Object[] addJointure(String externalId) {
 		if (struct != null) {
-			JsonArray joinKey = struct.getArray("joinKey");
+			JsonArray joinKey = struct.getJsonArray("joinKey");
 			if (joinKey == null) {
 				joinKey = new JsonArray();
-				struct.putArray("joinKey", joinKey);
+				struct.put("joinKey", joinKey);
 			}
 			joinKey.add(externalId);
 			String query =
 					"MATCH (s:Structure {externalId: {externalId}}) " +
 					"SET s.joinKey = {joinKey} ";
-			JsonObject params = new JsonObject().putArray("joinKey", joinKey).putString("externalId", getExternalId());
+			JsonObject params = new JsonObject().put("joinKey", joinKey).put("externalId", getExternalId());
 			getTransaction().add(query, params);
 			return joinKey.toArray();
 		}
@@ -125,23 +125,23 @@ public class Structure {
 	}
 
 	public void addAttachment() {
-		JsonArray functionalAttachment = struct.getArray("functionalAttachment");
+		JsonArray functionalAttachment = struct.getJsonArray("functionalAttachment");
 		if (functionalAttachment != null && functionalAttachment.size() > 0 &&
 				!externalId.equals(functionalAttachment.get(0))) {
-			JsonObject params = new JsonObject().putString("externalId", externalId);
+			JsonObject params = new JsonObject().put("externalId", externalId);
 			String query;
 			if (functionalAttachment.size() == 1) {
 				query =
 						"MATCH (s:Structure { externalId : {externalId}}), " +
 						"(ps:Structure { externalId : {functionalAttachment}}) " +
 						"CREATE UNIQUE s-[:HAS_ATTACHMENT]->ps";
-				params.putString("functionalAttachment", (String) functionalAttachment.get(0));
+				params.put("functionalAttachment", (String) functionalAttachment.get(0));
 			} else {
 				query =
 						"MATCH (s:Structure { externalId : {externalId}}), (ps:Structure) " +
 						"WHERE ps.externalId IN {functionalAttachment} " +
 						"CREATE UNIQUE s-[:HAS_ATTACHMENT]->ps";
-				params.putArray("functionalAttachment", functionalAttachment);
+				params.put("functionalAttachment", functionalAttachment);
 			}
 			getTransaction().add(query, params);
 		}
@@ -157,11 +157,11 @@ public class Structure {
 					"CREATE c<-[:DEPENDS]-(pg:Group:ProfileGroup {name : c.name+'-'+p.name})-[:DEPENDS]->g " +
 					"SET pg.id = id(pg)+'-'+timestamp() ";
 			JsonObject params = new JsonObject()
-					.putString("structureExternalId", externalId)
-					.putObject("props", new JsonObject()
-							.putString("externalId", classExternalId)
-							.putString("id", UUID.randomUUID().toString())
-							.putString("name", name)
+					.put("structureExternalId", externalId)
+					.put("props", new JsonObject()
+							.put("externalId", classExternalId)
+							.put("id", UUID.randomUUID().toString())
+							.put("name", name)
 					);
 			getTransaction().add(query, params);
 		}
@@ -174,11 +174,11 @@ public class Structure {
 					"WHERE (NOT(HAS(s.timetable)) OR s.timetable = '') " +
 					"CREATE s<-[:DEPENDS]-(c:Group:FunctionalGroup {props}) ";
 			JsonObject params = new JsonObject()
-					.putString("structureExternalId", externalId)
-					.putObject("props", new JsonObject()
-							.putString("externalId", groupExternalId)
-							.putString("id", UUID.randomUUID().toString())
-							.putString("name", name)
+					.put("structureExternalId", externalId)
+					.put("props", new JsonObject()
+							.put("externalId", groupExternalId)
+							.put("id", UUID.randomUUID().toString())
+							.put("name", name)
 					);
 			getTransaction().add(query, params);
 		}
@@ -190,8 +190,8 @@ public class Structure {
 				"(m:Module { externalId : {moduleExternalId}}) " +
 				"CREATE UNIQUE s-[:OFFERS]->m";
 		JsonObject params = new JsonObject()
-				.putString("externalId", externalId)
-				.putString("moduleExternalId", moduleExternalId);
+				.put("externalId", externalId)
+				.put("moduleExternalId", moduleExternalId);
 		getTransaction().add(query, params);
 	}
 
@@ -207,18 +207,18 @@ public class Structure {
 				"OPTIONAL MATCH s<-[:DEPENDS]-(fg:FunctionalGroup) " +
 				"RETURN collect(distinct u.id) as users, collect(distinct cpg.id) as profileGroups, " +
 				"collect(distinct fg.id) as functionalGroups";
-		JsonObject params = new JsonObject().putString("id", id);
+		JsonObject params = new JsonObject().put("id", id);
 		tx.getNeo4j().execute(query, params, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
-				JsonArray r = event.body().getArray("result");
+				JsonArray r = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && r != null && r.size() == 1) {
 					final JsonObject res = r.get(0);
 					usersInGroups(new Handler<Message<JsonObject>>() {
 
 						@Override
 						public void handle(Message<JsonObject> event) {
-							for (Object u : res.getArray("users")) {
+							for (Object u : res.getJsonArray("users")) {
 								User.backupRelationship(u.toString(), tx);
 								User.transition(u.toString(), tx);
 							}
@@ -237,7 +237,7 @@ public class Structure {
 
 	private void usersInGroups(Handler<Message<JsonObject>> handler) {
 		final Neo4j neo4j = TransactionManager.getInstance().getNeo4j();
-		final JsonObject params = new JsonObject().putString("id", id);
+		final JsonObject params = new JsonObject().put("id", id);
 		String query =
 				"MATCH (s:Structure {id : {id}})<-[:BELONGS]-(c:Class)" +
 				"<-[:DEPENDS]-(cpg:Group) " +
@@ -252,7 +252,7 @@ public class Structure {
 
 	private void transitionClassGroup() {
 		TransactionHelper tx = TransactionManager.getInstance().getTransaction("GraphDataUpdate");
-		JsonObject params = new JsonObject().putString("id", id);
+		JsonObject params = new JsonObject().put("id", id);
 		String query =
 				"MATCH (s:Structure {id : {id}})<-[r:BELONGS]-(c:Class)" +
 				"<-[r1:DEPENDS]-(cpg:Group)-[r2]-() " +
@@ -270,7 +270,7 @@ public class Structure {
 		String query = "MATCH (s:Structure) ";
 		if (isNotEmpty(exportType)) {
 			query += "WHERE HAS(s.exports) AND {exportType} IN s.exports ";
-			params.putString("exportType", exportType);
+			params.put("exportType", exportType);
 		}
 		query += "RETURN count(distinct s) as nb";
 		transactionHelper.add(query, params);
@@ -281,7 +281,7 @@ public class Structure {
 		JsonObject params = new JsonObject();
 		if (isNotEmpty(exportType)) {
 			query.append("WHERE HAS(s.exports) AND {exportType} IN s.exports ");
-			params.putString("exportType", exportType);
+			params.put("exportType", exportType);
 		}
 		if (attributes != null && attributes.size() > 0) {
 			query.append("RETURN DISTINCT");
@@ -297,8 +297,8 @@ public class Structure {
 			query.append("ORDER BY externalId ASC " +
 					"SKIP {skip} " +
 					"LIMIT {limit} ");
-			params.putNumber("skip", skip);
-			params.putNumber("limit", limit);
+			params.put("skip", skip);
+			params.put("limit", limit);
 		}
 		transactionHelper.add(query.toString(), params);
 	}
@@ -321,8 +321,8 @@ public class Structure {
 				"CREATE UNIQUE n<-[:DEPENDS]-fg " +
 				"MERGE fg<-[:IN { source : 'MANUAL'}]-u";
 		JsonObject params =  new JsonObject()
-				.putString("structureId", structureId)
-				.putString("parentStructureId", parentStructureId);
+				.put("structureId", structureId)
+				.put("parentStructureId", parentStructureId);
 		transactionHelper.add(query, params);
 		transactionHelper.add(query2, params);
 	}
@@ -342,8 +342,8 @@ public class Structure {
 				"SET rf.scope = FILTER(sId IN rf.scope WHERE sId <> s.id) " +
 				"DELETE r";
 		JsonObject params = new JsonObject()
-				.putString("structureId", structureId)
-				.putString("parentStructureId", parentStructureId);
+				.put("structureId", structureId)
+				.put("parentStructureId", parentStructureId);
 		transactionHelper.add(query, params);
 		transactionHelper.add(query2, params);
 	}

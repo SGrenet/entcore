@@ -25,13 +25,13 @@ import fr.wseduc.webutils.security.JWT;
 import org.entcore.auth.services.OpenIdConnectService;
 import org.entcore.auth.services.OpenIdConnectServiceProvider;
 import org.entcore.common.neo4j.Neo4j;
-import org.vertx.java.core.AsyncResultHandler;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonElement;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler<AsyncResult>;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonElement;
+import io.vertx.core.json.JsonObject;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 
@@ -51,12 +51,12 @@ public class DefaultOpendIdConnectService implements OpenIdConnectService, OpenI
 	}
 
 	@Override
-	public void generateIdToken(String userId, final String clientId, final AsyncResultHandler<String> handler) {
+	public void generateIdToken(String userId, final String clientId, final Handler<AsyncResult><String> handler) {
 		final  String query = "MATCH (u:User {id: {id}}) return u.externalId as sub, u.email as  email, u.displayName as name";
-		Neo4j.getInstance().execute(query, new JsonObject().putString("id", userId), new Handler<Message<JsonObject>>() {
+		Neo4j.getInstance().execute(query, new JsonObject().put("id", userId), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
-				final JsonArray res = event.body().getArray("result");
+				final JsonArray res = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && res != null && res.size() == 1) {
 					generatePayload(res.<JsonObject>get(0), clientId, handler);
 				} else {
@@ -66,13 +66,13 @@ public class DefaultOpendIdConnectService implements OpenIdConnectService, OpenI
 		});
 	}
 
-	private void generatePayload(JsonObject payload, String clientId, AsyncResultHandler<String> handler) {
+	private void generatePayload(JsonObject payload, String clientId, Handler<AsyncResult><String> handler) {
 		if (payload != null) {
 			final long iat = System.currentTimeMillis() / 1000;
-			payload.putString("iss", getIss())
-					.putString("aud", clientId)
-					.putNumber("iat", iat)
-					.putNumber("exp", iat + EXPIRATION_TIME);
+			payload.put("iss", getIss())
+					.put("aud", clientId)
+					.put("iat", iat)
+					.put("exp", iat + EXPIRATION_TIME);
 			try {
 				handler.handle(new DefaultAsyncResult<>(jwt.encodeAndSign(payload)));
 			} catch (Exception e) {

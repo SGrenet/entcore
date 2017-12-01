@@ -21,9 +21,9 @@ package org.entcore.auth.services;
 
 import fr.wseduc.webutils.Either;
 import fr.wseduc.webutils.http.oauth.OpenIdConnectClient;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.json.JsonElement;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.json.JsonElement;
+import io.vertx.core.json.JsonObject;
 
 public interface OpenIdConnectServiceProvider {
 

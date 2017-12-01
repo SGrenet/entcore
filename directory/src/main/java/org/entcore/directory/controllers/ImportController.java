@@ -35,12 +35,12 @@ import org.entcore.common.user.UserUtils;
 import org.entcore.directory.exceptions.ImportException;
 import org.entcore.directory.pojo.ImportInfos;
 import org.entcore.directory.services.ImportService;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.http.HttpServerFileUpload;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.http.HttpServerFileUpload;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonObject;
 
 import java.io.File;
 import java.util.UUID;
@@ -80,8 +80,8 @@ public class ImportController extends BaseController {
 		request.pause();
 		final String importId = UUID.randomUUID().toString();
 		final String path = container.config().getString("wizard-path", "/tmp") + File.separator + importId;
-		request.expectMultiPart(true);
-		request.endHandler(new VoidHandler() {
+		request.setExpectMultipart(true);
+		request.endHandler(new Handler<Void>() {
 			@Override
 			protected void handle() {
 				final ImportInfos importInfos = new ImportInfos();

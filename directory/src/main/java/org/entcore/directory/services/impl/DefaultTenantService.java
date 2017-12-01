@@ -23,10 +23,10 @@ import fr.wseduc.webutils.Either;
 import org.entcore.directory.Directory;
 import org.entcore.directory.services.ProfileService;
 import org.entcore.directory.services.TenantService;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import static org.entcore.common.neo4j.Neo4jResult.validEmptyHandler;
 import static org.entcore.common.neo4j.Neo4jResult.validUniqueResultHandler;
@@ -42,8 +42,8 @@ public class DefaultTenantService implements TenantService {
 	@Override
 	public void create(JsonObject tenant, Handler<Either<String, JsonObject>> handler) {
 		JsonObject action = new JsonObject()
-				.putString("action", "manual-create-tenant")
-				.putObject("data", tenant);
+				.put("action", "manual-create-tenant")
+				.put("data", tenant);
 		eb.send(Directory.FEEDER, action, validUniqueResultHandler(0, handler));
 	}
 

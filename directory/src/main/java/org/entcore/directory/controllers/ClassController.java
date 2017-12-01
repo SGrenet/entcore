@@ -35,13 +35,13 @@ import org.entcore.common.user.UserUtils;
 import org.entcore.directory.services.ClassService;
 import org.entcore.directory.services.SchoolService;
 import org.entcore.directory.services.UserService;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.http.HttpServerFileUpload;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpServerFileUpload;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import java.util.Arrays;
 import java.util.List;
@@ -109,7 +109,7 @@ public class ClassController extends BaseController {
 							}
 							renderJson(request, r.right().getValue(), 201);
 						} else {
-							renderJson(request, new JsonObject().putString("error", r.left().getValue()), 400);
+							renderJson(request, new JsonObject().put("error", r.left().getValue()), 400);
 						}
 					}
 				});
@@ -129,7 +129,7 @@ public class ClassController extends BaseController {
 				public void handle(Either<String, JsonArray> r) {
 					if (r.isRight()) {
 						processTemplate(request, "text/export.txt",
-								new JsonObject().putArray("list", r.right().getValue()), new Handler<String>() {
+								new JsonObject().put("list", r.right().getValue()), new Handler<String>() {
 							@Override
 							public void handle(final String export) {
 								if (export != null) {
@@ -153,7 +153,7 @@ public class ClassController extends BaseController {
 							}
 						});
 					} else {
-						renderJson(request, new JsonObject().putString("error", r.left().getValue()), 400);
+						renderJson(request, new JsonObject().put("error", r.left().getValue()), 400);
 					}
 				}
 			};
@@ -166,7 +166,7 @@ public class ClassController extends BaseController {
 	@Post("/csv/:userType/class/:classId")
 	@SecuredAction(value = "", type = ActionType.RESOURCE)
 	public void csv(final HttpServerRequest request) {
-		request.expectMultiPart(true);
+		request.setExpectMultipart(true);
 		final String classId = request.params().get("classId");
 		final String userType = request.params().get("userType");
 		if (classId == null || classId.trim().isEmpty() ||
@@ -177,9 +177,9 @@ public class ClassController extends BaseController {
 		request.uploadHandler(new Handler<HttpServerFileUpload>() {
 			@Override
 			public void handle(final HttpServerFileUpload event) {
-				final Buffer buff = new Buffer();
+				final Buffer buff = Buffer.buffer();
 				if (!csvMimeTypes.contains(event.contentType())) {
-					renderJson(request, new JsonObject().putString("message", "invalid.file"), 400);
+					renderJson(request, new JsonObject().put("message", "invalid.file"), 400);
 					return;
 				}
 				event.dataHandler(new Handler<Buffer>() {
@@ -192,14 +192,14 @@ public class ClassController extends BaseController {
 					@Override
 					public void handle(Void end) {
 						JsonObject j = new JsonObject()
-								.putString("action", "manual-csv-class-" + userType.toLowerCase())
-								.putString("classId", classId)
-								.putString("csv", buff.toString("ISO-8859-1"));
+								.put("action", "manual-csv-class-" + userType.toLowerCase())
+								.put("classId", classId)
+								.put("csv", buff.toString("ISO-8859-1"));
 						Server.getEventBus(vertx).send(container.config().getString("feeder",
 								"entcore.feeder"), j, new Handler<Message<JsonObject>>() {
 							@Override
 							public void handle(Message<JsonObject> message) {
-								JsonArray r = message.body().getArray("results");
+								JsonArray r = message.body().getJsonArray("results");
 								if ("ok".equals(message.body().getString("status")) && r != null) {
 									JsonArray users = new JsonArray();
 									for (int i = 0; i < r.size(); i++) {
@@ -207,7 +207,7 @@ public class ClassController extends BaseController {
 										if (s != null && s.size() == 1) {
 											String u = ((JsonObject) s.get(0)).getString("id");
 											if (u != null) {
-												users.addString(u);
+												users.add(u);
 											}
 										}
 									}
@@ -216,7 +216,7 @@ public class ClassController extends BaseController {
 										request.response().end();
 									} else {
 										renderJson(request, new JsonObject()
-												.putString("message", "import.invalid." + userType.toLowerCase()), 400);
+												.put("message", "import.invalid." + userType.toLowerCase()), 400);
 									}
 								} else {
 									renderJson(request, message.body(), 400);
@@ -244,14 +244,14 @@ public class ClassController extends BaseController {
 							if (res.isRight()) {
 								String schoolId = res.right().getValue().getString("schoolId");
 								JsonObject j = new JsonObject()
-										.putString("action", "setDefaultCommunicationRules")
-										.putString("schoolId", schoolId);
+										.put("action", "setDefaultCommunicationRules")
+										.put("schoolId", schoolId);
 								eb.send("wse.communication", j);
-								JsonArray a = new JsonArray().addString(userId);
+								JsonArray a = new JsonArray().add(userId);
 								ApplicationUtils.publishModifiedUserGroup(eb, a);
 								renderJson(request, res.right().getValue());
 							} else {
-								renderJson(request, new JsonObject().putString("error", res.left().getValue()), 400);
+								renderJson(request, new JsonObject().put("error", res.left().getValue()), 400);
 							}
 						}
 					});
@@ -269,7 +269,7 @@ public class ClassController extends BaseController {
 			@Override
 			public void handle(JsonObject body) {
 				final String classId = request.params().get("classId");
-				JsonArray userIds = body.getArray("userIds");
+				JsonArray userIds = body.getJsonArray("userIds");
 				if (userIds != null) {
 					ClassController.this.initPostCreate(classId, userIds);
 					request.response().end();
@@ -294,8 +294,8 @@ public class ClassController extends BaseController {
 					public void handle(Either<String, JsonObject> s) {
 						if (s.isRight()) {
 							JsonObject j = new JsonObject()
-									.putString("action", "setDefaultCommunicationRules")
-									.putString("schoolId", s.right().getValue().getString("id"));
+									.put("action", "setDefaultCommunicationRules")
+									.put("schoolId", s.right().getValue().getString("id"));
 							eb.send("wse.communication", j, new Handler<Message<JsonObject>>() {
 								public void handle(Message<JsonObject> event) {
 									if("error".equals(event.body().getString("status", ""))){
@@ -338,7 +338,7 @@ public class ClassController extends BaseController {
 						notFound(request);
 					}
 				} else {
-					renderJson(request, new JsonObject().putString("error", r.left().getValue()), 400);
+					renderJson(request, new JsonObject().put("error", r.left().getValue()), 400);
 				}
 			}
 		});

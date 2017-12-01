@@ -29,11 +29,11 @@ import org.opensaml.saml2.core.Attribute;
 import org.opensaml.saml2.core.AttributeStatement;
 import org.opensaml.saml2.core.Conditions;
 import org.opensaml.xml.XMLObject;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonElement;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonElement;
+import io.vertx.core.json.JsonObject;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -120,11 +120,11 @@ public abstract class AbstractSSOProvider implements SamlServiceProvider {
 						} else if (setFederated &&  event.isRight() && event.right().getValue().getBoolean("federated") == null &&
 								event.right().getValue().getString("id") != null) {
 							String query = "MATCH (u:User {id: {id}}) SET u.federated = true ";
-							JsonObject params = new JsonObject().putString("id", event.right().getValue().getString("id"));
+							JsonObject params = new JsonObject().put("id", event.right().getValue().getString("id"));
 							if (assertion != null && assertion.getIssuer() != null &&
 									assertion.getIssuer().getValue() != null && !assertion.getIssuer().getValue().trim().isEmpty()) {
 								query += ", u.federatedIDP = {idp} ";
-								params.putString("idp", assertion.getIssuer().getValue());
+								params.put("idp", assertion.getIssuer().getValue());
 							}
 							Neo4j.getInstance().execute(query, params, new Handler<Message<JsonObject>>() {
 								@Override
@@ -160,16 +160,16 @@ public abstract class AbstractSSOProvider implements SamlServiceProvider {
 						}
 						userIds.add(j.getString("id"));
 						if (Utils.isNotEmpty(j.getString("id")) && !j.getBoolean("federated", false)) {
-							ids.addString(j.getString("id"));
+							ids.add(j.getString("id"));
 						}
 					}
 					if (ids.size() > 0) {
 						String query = "MATCH (u:User) WHERE u.id IN {ids} SET u.federated = true ";
-						JsonObject params = new JsonObject().putArray("ids", ids);
+						JsonObject params = new JsonObject().put("ids", ids);
 						if (assertion != null && assertion.getIssuer() != null &&
 								assertion.getIssuer().getValue() != null && !assertion.getIssuer().getValue().trim().isEmpty()) {
 							query += ", u.federatedIDP = {idp} ";
-							params.putString("idp", assertion.getIssuer().getValue());
+							params.put("idp", assertion.getIssuer().getValue());
 						}
 						Neo4j.getInstance().execute(query, params, new Handler<Message<JsonObject>>() {
 							@Override

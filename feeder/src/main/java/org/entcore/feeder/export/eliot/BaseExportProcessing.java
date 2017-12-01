@@ -22,14 +22,14 @@ package org.entcore.feeder.export.eliot;
 import org.entcore.feeder.utils.AAFUtil;
 import org.entcore.feeder.utils.JsonUtil;
 import org.entcore.feeder.utils.ResultMessage;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonElement;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.Handler;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonElement;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import javax.xml.stream.XMLEventFactory;
 import javax.xml.stream.XMLEventWriter;
@@ -64,8 +64,8 @@ public abstract class BaseExportProcessing implements ExportProcessing {
 					return;
 				}
 				final int nbHandlers = (nb % nbByFile == 0) ? nb / nbByFile : nb / nbByFile + 1;
-				final VoidHandler[] handlers = new VoidHandler[nbHandlers + 1];
-				handlers[handlers.length - 1] = new VoidHandler() {
+				final Handler<Void>[] handlers = new Handler<Void>[nbHandlers + 1];
+				handlers[handlers.length - 1] = new Handler<Void>() {
 					@Override
 					protected void handle() {
 						if (concat && xmlEventWriter != null) {
@@ -85,7 +85,7 @@ public abstract class BaseExportProcessing implements ExportProcessing {
 				};
 				for (int i = handlers.length - 2; i >= 0; i--) {
 					final int j = i;
-					handlers[i] = new VoidHandler() {
+					handlers[i] = new Handler<Void>() {
 						@Override
 						protected void handle() {
 							list(j*nbByFile, nbByFile, new Handler<JsonArray>() {
@@ -165,8 +165,8 @@ public abstract class BaseExportProcessing implements ExportProcessing {
 
 	private void writeElement(XMLEventWriter writer, XMLEventFactory eventFactory,
 			JsonObject element) throws XMLStreamException {
-		if (element.getArray("joinKey") == null && element.getString("externalId") != null) {
-			element.putArray("joinKey", new JsonArray().add(element.getString("externalId")));
+		if (element.getJsonArray("joinKey") == null && element.getString("externalId") != null) {
+			element.put("joinKey", new JsonArray().add(element.getString("externalId")));
 		}
 		writer.add(eventFactory.createStartElement("", "", "addRequest"));
 		writer.add(eventFactory.createDTD("\n"));
@@ -184,7 +184,7 @@ public abstract class BaseExportProcessing implements ExportProcessing {
 		writer.add(eventFactory.createDTD("\n"));
 		writer.add(eventFactory.createStartElement("", "", "attributes"));
 		writer.add(eventFactory.createDTD("\n"));
-		for (String attr : exportMapping.getFieldNames()) {
+		for (String attr : exportMapping.fieldNames()) {
 			JsonElement mapping = exportMapping.getElement(attr);
 			Object value = element.getValue(attr);
 			if (mapping.isObject()) {
@@ -207,7 +207,7 @@ public abstract class BaseExportProcessing implements ExportProcessing {
 		final Object v = AAFUtil.convert(value, object.getString("converter"));
 		if (v instanceof JsonObject) {
 			JsonObject j = (JsonObject) v;
-			for (String attr : j.getFieldNames()) {
+			for (String attr : j.fieldNames()) {
 				addSingleAttribute(attr, j.getValue(attr), writer, eventFactory);
 			}
 		} else {

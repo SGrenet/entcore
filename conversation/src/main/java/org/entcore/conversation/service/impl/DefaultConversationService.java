@@ -35,13 +35,13 @@ import org.entcore.conversation.service.ConversationService;
 import fr.wseduc.webutils.Either;
 import fr.wseduc.webutils.Utils;
 
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.LoggerFactory;
 
 import java.util.*;
 
@@ -81,21 +81,21 @@ public class DefaultConversationService implements ConversationService {
 				"RETURN COLLECT(distinct (v.id + '$' + coalesce(v.displayName, ' ') + '$' + " +
 				"coalesce(v.name, ' ') + '$' + coalesce(v.groupDisplayName, ' '))) as displayNames ";
 		Set<String> ids = new HashSet<>();
-		ids.addAll(message.getArray("to", new JsonArray()).toList());
-		ids.addAll(message.getArray("cc", new JsonArray()).toList());
+		ids.addAll(message.getJsonArray("to", new JsonArray()).toList());
+		ids.addAll(message.getJsonArray("cc", new JsonArray()).toList());
 		if (message.containsField("from")) {
 			ids.add(message.getString("from"));
 		}
-		neo.execute(query, new JsonObject().putArray("ids", new JsonArray(ids.toArray())),
+		neo.execute(query, new JsonObject().put("ids", new JsonArray(ids.toArray())),
 				new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> m) {
-				JsonArray r = m.body().getArray("result");
+				JsonArray r = m.body().getJsonArray("result");
 				if ("ok".equals(m.body().getString("status")) && r != null && r.size() == 1) {
 					JsonObject j = r.get(0);
-					JsonArray d = j.getArray("displayNames");
+					JsonArray d = j.getJsonArray("displayNames");
 					if (d != null && d.size() > 0) {
-						message.putArray("displayNames", d);
+						message.put("displayNames", d);
 					}
 				}
 				handler.handle(message);
@@ -106,8 +106,8 @@ public class DefaultConversationService implements ConversationService {
 	private boolean displayNamesCondition(JsonObject message) {
 		return message != null && (
 				(message.containsField("from") && !message.getString("from").trim().isEmpty()) ||
-				(message.containsField("to") && message.getArray("to").size() > 0) ||
-				(message.containsField("cc") && message.getArray("cc").size() > 0));
+				(message.containsField("to") && message.getJsonArray("to").size() > 0) ||
+				(message.containsField("cc") && message.getJsonArray("cc").size() > 0));
 	}
 
 	private void save(String parentMessageId, JsonObject message, UserInfos user,
@@ -115,18 +115,18 @@ public class DefaultConversationService implements ConversationService {
 		if (message == null) {
 			message = new JsonObject();
 		}
-		message.putString("id", UUID.randomUUID().toString())
-				.putNumber("date", System.currentTimeMillis())
-				.putString("from", user.getUserId())
-				.putString("state", State.DRAFT.name());
+		message.put("id", UUID.randomUUID().toString())
+				.put("date", System.currentTimeMillis())
+				.put("from", user.getUserId())
+				.put("state", State.DRAFT.name());
 		JsonObject m = Utils.validAndGet(message, MESSAGE_FIELDS, DRAFT_REQUIRED_FIELDS);
 		if (validationError(user, m, result)) return;
 		String query;
 		JsonObject params = new JsonObject()
-				.putString("userId", user.getUserId())
-				.putString("folderName", "DRAFT")
-				.putObject("props", m)
-				.putBoolean("true", true);
+				.put("userId", user.getUserId())
+				.put("folderName", "DRAFT")
+				.put("props", m)
+				.put("true", true);
 		if (parentMessageId != null && !parentMessageId.trim().isEmpty()) { // reply
 			query =
 				"MATCH (c:Conversation)-[:HAS_CONVERSATION_FOLDER]->(f:ConversationSystemFolder), " +
@@ -139,7 +139,7 @@ public class DefaultConversationService implements ConversationService {
 				"CREATE f-[:HAS_CONVERSATION_MESSAGE]->(m:ConversationMessage {props})" +
 				"-[:PARENT_CONVERSATION_MESSAGE]->pm " +
 				"RETURN m.id as id";
-			params.putString("parentMessageId", parentMessageId);
+			params.put("parentMessageId", parentMessageId);
 		} else {
 			query =
 				"MATCH (c:Conversation)-[:HAS_CONVERSATION_FOLDER]->(f:ConversationSystemFolder) " +
@@ -172,7 +172,7 @@ public class DefaultConversationService implements ConversationService {
 		if (message == null) {
 			message = new JsonObject();
 		}
-		message.putNumber("date", System.currentTimeMillis());
+		message.put("date", System.currentTimeMillis());
 		JsonObject m = Utils.validAndGet(message, UPDATE_DRAFT_FIELDS, UPDATE_DRAFT_REQUIRED_FIELDS);
 		if (validationError(user, m, result, messageId)) return;
 		String query =
@@ -181,10 +181,10 @@ public class DefaultConversationService implements ConversationService {
 				"WHERE m.id = {id} AND m.from = {userId} AND m.state = {state} AND c.active = {true} " +
 				"SET " + nodeSetPropertiesFromJson("m", m) +
 				"RETURN m.id as id";
-		m.putString("userId", user.getUserId())
-				.putString("id", messageId)
-				.putString("state", State.DRAFT.name())
-				.putBoolean("true", true);
+		m.put("userId", user.getUserId())
+				.put("id", messageId)
+				.put("state", State.DRAFT.name())
+				.put("true", true);
 		neo.execute(query, m, validUniqueResultHandler(result));
 	}
 
@@ -224,10 +224,10 @@ public class DefaultConversationService implements ConversationService {
 			"RETURN attachments";
 
 		JsonObject params = new JsonObject()
-			.putString("userId", user.getUserId())
-			.putString("messageId", messageId)
-			.putString("draft", State.DRAFT.name())
-			.putBoolean("true", true);
+			.put("userId", user.getUserId())
+			.put("messageId", messageId)
+			.put("draft", State.DRAFT.name())
+			.put("true", true);
 
 		neo.execute(attachmentsRetrieval, params, validUniqueResultHandler(new Handler<Either<String, JsonObject>>() {
 				public void handle(Either<String, JsonObject> event) {
@@ -236,7 +236,7 @@ public class DefaultConversationService implements ConversationService {
 						return;
 					}
 
-					JsonArray attachments = event.right().getValue().getArray("attachments", new JsonArray());
+					JsonArray attachments = event.right().getValue().getJsonArray("attachments", new JsonArray());
 
 					if(attachments.size() < 1){
 						sendWithoutAttachments(parentMessageId, messageId, user, result);
@@ -252,13 +252,13 @@ public class DefaultConversationService implements ConversationService {
 	private void sendWithoutAttachments(final String parentMessageId, String messageId, UserInfos user, final Handler<Either<String, JsonObject>> result) {
 		String usersQuery;
 		JsonObject params = new JsonObject()
-				.putString("userId", user.getUserId())
-				.putString("messageId", messageId)
-				.putString("draft", State.DRAFT.name())
-				.putString("outbox", "OUTBOX")
-				.putString("inbox", "INBOX")
-				.putString("sent", State.SENT.name())
-				.putBoolean("true", true);
+				.put("userId", user.getUserId())
+				.put("messageId", messageId)
+				.put("draft", State.DRAFT.name())
+				.put("outbox", "OUTBOX")
+				.put("inbox", "INBOX")
+				.put("sent", State.SENT.name())
+				.put("true", true);
 		if (parentMessageId != null && !parentMessageId.trim().isEmpty()) { // reply
 			usersQuery =
 				"MATCH (m:ConversationMessage { id : {parentMessageId}}) " +
@@ -266,7 +266,7 @@ public class DefaultConversationService implements ConversationService {
 				"MATCH (v:Visible) " +
 				"WHERE v.id IN vis " +
 				"WITH DISTINCT v ";
-			params.putString("parentMessageId", parentMessageId);
+			params.put("parentMessageId", parentMessageId);
 		} else {
 			usersQuery = "WITH visibles as v ";
 		}
@@ -314,14 +314,14 @@ public class DefaultConversationService implements ConversationService {
 
 		final String usersQuery;
 		JsonObject params = new JsonObject()
-				.putString("userId", user.getUserId())
-				.putString("messageId", messageId)
-				.putString("draft", State.DRAFT.name())
-				.putString("outbox", "OUTBOX")
-				.putString("inbox", "INBOX")
-				.putString("sent", State.SENT.name())
-				.putNumber("attachmentsSize", totalAttachmentsSize)
-				.putBoolean("true", true);
+				.put("userId", user.getUserId())
+				.put("messageId", messageId)
+				.put("draft", State.DRAFT.name())
+				.put("outbox", "OUTBOX")
+				.put("inbox", "INBOX")
+				.put("sent", State.SENT.name())
+				.put("attachmentsSize", totalAttachmentsSize)
+				.put("true", true);
 		if (parentMessageId != null && !parentMessageId.trim().isEmpty()) { // reply
 			usersQuery =
 				"MATCH (m:ConversationMessage { id : {parentMessageId}}) " +
@@ -329,7 +329,7 @@ public class DefaultConversationService implements ConversationService {
 				"MATCH (v:Visible) " +
 				"WHERE v.id IN vis " +
 				"WITH DISTINCT v ";
-			params.putString("parentMessageId", parentMessageId);
+			params.put("parentMessageId", parentMessageId);
 		} else {
 			usersQuery = "WITH visibles as v ";
 		}
@@ -364,7 +364,7 @@ public class DefaultConversationService implements ConversationService {
 				if (event != null && event.size() == 1 && (event.get(0) instanceof JsonObject)) {
 
 					JsonObject resultObj = event.get(0);
-					JsonArray sentIds = resultObj.getArray("sentIds");
+					JsonArray sentIds = resultObj.getJsonArray("sentIds");
 					String messageId = resultObj.getString("id");
 
 					String query = usersQuery +
@@ -376,12 +376,12 @@ public class DefaultConversationService implements ConversationService {
 						"{sentIdsLength} as sent, message.id as id, message.subject as subject";
 
 					JsonObject params = new JsonObject()
-						.putString("userId", user.getUserId())
-						.putString("messageId", messageId)
-						.putArray("sentIds", sentIds)
-						.putNumber("sentIdsLength", sentIds.size());
+						.put("userId", user.getUserId())
+						.put("messageId", messageId)
+						.put("sentIds", sentIds)
+						.put("sentIdsLength", sentIds.size());
 					if (parentMessageId != null && !parentMessageId.trim().isEmpty()) {
-						params.putString("parentMessageId", parentMessageId);
+						params.put("parentMessageId", parentMessageId);
 					}
 
 					findVisibles(eb, user.getUserId(), query, params, true, true, false, new Handler<JsonArray>() {
@@ -407,11 +407,11 @@ public class DefaultConversationService implements ConversationService {
 		int skip = page * LIST_LIMIT;
 
 		JsonObject params = new JsonObject()
-			.putString("userId", user.getUserId())
-			.putString("folder", folder)
-			.putNumber("skip", skip)
-			.putNumber("limit", LIST_LIMIT)
-			.putBoolean("true", true);
+			.put("userId", user.getUserId())
+			.put("folder", folder)
+			.put("skip", skip)
+			.put("limit", LIST_LIMIT)
+			.put("true", true);
 
 		String messageFilter = "";
 		if(restrain != null){
@@ -422,7 +422,7 @@ public class DefaultConversationService implements ConversationService {
 				"<-[i: INSIDE]-(m:ConversationMessage)<-[r:HAS_CONVERSATION_MESSAGE]-(f: ConversationSystemFolder)<-[:HAS_CONVERSATION_FOLDER]-(c) " +
 				"WHERE NOT HAS(i.trashed) ";
 
-			params.putString("userFolderId", folder);
+			params.put("userFolderId", folder);
 		} else {
 			messageFilter =
 				messageFilter +
@@ -462,10 +462,10 @@ public class DefaultConversationService implements ConversationService {
 		StatementsBuilder b = new StatementsBuilder();
 		for (String id: messagesId) {
 			JsonObject params = new JsonObject()
-					.putString("userId", user.getUserId())
-					.putString("messageId", id)
-					.putBoolean("true", true)
-					.putString("trash", "TRASH");
+					.put("userId", user.getUserId())
+					.put("messageId", id)
+					.put("true", true)
+					.put("trash", "TRASH");
 			b.add(query, params);
 		}
 		neo.executeTransaction(b.build(), null, true, validUniqueResultHandler(result));
@@ -490,10 +490,10 @@ public class DefaultConversationService implements ConversationService {
 		StatementsBuilder b = new StatementsBuilder();
 		for (String id: messagesId) {
 			JsonObject params = new JsonObject()
-					.putString("userId", user.getUserId())
-					.putString("messageId", id)
-					.putBoolean("true", true)
-					.putString("trash", "TRASH");
+					.put("userId", user.getUserId())
+					.put("messageId", id)
+					.put("true", true)
+					.put("trash", "TRASH");
 			b.add(query, params);
 		}
 		neo.executeTransaction(b.build(), null, true, validUniqueResultHandler(result));
@@ -546,10 +546,10 @@ public class DefaultConversationService implements ConversationService {
 		StatementsBuilder b = new StatementsBuilder();
 		for (String id: messagesId) {
 			JsonObject params = new JsonObject()
-					.putString("userId", user.getUserId())
-					.putString("messageId", id)
-					.putBoolean("true", true)
-					.putString("trash", "TRASH");
+					.put("userId", user.getUserId())
+					.put("messageId", id)
+					.put("true", true)
+					.put("trash", "TRASH");
 			b.add(prepareMessage, params);
 			b.add(getAllAttachments, params);
 			b.add(deleteAndCollectAttachments, params);
@@ -577,10 +577,10 @@ public class DefaultConversationService implements ConversationService {
 				"m.subject as subject, m.date as date, m.body as body, m.toName as toName, " +
 				"m.ccName as ccName, m.fromName as fromName, m.displayNames as displayNames, attachments, collect(f.name) as systemFolders";
 		JsonObject params = new JsonObject()
-				.putString("userId", user.getUserId())
-				.putString("messageId", messageId)
-				.putBoolean("true", true)
-				.putBoolean("false", false);
+				.put("userId", user.getUserId())
+				.put("messageId", messageId)
+				.put("true", true)
+				.put("false", false);
 		neo.execute(query, params, validUniqueResultHandler(result));
 	}
 
@@ -589,11 +589,11 @@ public class DefaultConversationService implements ConversationService {
 		if (validationParamsError(user, result, folder)) return;
 		String condition = "";
 		JsonObject params = new JsonObject()
-				.putString("userId", user.getUserId())
-				.putString("folder", folder)
-				.putBoolean("true", true);
+				.put("userId", user.getUserId())
+				.put("folder", folder)
+				.put("true", true);
 		if (unread != null) {
-			params.putBoolean("unread", unread);
+			params.put("unread", unread);
 			if (unread) {
 				condition = "AND r.unread = {unread} ";
 			} else {
@@ -616,14 +616,14 @@ public class DefaultConversationService implements ConversationService {
 		String replyGroupQuery;
 		final JsonObject params = new JsonObject();
 		if (parentMessageId != null && !parentMessageId.trim().isEmpty()) {
-			params.putString("conversation", applicationName);
+			params.put("conversation", applicationName);
 			replyGroupQuery =
 					", (m:ConversationMessage)<-[:HAS_CONVERSATION_MESSAGE]-f" +
 					"<-[:HAS_CONVERSATION_FOLDER]-(c:Conversation) " +
 					"WHERE m.id = {parentMessageId} AND c.userId = {userId} " +
 					"AND (pg.id = visibles.id OR pg.id IN m.to OR pg.id IN m.cc) ";
-			params.putString("userId", user.getUserId())
-					.putString("parentMessageId", parentMessageId);
+			params.put("userId", user.getUserId())
+					.put("parentMessageId", parentMessageId);
 			String groups =
 					"MATCH (app:Application)-[:PROVIDE]->(a:Action)<-[:AUTHORIZE]-(r:Role)" +
 					"<-[:AUTHORIZED]-(g:Group)<-[:DEPENDS*0..1]-(pg:Group) " +
@@ -633,7 +633,7 @@ public class DefaultConversationService implements ConversationService {
 					acceptLanguage, new Handler<JsonArray>() {
 				@Override
 				public void handle(JsonArray visibleGroups) {
-					visible.putArray("groups", visibleGroups);
+					visible.put("groups", visibleGroups);
 					String replyUserQuery;
 						replyUserQuery =
 								", (m:ConversationMessage)<-[:HAS_CONVERSATION_MESSAGE]-f" +
@@ -649,14 +649,14 @@ public class DefaultConversationService implements ConversationService {
 					findVisibleUsers(eb, user.getUserId(), true, true, users, params, new Handler<JsonArray>() {
 						@Override
 						public void handle(JsonArray visibleUsers) {
-							visible.putArray("users", visibleUsers);
+							visible.put("users", visibleUsers);
 							result.handle(new Either.Right<String,JsonObject>(visible));
 					   }
 					});
 				}
 			});
 		} else {
-			params.putBoolean("true", true);
+			params.put("true", true);
 			String groups =
 					"MATCH visibles<-[:IN*0..1]-(u:User)-[:HAS_CONVERSATION]->(c:Conversation {active:{true}}) " +
 					"RETURN DISTINCT visibles.id as id, visibles.name as name, " +
@@ -667,16 +667,16 @@ public class DefaultConversationService implements ConversationService {
 				public void handle(JsonArray visibles) {
 					JsonArray users = new JsonArray();
 					JsonArray groups = new JsonArray();
-					visible.putArray("groups", groups).putArray("users", users);
+					visible.put("groups", groups).putArray("users", users);
 					for (Object o: visibles) {
 						if (!(o instanceof JsonObject)) continue;
 						JsonObject j = (JsonObject) o;
 						if (j.getString("name") != null) {
-							j.removeField("displayName");
+							j.remove("displayName");
 							UserUtils.groupDisplayName(j, acceptLanguage);
 							groups.add(j);
 						} else {
-							j.removeField("name");
+							j.remove("name");
 							users.add(j);
 						}
 					}
@@ -691,15 +691,15 @@ public class DefaultConversationService implements ConversationService {
 		if (validationParamsError(user, result, folderName)) return;
 
 		JsonObject newFolderProps = new JsonObject()
-			.putString("id", UUID.randomUUID().toString())
-			.putString("name", folderName);
+			.put("id", UUID.randomUUID().toString())
+			.put("name", folderName);
 
 		String completeQuery = "";
 
 		JsonObject params = new JsonObject()
-			.putString("userId", user.getUserId())
-			.putBoolean("true", true)
-			.putObject("props", newFolderProps);
+			.put("userId", user.getUserId())
+			.put("true", true)
+			.put("props", newFolderProps);
 
 		if(parentFolderId == null){
 			completeQuery = completeQuery +
@@ -714,7 +714,7 @@ public class DefaultConversationService implements ConversationService {
 				"CREATE UNIQUE (pf)-[:HAS_CHILD_FOLDER]->(nf: ConversationFolder:ConversationUserFolder {props}) "+
 				"RETURN nf.id as id";
 
-			params.putString("parentId", parentFolderId);
+			params.put("parentId", parentFolderId);
 		}
 
 		neo.execute(completeQuery, params, validUniqueResultHandler(result));
@@ -725,12 +725,12 @@ public class DefaultConversationService implements ConversationService {
 		final String name = data.getString("name");
 
 		JsonObject params = new JsonObject()
-			.putString("userId", user.getUserId())
-			.putBoolean("true", true)
-			.putString("targetId", folderId);
+			.put("userId", user.getUserId())
+			.put("true", true)
+			.put("targetId", folderId);
 
 		if(name != null && name.trim().length() > 0){
-			params.putString("newName", name);
+			params.put("newName", name);
 		}
 
 		String query =
@@ -747,9 +747,9 @@ public class DefaultConversationService implements ConversationService {
 		if(validationError(user, result)) return;
 
 		JsonObject params = new JsonObject()
-			.putString("userId", user.getUserId())
-			.putBoolean("true", true)
-			.putString("parentId", parentId);
+			.put("userId", user.getUserId())
+			.put("true", true)
+			.put("parentId", parentId);
 
 		String query = "";
 		if(parentId == null){
@@ -774,8 +774,8 @@ public class DefaultConversationService implements ConversationService {
 		if(validationError(user, result)) return;
 
 		JsonObject params = new JsonObject()
-			.putString("userId", user.getUserId())
-			.putBoolean("true", true);
+			.put("userId", user.getUserId())
+			.put("true", true);
 
 		String query =
 			"MATCH (c:Conversation)-[:TRASHED_CONVERSATION_FOLDER]->(subFolders: ConversationUserFolder) " +
@@ -803,10 +803,10 @@ public class DefaultConversationService implements ConversationService {
 		StatementsBuilder b = new StatementsBuilder();
 		for(String id: messageIds){
 			JsonObject params = new JsonObject()
-				.putString("userId", user.getUserId())
-				.putString("messageId", id)
-				.putBoolean("true", true)
-				.putString("folderId", folderId);
+				.put("userId", user.getUserId())
+				.put("messageId", id)
+				.put("true", true)
+				.put("folderId", folderId);
 
 			b.add(query, params);
 		}
@@ -829,9 +829,9 @@ public class DefaultConversationService implements ConversationService {
 		StatementsBuilder b = new StatementsBuilder();
 		for(String id: messageIds){
 			JsonObject params = new JsonObject()
-				.putString("userId", user.getUserId())
-				.putString("messageId", id)
-				.putBoolean("true", true);
+				.put("userId", user.getUserId())
+				.put("messageId", id)
+				.put("true", true);
 
 			b.add(query, params);
 		}
@@ -885,10 +885,10 @@ public class DefaultConversationService implements ConversationService {
 			"SET trashRel.insideFolder = true";
 
 		JsonObject params = new JsonObject()
-			.putString("userId", user.getUserId())
-			.putString("folderId", folderId)
-			.putBoolean("true", true)
-			.putString("trash", "TRASH");
+			.put("userId", user.getUserId())
+			.put("folderId", folderId)
+			.put("true", true)
+			.put("trash", "TRASH");
 
 		StatementsBuilder b = new StatementsBuilder();
 		b.add(alreadyTrashedFolders, params);
@@ -920,10 +920,10 @@ public class DefaultConversationService implements ConversationService {
 			"REMOVE i.trashed";
 
 		JsonObject params = new JsonObject()
-			.putString("userId", user.getUserId())
-			.putString("folderId", folderId)
-			.putBoolean("true", true)
-			.putString("trash", "TRASH");
+			.put("userId", user.getUserId())
+			.put("folderId", folderId)
+			.put("true", true)
+			.put("trash", "TRASH");
 
 		neo.execute(query, params, validEmptyHandler(result));
 	}
@@ -987,10 +987,10 @@ public class DefaultConversationService implements ConversationService {
 			"DELETE targetParentRel, trashedRel, trashedFolder, children";
 
 		JsonObject params = new JsonObject()
-			.putString("userId", user.getUserId())
-			.putString("folderId", folderId)
-			.putBoolean("true", true)
-			.putString("trash", "TRASH");
+			.put("userId", user.getUserId())
+			.put("folderId", folderId)
+			.put("true", true)
+			.put("trash", "TRASH");
 
 		StatementsBuilder b = new StatementsBuilder();
 		b.add(retrieveAttachments, params);
@@ -1014,20 +1014,20 @@ public class DefaultConversationService implements ConversationService {
 			"RETURN attachment.id as id";
 
 		JsonObject params = new JsonObject()
-			.putString("userId", user.getUserId())
-			.putString("messageId", messageId)
-			.putObject("attachmentProps", new JsonObject()
-				.putString("id", uploaded.getString("_id"))
-				.putString("name", uploaded.getObject("metadata").getString("name"))
-				.putString("filename", uploaded.getObject("metadata").getString("filename"))
-				.putString("contentType", uploaded.getObject("metadata").getString("content-type"))
-				.putString("contentTransferEncoding", uploaded.getObject("metadata").getString("content-transfer-encoding"))
-				.putString("charset", uploaded.getObject("metadata").getString("charset"))
-				.putNumber("size", uploaded.getObject("metadata").getLong("size")))
-			.putString("fileId", uploaded.getString("_id"))
-			.putBoolean("true", true)
-			.putString("trash", "TRASH")
-			.putString("draft", "DRAFT");
+			.put("userId", user.getUserId())
+			.put("messageId", messageId)
+			.put("attachmentProps", new JsonObject()
+				.put("id", uploaded.getString("_id"))
+				.put("name", uploaded.getJsonObject("metadata").getString("name"))
+				.put("filename", uploaded.getJsonObject("metadata").getString("filename"))
+				.put("contentType", uploaded.getJsonObject("metadata").getString("content-type"))
+				.put("contentTransferEncoding", uploaded.getJsonObject("metadata").getString("content-transfer-encoding"))
+				.put("charset", uploaded.getJsonObject("metadata").getString("charset"))
+				.put("size", uploaded.getJsonObject("metadata").getLong("size")))
+			.put("fileId", uploaded.getString("_id"))
+			.put("true", true)
+			.put("trash", "TRASH")
+			.put("draft", "DRAFT");
 
 		neo.execute(query, params, validUniqueResultHandler(result));
 	}
@@ -1044,10 +1044,10 @@ public class DefaultConversationService implements ConversationService {
 			"RETURN attachment.id as id, attachment.name as name, attachment.filename as filename, attachment.contentType as contentType, attachment.contentTransferEncoding as contentTransferEncoding, attachment.charset as charset, attachment.size as size";
 
 		JsonObject params = new JsonObject()
-			.putString("userId", user.getUserId())
-			.putString("messageId", messageId)
-			.putString("attachmentId", attachmentId)
-			.putBoolean("true", true);
+			.put("userId", user.getUserId())
+			.put("messageId", messageId)
+			.put("attachmentId", attachmentId)
+			.put("true", true);
 
 		neo.execute(query, params, validUniqueResultHandler(result));
 	}
@@ -1078,10 +1078,10 @@ public class DefaultConversationService implements ConversationService {
 			"RETURN true as deletionCheck";
 
 		JsonObject params = new JsonObject()
-			.putString("userId", user.getUserId())
-			.putString("messageId", messageId)
-			.putString("attachmentId", attachmentId)
-			.putBoolean("true", true);
+			.put("userId", user.getUserId())
+			.put("messageId", messageId)
+			.put("attachmentId", attachmentId)
+			.put("true", true);
 
 		StatementsBuilder b = new StatementsBuilder();
 		b.add(query, params);
@@ -1101,7 +1101,7 @@ public class DefaultConversationService implements ConversationService {
 				JsonObject jsonResult = result1.size() > 0 ?
 						(JsonObject) result1.get(0) :
 						new JsonObject();
-				jsonResult.putBoolean("deletionCheck", result3.size() > 0 ?
+				jsonResult.put("deletionCheck", result3.size() > 0 ?
 							((JsonObject) result3.get(0)).getBoolean("deletionCheck", false) :
 							false);
 
@@ -1116,11 +1116,11 @@ public class DefaultConversationService implements ConversationService {
 		if (validationParamsError(user, result, messageId)) return;
 
 		JsonObject params = new JsonObject()
-				.putString("userId", user.getUserId())
-				.putString("folderName", "DRAFT")
-				.putString("forwardId", forwardId)
-				.putString("messageId", messageId)
-				.putBoolean("true", true);
+				.put("userId", user.getUserId())
+				.put("folderName", "DRAFT")
+				.put("forwardId", forwardId)
+				.put("messageId", messageId)
+				.put("true", true);
 
 		String query =
 				"MATCH (c:Conversation)-[:HAS_CONVERSATION_FOLDER]->(f:ConversationSystemFolder)" +
@@ -1183,7 +1183,7 @@ public class DefaultConversationService implements ConversationService {
 
 	private String nodeSetPropertiesFromJson(String nodeAlias, JsonObject json) {
 		StringBuilder sb = new StringBuilder();
-		for (String attr: json.getFieldNames()) {
+		for (String attr: json.fieldNames()) {
 			sb.append(", ").append(nodeAlias).append(".").append(attr).append(" = {").append(attr).append("}");
 		}
 		if (sb.length() > 2) {

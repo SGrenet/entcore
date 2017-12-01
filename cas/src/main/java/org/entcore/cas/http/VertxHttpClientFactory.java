@@ -21,7 +21,7 @@ package org.entcore.cas.http;
 
 import fr.wseduc.cas.http.HttpClient;
 import fr.wseduc.cas.http.HttpClientFactory;
-import org.vertx.java.core.Vertx;
+import io.vertx.core.Vertx;
 
 public class VertxHttpClientFactory implements HttpClientFactory {
 
@@ -33,7 +33,7 @@ public class VertxHttpClientFactory implements HttpClientFactory {
 
 	@Override
 	public HttpClient create(String host, int port, boolean ssl) {
-		org.vertx.java.core.http.HttpClient httpClient = vertx.createHttpClient()
+		io.vertx.core.http.HttpClient httpClient = vertx.createHttpClient()
 				.setHost(host)
 				.setPort(port)
 				.setSSL(ssl)

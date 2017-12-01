@@ -22,20 +22,20 @@ package org.entcore.feeder.test.integration.java;
 import org.entcore.common.neo4j.Neo4j;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.AsyncResultHandler;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.testtools.TestVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler<AsyncResult>;
+import io.vertx.core.Handler;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.testtools.TestVerticle;
 
 import java.io.File;
 import java.io.IOException;
 
-import static org.vertx.testtools.VertxAssert.*;
+import static io.vertx.testtools.VertxAssert.*;
 
 public class FeederTest extends TestVerticle {
 
@@ -61,25 +61,25 @@ public class FeederTest extends TestVerticle {
 		vertx.fileSystem().copySync(FeederTest.class.getClassLoader().getResource("aaf-test").getPath(),
 				importTmpFolder.getRoot().getAbsolutePath(), true);
 		JsonObject neo4jConfig = new JsonObject()
-			.putString("address", NEO4J_PERSISTOR)
-			.putString("datastore-path", neo4jTmpFolder.getRoot().getAbsolutePath())
-			.putObject("neo4j", new JsonObject()
-					.putString("node_keys_indexable", "externalId")
-					.putString("node_auto_indexing", "true"));
+			.put("address", NEO4J_PERSISTOR)
+			.put("datastore-path", neo4jTmpFolder.getRoot().getAbsolutePath())
+			.put("neo4j", new JsonObject()
+					.put("node_keys_indexable", "externalId")
+					.put("node_auto_indexing", "true"));
 		container.deployModule("fr.wseduc~mod-neo4j-persistor~1.6.0", neo4jConfig, 1,
-				new AsyncResultHandler<String>() {
+				new Handler<AsyncResult><String>() {
 			@Override
 			public void handle(AsyncResult<String> event) {
 				JsonObject config = new JsonObject()
-						.putString("neo4j-address", NEO4J_PERSISTOR)
-						.putString("feeder", "AAF")
-						.putString("import-files", importTmpFolder.getRoot().getAbsolutePath())
-						.putNumber("delete-user-delay", 10000l)
-						.putNumber("pre-delete-user-delay", 1000l)
-						.putString("delete-cron", "0 */1 * * * ? *")
-						.putString("pre-delete-cron", "0 */1 * * * ? *");
+						.put("neo4j-address", NEO4J_PERSISTOR)
+						.put("feeder", "AAF")
+						.put("import-files", importTmpFolder.getRoot().getAbsolutePath())
+						.put("delete-user-delay", 10000l)
+						.put("pre-delete-user-delay", 1000l)
+						.put("delete-cron", "0 */1 * * * ? *")
+						.put("pre-delete-cron", "0 */1 * * * ? *");
 				container.deployModule(System.getProperty("vertx.modulename"), config, 1,
-						new AsyncResultHandler<String>() {
+						new Handler<AsyncResult><String>() {
 							public void handle(AsyncResult<String> ar) {
 								if (ar.succeeded()) {
 									eb = vertx.eventBus();
@@ -131,18 +131,18 @@ public class FeederTest extends TestVerticle {
 
 	@Test
 	public void testAAF() {
-		importAAF(new VoidHandler() {
+		importAAF(new Handler<Void>() {
 			@Override
 			protected void handle() {
 				addStructure(new Handler<String>() {
 					@Override
 					public void handle(final String structureId) {
 						addManualUser(structureId, "ok");
-						transition(new VoidHandler() {
+						transition(new Handler<Void>() {
 							@Override
 							protected void handle() {
 								deleteUsersInImport();
-								importUpdate(new VoidHandler() {
+								importUpdate(new Handler<Void>() {
 									@Override
 									protected void handle() {
 										testComplete();
@@ -157,13 +157,13 @@ public class FeederTest extends TestVerticle {
 	}
 
 	private void addStructure(final Handler<String> handler) {
-		JsonObject action = new JsonObject().putString("action", "manual-create-structure")
-				.putObject("data", new JsonObject().putString("name", "bla"));
+		JsonObject action = new JsonObject().put("action", "manual-create-structure")
+				.put("data", new JsonObject().put("name", "bla"));
 		eb.send(ENTCORE_FEEDER, action,new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
 				assertEquals("ok", event.body().getString("status"));
-				JsonObject r = event.body().getArray("result").get(0);
+				JsonObject r = event.body().getJsonArray("result").get(0);
 				handler.handle(r.getString("id"));
 			}
 		});
@@ -172,11 +172,11 @@ public class FeederTest extends TestVerticle {
 
 	private void addManualUser(String structureId, final String expectedStatus) {
 		JsonObject j = new JsonObject()
-				.putString("action", "manual-create-user")
-				.putString("profile", "Personnel")
-				.putString("structureId", structureId)
-				.putObject("data", new JsonObject()
-						.putString("firstName", "blip").putString("lastName", "blop"));
+				.put("action", "manual-create-user")
+				.put("profile", "Personnel")
+				.put("structureId", structureId)
+				.put("data", new JsonObject()
+						.put("firstName", "blip").putString("lastName", "blop"));
 		eb.send(ENTCORE_FEEDER, j, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
@@ -192,14 +192,14 @@ public class FeederTest extends TestVerticle {
 				"FULL_ENTTSSERVICES_Complet_20130117_PersEducNat_0000.xml");
 	}
 
-	private void transition(final VoidHandler handler) {
+	private void transition(final Handler<Void> handler) {
 		eb.registerHandler("user.repository", new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> message) {
 				String action = message.body().getString("action", "");
 				switch (action) {
 					case "delete-groups" :
-						JsonArray groups = message.body().getArray("old-groups", new JsonArray());
+						JsonArray groups = message.body().getJsonArray("old-groups", new JsonArray());
 						assertEquals(177 * 5 + 167, groups.size());
 						String countQuery =
 								"MATCH (s:Structure) " +
@@ -212,7 +212,7 @@ public class FeederTest extends TestVerticle {
 							@Override
 							public void handle(Message<JsonObject> event) {
 								assertEquals("ok", event.body().getString("status"));
-								JsonObject r = event.body().getArray("result").get(0);
+								JsonObject r = event.body().getJsonArray("result").get(0);
 								assertEquals(11, (int) r.getInteger("nbStructures", 0));
 								assertEquals(0, (int) r.getInteger("nbClasses", 0));
 								assertEquals(0, (int) r.getInteger("nbFunctionalGroups", 0));
@@ -226,11 +226,11 @@ public class FeederTest extends TestVerticle {
 						fail("invalid.action");
 				}
 			}
-		}, new AsyncResultHandler<Void>() {
+		}, new Handler<AsyncResult><Void>() {
 			@Override
 			public void handle(AsyncResult<Void> event) {
 				if (event.succeeded()) {
-					eb.send(ENTCORE_FEEDER, new JsonObject().putString("action", "transition"),
+					eb.send(ENTCORE_FEEDER, new JsonObject().put("action", "transition"),
 							new Handler<Message<JsonObject>>() {
 						@Override
 						public void handle(Message<JsonObject> message) {
@@ -244,8 +244,8 @@ public class FeederTest extends TestVerticle {
 		});
 	}
 
-	private void importAAF(final VoidHandler handler) {
-		eb.send(ENTCORE_FEEDER, new JsonObject().putString("action", "import"), new Handler<Message<JsonObject>>() {
+	private void importAAF(final Handler<Void> handler) {
+		eb.send(ENTCORE_FEEDER, new JsonObject().put("action", "import"), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> message) {
 				assertEquals("ok", message.body().getString("status"));
@@ -260,7 +260,7 @@ public class FeederTest extends TestVerticle {
 					@Override
 					public void handle(Message<JsonObject> event) {
 						assertEquals("ok", event.body().getString("status"));
-						JsonObject r = event.body().getArray("result").get(0);
+						JsonObject r = event.body().getJsonArray("result").get(0);
 						assertEquals(13295, (int) r.getInteger("nbUsers", 0));
 						assertEquals(10, (int) r.getInteger("nbStructures", 0));
 						assertEquals(177, (int) r.getInteger("nbClasses", 0));
@@ -273,14 +273,14 @@ public class FeederTest extends TestVerticle {
 		});
 	}
 
-	private void importUpdate(final VoidHandler handler) {
+	private void importUpdate(final Handler<Void> handler) {
 		eb.registerHandler("user.repository", new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> message) {
 				String action = message.body().getString("action", "");
 				switch (action) {
 					case "delete-users":
-						JsonArray users = message.body().getArray("old-users", new JsonArray());
+						JsonArray users = message.body().getJsonArray("old-users", new JsonArray());
 						assertEquals(11769, users.size());
 						String type = users.<JsonObject>get(0).getString("type");
 						assertNotNull(type);
@@ -291,7 +291,7 @@ public class FeederTest extends TestVerticle {
 							@Override
 							public void handle(Message<JsonObject> event) {
 								assertEquals("ok", event.body().getString("status"));
-								JsonObject r = event.body().getArray("result").get(0);
+								JsonObject r = event.body().getJsonArray("result").get(0);
 								assertEquals(13295 - 11769 + 1, (int) r.getInteger("nbUsers", 0));
 								handler.handle(null);
 							}
@@ -301,11 +301,11 @@ public class FeederTest extends TestVerticle {
 						fail("invalid.action : " + action);
 				}
 			}
-		}, new AsyncResultHandler<Void>() {
+		}, new Handler<AsyncResult><Void>() {
 			@Override
 			public void handle(AsyncResult<Void> event) {
 				if (event.succeeded()) {
-					eb.send(ENTCORE_FEEDER, new JsonObject().putString("action", "import"),
+					eb.send(ENTCORE_FEEDER, new JsonObject().put("action", "import"),
 							new Handler<Message<JsonObject>>() {
 								@Override
 								public void handle(Message<JsonObject> message) {
@@ -318,7 +318,7 @@ public class FeederTest extends TestVerticle {
 										@Override
 										public void handle(Message<JsonObject> event) {
 											assertEquals("ok", event.body().getString("status"));
-											JsonObject r = event.body().getArray("result").get(0);
+											JsonObject r = event.body().getJsonArray("result").get(0);
 											assertEquals(11769, (int) r.getInteger("nbUsers", 0));
 										}
 									});

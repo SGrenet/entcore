@@ -37,9 +37,9 @@ import org.entcore.timeline.controllers.TimelineController;
 import org.entcore.timeline.cron.DailyMailingCronTask;
 import org.entcore.timeline.cron.WeeklyMailingCronTask;
 import org.entcore.timeline.services.impl.FlashMsgRepositoryEventsSql;
-import org.vertx.java.core.impl.VertxInternal;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.spi.cluster.ClusterManager;
+import io.vertx.core.impl.VertxInternal;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.spi.cluster.ClusterManager;
 
 public class Timeline extends BaseServer {
 

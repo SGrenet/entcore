@@ -45,17 +45,17 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.file.FileProps;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.http.RouteMatcher;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.platform.Container;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.file.FileProps;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.RouteMatcher;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.platform.Container;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 import static org.entcore.common.user.SessionAttributes.*;
@@ -85,7 +85,7 @@ public class PortalController extends BaseController {
 		themes = new HashMap<>();
 		themesDetails = new HashMap<>();
 		this.hostSkin = new HashMap<>();
-		for (final String domain: skins.getFieldNames()) {
+		for (final String domain: skins.fieldNames()) {
 			final String skin = skins.getString(domain);
 			this.hostSkin.put(domain, skin);
 			ThemeUtils.availableThemes(vertx, assetsPath + "/assets/themes/" + skin + "/skins", false, new Handler<List<String>>() {
@@ -96,22 +96,22 @@ public class PortalController extends BaseController {
 					for (final String s : event) {
 						String path = assetsPath + "/assets/themes/" + skin + "/skins/" + s + "/";
 						final JsonObject j = new JsonObject()
-								.putString("_id", s)
-								.putString("path", path);
+								.put("_id", s)
+								.put("path", path);
 						if ("default".equals(s)) {
 							vertx.fileSystem().readFile(path + "/details.json", new Handler<AsyncResult<Buffer>>() {
 								@Override
 								public void handle(AsyncResult<Buffer> event) {
 									if (event.succeeded()) {
 										JsonObject d = new JsonObject(event.result().toString());
-										j.putString("displayName", d.getString("displayName"));
+										j.put("displayName", d.getString("displayName"));
 									} else {
-										j.putString("displayName", s);
+										j.put("displayName", s);
 									}
 								}
 							});
 						} else {
-							j.putString("displayName", s);
+							j.put("displayName", s);
 						}
 						a.add(j);
 					}
@@ -153,7 +153,7 @@ public class PortalController extends BaseController {
 
 			@Override
 			public void handle(JsonObject session) {
-				JsonArray apps = session.getArray("apps", new JsonArray());
+				JsonArray apps = session.getJsonArray("apps", new JsonArray());
 				for (Object o : apps) {
 					if (!(o instanceof JsonObject)) continue;
 					JsonObject j = (JsonObject) o;
@@ -162,11 +162,11 @@ public class PortalController extends BaseController {
 						d = j.getString("name");
 					}
 					if (d != null) {
-						j.putString("displayName", d);
+						j.put("displayName", d);
 					}
 				}
 				JsonObject json = new JsonObject()
-						.putArray("apps", apps);
+						.put("apps", apps);
 				renderJson(request, json);
 			}
 		});
@@ -178,9 +178,9 @@ public class PortalController extends BaseController {
 		String eliotPrefix = request.params().get("eliot");
 		eliotPrefix = eliotPrefix == null ? "" : eliotPrefix;
 
-		renderView(request, new JsonObject().putString("eliotPrefix", eliotPrefix));
+		renderView(request, new JsonObject().put("eliotPrefix", eliotPrefix));
 		eventStore.createAndStoreEvent(PortalEvent.ACCESS_ADAPTER.name(),
-				request, new JsonObject().putString("adapter", request.uri()));
+				request, new JsonObject().put("adapter", request.uri()));
 	}
 
 	@Get(value = "/assets/.+", regex = true)
@@ -212,9 +212,9 @@ public class PortalController extends BaseController {
 			return overrideTheme;
 		}
 		if (request instanceof SecureHttpServerRequest && ((SecureHttpServerRequest) request).getSession() != null) {
-			JsonObject cache = ((SecureHttpServerRequest) request).getSession().getObject("cache");
-			if (cache != null && cache.getObject("preferences") != null) {
-				final String theme = cache.getObject("preferences").getString("theme");
+			JsonObject cache = ((SecureHttpServerRequest) request).getSession().getJsonObject("cache");
+			if (cache != null && cache.getJsonObject("preferences") != null) {
+				final String theme = cache.getJsonObject("preferences").getString("theme");
 				if (isNotEmpty(theme)) {
 					return theme;
 				}
@@ -265,10 +265,10 @@ public class PortalController extends BaseController {
 						renderJson(request, new JsonObject(t.toString()));
 						return;
 					}
-					JsonObject urls = container.config().getObject("urls", new JsonObject());
+					JsonObject urls = container.config().getJsonObject("urls", new JsonObject());
 					final JsonObject theme = new JsonObject()
-							.putString("template", "/public/template/portal.html")
-							.putString("logoutCallback", getLogoutCallback(request, urls));
+							.put("template", "/public/template/portal.html")
+							.put("logoutCallback", getLogoutCallback(request, urls));
 					String query =
 							"MATCH (n:User)-[:USERBOOK]->u " +
 							"WHERE n.id = {id} " +
@@ -279,17 +279,17 @@ public class PortalController extends BaseController {
 						@Override
 						public void handle(Message<JsonObject> event) {
 							if ("ok".equals(event.body().getString("status"))) {
-								JsonArray result = event.body().getArray("result");
+								JsonArray result = event.body().getJsonArray("result");
 								String userTheme = (result != null && result.size() == 1) ?
 										result.<JsonObject>get(0).getString("theme") : null;
 								List<String> t = themes.get(getSkinFromConditions(request));
 								if (userTheme != null && t != null && t.contains(userTheme)) {
-									theme.putString("skin", getThemePrefix(request) + "/skins/" + userTheme + "/");
+									theme.put("skin", getThemePrefix(request) + "/skins/" + userTheme + "/");
 								} else {
-									theme.putString("skin", getThemePrefix(request) + "/skins/default/");
+									theme.put("skin", getThemePrefix(request) + "/skins/default/");
 								}
 							} else {
-								theme.putString("skin", getThemePrefix(request) + "/skins/default/");
+								theme.put("skin", getThemePrefix(request) + "/skins/default/");
 							}
 							renderJson(request, theme);
 							UserUtils.addSessionAttribute(eb, user.getUserId(), theme_attr, theme.encode(), null);
@@ -309,12 +309,12 @@ public class PortalController extends BaseController {
 
 	@Get("/skin")
 	public void getSkin(final HttpServerRequest request) {
-		renderJson(request, new JsonObject().putString("skin", getSkinFromConditions(request)));
+		renderJson(request, new JsonObject().put("skin", getSkinFromConditions(request)));
 	}
 
 	@Get("/skins")
 	public void getSkins(final  HttpServerRequest request) {
-		renderJson(request, new JsonObject().putArray("skins", new JsonArray()), 200);
+		renderJson(request, new JsonObject().put("skins", new JsonArray()), 200);
 	}
 
 	@Put("skin")
@@ -335,19 +335,19 @@ public class PortalController extends BaseController {
 			lang = "fr";
 		}
 		String[] langs = lang.split(",");
-		renderJson(request, new JsonObject().putString("locale",
+		renderJson(request, new JsonObject().put("locale",
 				Locale.forLanguageTag(langs[0].split("-")[0]).toString()));
 	}
 
 	@Get("/admin-urls")
 	@SecuredAction(value = "config", type = ActionType.AUTHENTICATED)
 	public void adminURLS(HttpServerRequest request){
-		renderJson(request, container.config().getArray("admin-urls", new JsonArray()));
+		renderJson(request, container.config().getJsonArray("admin-urls", new JsonArray()));
 	}
 
 	@Get("/resources-applications")
 	public void resourcesApplications(HttpServerRequest request){
-		renderJson(request, container.config().getArray("resources-applications", new JsonArray()));
+		renderJson(request, container.config().getJsonArray("resources-applications", new JsonArray()));
 	}
 
 	@Get("/quickstart")

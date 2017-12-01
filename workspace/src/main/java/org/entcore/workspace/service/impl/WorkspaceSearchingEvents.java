@@ -30,12 +30,12 @@ import org.entcore.common.service.VisibilityFilter;
 import org.entcore.common.service.impl.MongoDbSearchService;
 import org.entcore.common.utils.DateUtils;
 import org.entcore.common.utils.StringUtils;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import java.text.ParseException;
 import java.util.*;
@@ -91,14 +91,14 @@ public class WorkspaceSearchingEvents implements SearchingEvents {
 
             final QueryBuilder query = new QueryBuilder().and(fileQuery.get(), rightsQuery.get(), worldsQuery.get());
 
-            JsonObject sort = new JsonObject().putNumber("modified", -1);
+            JsonObject sort = new JsonObject().put("modified", -1);
             final JsonObject projection = new JsonObject();
-            projection.putNumber("name", 1);
-            projection.putNumber("modified", 1);
-            projection.putNumber("folder", 1);
-            projection.putNumber("owner", 1);
-            projection.putNumber("ownerName", 1);
-            projection.putNumber("comments", 1);
+            projection.put("name", 1);
+            projection.put("modified", 1);
+            projection.put("folder", 1);
+            projection.put("owner", 1);
+            projection.put("ownerName", 1);
+            projection.put("comments", 1);
 
             final int skip = (0 == page) ? -1 : page * limit;
 
@@ -161,8 +161,8 @@ public class WorkspaceSearchingEvents implements SearchingEvents {
                                               final List<String> searchWordsLst, final String locale, final String userId,
                                               final Handler<Either<String, JsonArray>> handler) {
         final JsonObject projection = new JsonObject();
-        projection.putNumber("folder", 1);
-        projection.putNumber("owner", 1);
+        projection.put("folder", 1);
+        projection.put("owner", 1);
         mongo.find(collection, MongoQueryBuilder.build(queryFindFolderIds), null,
                 projection, new Handler<Message<JsonObject>>() {
                     @Override
@@ -216,13 +216,13 @@ public class WorkspaceSearchingEvents implements SearchingEvents {
                     log.error("Can't parse date from modified", e);
                 }
                 final String owner = j.getString("owner", "");
-                final Map<String, Object> map = formatDescription(j.getArray("comments", new JsonArray()),
+                final Map<String, Object> map = formatDescription(j.getJsonArray("comments", new JsonArray()),
                         words, modified, locale);
-                jr.putString(aHeader.get(0), j.getString("name"));
-                jr.putString(aHeader.get(1), map.get("description").toString());
-                jr.putObject(aHeader.get(2), new JsonObject().putValue("$date", ((Date) map.get("modified")).getTime()));
-                jr.putString(aHeader.get(3), j.getString("ownerName", ""));
-                jr.putString(aHeader.get(4), owner);
+                jr.put(aHeader.get(0), j.getString("name"));
+                jr.put(aHeader.get(1), map.get("description").toString());
+                jr.put(aHeader.get(2), new JsonObject().putValue("$date", ((Date) map.get("modified")).getTime()));
+                jr.put(aHeader.get(3), j.getString("ownerName", ""));
+                jr.put(aHeader.get(4), owner);
                 //default front route (no folder and the file belongs to the owner)
                 String resourceURI = "/workspace/workspace";
 
@@ -240,7 +240,7 @@ public class WorkspaceSearchingEvents implements SearchingEvents {
                         resourceURI += "#/shared";
                     }
                 }
-                jr.putString(aHeader.get(5), resourceURI);
+                jr.put(aHeader.get(5), resourceURI);
                 traity.add(jr);
             }
         }

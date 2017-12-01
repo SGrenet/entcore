@@ -20,12 +20,12 @@
 package org.entcore.infra.services.impl;
 
 import fr.wseduc.webutils.DefaultAsyncResult;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.AsyncResultHandler;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler<AsyncResult>;
+import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonObject;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -34,8 +34,8 @@ import java.util.Scanner;
 public class ClamAvService extends AbstractAntivirusService {
 
 	@Override
-	public void parseScanReport(String path, final AsyncResultHandler<List<InfectedFile>> handler) {
-		vertx.fileSystem().readFile(path, new AsyncResultHandler<Buffer>() {
+	public void parseScanReport(String path, final Handler<AsyncResult><List<InfectedFile>> handler) {
+		vertx.fileSystem().readFile(path, new Handler<AsyncResult><Buffer>() {
 			@Override
 			public void handle(AsyncResult<Buffer> event) {
 				if (event.succeeded()) {
@@ -65,7 +65,7 @@ public class ClamAvService extends AbstractAntivirusService {
 	@Override
 	public void scan(String file) {
 		String command = "clamdscan -m --fdpass " + file;
-		JsonObject m = new JsonObject().putString("command", command);
+		JsonObject m = new JsonObject().put("command", command);
 		vertx.eventBus().send("exec.command", m, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {

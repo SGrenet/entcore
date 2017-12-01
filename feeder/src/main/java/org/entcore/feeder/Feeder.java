@@ -38,14 +38,14 @@ import org.entcore.feeder.export.Exporter;
 import org.entcore.feeder.export.eliot.EliotExporter;
 import org.entcore.feeder.timetable.udt.UDTImporter;
 import org.entcore.feeder.utils.*;
-import org.vertx.java.busmods.BusModBase;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.AsyncResultHandler;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.busmods.BusModBase;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler<AsyncResult>;
+import io.vertx.core.Handler;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import java.text.ParseException;
 import java.util.HashMap;
@@ -87,21 +87,21 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 		defaultFeed = container.config().getString("feeder", "AAF");
 		feeds.put("AAF", new AafFeeder(vertx, getFilesDirectory("AAF")));
 		feeds.put("AAF1D", new Aaf1dFeeder(vertx, getFilesDirectory("AAF1D")));
-		feeds.put("CSV", new CsvFeeder(vertx, container.config().getObject("csvMappings", new JsonObject())));
+		feeds.put("CSV", new CsvFeeder(vertx, container.config().getJsonObject("csvMappings", new JsonObject())));
 		final long deleteUserDelay = container.config().getLong("delete-user-delay", 90 * 24 * 3600 * 1000l);
 		final long preDeleteUserDelay = container.config().getLong("pre-delete-user-delay", 90 * 24 * 3600 * 1000l);
 		final String deleteCron = container.config().getString("delete-cron", "0 0 2 * * ? *");
 		final String preDeleteCron = container.config().getString("pre-delete-cron", "0 0 3 * * ? *");
 		final String importCron = container.config().getString("import-cron");
-		final JsonObject imports = container.config().getObject("imports");
-		final JsonObject preDelete = container.config().getObject("pre-delete");
+		final JsonObject imports = container.config().getJsonObject("imports");
+		final JsonObject preDelete = container.config().getJsonObject("pre-delete");
 		try {
 			new CronTrigger(vertx, deleteCron).schedule(new User.DeleteTask(deleteUserDelay, eb));
 			if (preDelete != null) {
 				if (preDelete.size() == ManualFeeder.profiles.size() &&
-						ManualFeeder.profiles.keySet().containsAll(preDelete.getFieldNames())) {
-					for (String profile : preDelete.getFieldNames()) {
-						final JsonObject profilePreDelete = preDelete.getObject(profile);
+						ManualFeeder.profiles.keySet().containsAll(preDelete.fieldNames())) {
+					for (String profile : preDelete.fieldNames()) {
+						final JsonObject profilePreDelete = preDelete.getJsonObject(profile);
 						if (profilePreDelete == null || profilePreDelete.getString("cron") == null ||
 								profilePreDelete.getLong("delay") == null) continue;
 						new CronTrigger(vertx, profilePreDelete.getString("cron"))
@@ -112,9 +112,9 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 				new CronTrigger(vertx, preDeleteCron).schedule(new User.PreDeleteTask(preDeleteUserDelay));
 			}
 			if (imports != null) {
-				if (feeds.keySet().containsAll(imports.getFieldNames())) {
-					for (String f : imports.getFieldNames()) {
-						final JsonObject i = imports.getObject(f);
+				if (feeds.keySet().containsAll(imports.fieldNames())) {
+					for (String f : imports.fieldNames()) {
+						final JsonObject i = imports.getJsonObject(f);
 						if (i != null && i.getString("cron") != null) {
 							new CronTrigger(vertx, i.getString("cron")).schedule(
 									new ImporterTask(eb, f, i.getBoolean("auto-export", false)));
@@ -136,7 +136,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 		manual = new ManualFeeder(neo4j);
 		duplicateUsers = new DuplicateUsers(container.config().getBoolean("timetable", true));
 		postImport = new PostImport(vertx, duplicateUsers, container.config());
-		vertx.eventBus().registerLocalHandler(
+		vertx.eventBus().localConsumer(
 				container.config().getString("address", FEEDER_ADDRESS), this);
 		switch (container.config().getString("exporter", "")) {
 			case "ELIOT" :
@@ -146,7 +146,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 						container.config().getBoolean("delete-export", true), vertx);
 				break;
 		}
-		final JsonObject edt = container.config().getObject("edt");
+		final JsonObject edt = container.config().getJsonObject("edt");
 		if (edt != null) {
 			final String pronotePrivateKey = edt.getString("pronote-private-key");
 			if (isNotEmpty(pronotePrivateKey)) {
@@ -164,7 +164,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 				}
 			}
 		}
-		final JsonObject udt = container.config().getObject("udt");
+		final JsonObject udt = container.config().getJsonObject("udt");
 		if (udt != null) {
 			final String udtPath = udt.getString("path");
 			final String udtCron = udt.getString("cron");
@@ -177,11 +177,11 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 				}
 			}
 		}
-		final JsonObject csv = container.config().getObject("csv");
+		final JsonObject csv = container.config().getJsonObject("csv");
 		if (csv != null) {
 			final String csvPath = csv.getString("path");
 			final String csvCron = csv.getString("cron");
-			final JsonObject csvConfig = csv.getObject("config");
+			final JsonObject csvConfig = csv.getJsonObject("config");
 			if (isNotEmpty(csvPath) && isNotEmpty(csvCron) && csvConfig != null) {
 				try {
 					new CronTrigger(vertx, csvCron).schedule(
@@ -195,9 +195,9 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 	}
 
 	private String getFilesDirectory(String feeder) {
-		JsonObject imports = container.config().getObject("imports");
-		if (imports != null && imports.getObject(feeder) != null && imports.getObject(feeder).getString("files") != null) {
-			return imports.getObject(feeder).getString("files");
+		JsonObject imports = container.config().getJsonObject("imports");
+		if (imports != null && imports.getJsonObject(feeder) != null && imports.getJsonObject(feeder).getString("files") != null) {
+			return imports.getJsonObject(feeder).getString("files");
 		}
 		return config.getString("import-files");
 	}
@@ -288,7 +288,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 				duplicateUsers.markDuplicates(message);
 				break;
 			case "automerge-duplicates" :
-				duplicateUsers.autoMergeDuplicatesInStructure(new AsyncResultHandler<JsonArray>() {
+				duplicateUsers.autoMergeDuplicatesInStructure(new Handler<AsyncResult><JsonArray>() {
 					@Override
 					public void handle(AsyncResult<JsonArray> event) {
 						logger.info("auto merged : " + event.succeeded());
@@ -323,7 +323,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 		switch (source) {
 			case "CSV":
 				v = new CsvValidator(vertx, acceptLanguage,
-						container.config().getObject("csvMappings", new JsonObject()));
+						container.config().getJsonObject("csvMappings", new JsonObject()));
 				break;
 			case "AAF":
 			case "AAF1D":
@@ -331,7 +331,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 				if (handler != null) {
 					handler.handle(report);
 				} else {
-					sendOK(message, new JsonObject().putObject("result", report.getResult()));
+					sendOK(message, new JsonObject().put("result", report.getResult()));
 				}
 				return;
 			default:
@@ -351,28 +351,28 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 				final Report r = (Report) v;
 				if (preDelete && structureExternalId != null && !r.containsErrors()) {
 					final JsonArray externalIds = r.getUsersExternalId();
-					final JsonArray profiles = r.getResult().getArray(Report.PROFILES);
+					final JsonArray profiles = r.getResult().getJsonArray(Report.PROFILES);
 					new User.PreDeleteTask(0).findMissingUsersInStructure(
 							structureExternalId, source, externalIds, profiles, new Handler<Message<JsonObject>>() {
 						@Override
 						public void handle(Message<JsonObject> event) {
-							final JsonArray res = event.body().getArray("result");
+							final JsonArray res = event.body().getJsonArray("result");
 							if ("ok".equals(event.body().getString("status")) && res != null) {
 								for (Object o : res) {
 									if (!(o instanceof JsonObject)) continue;
 									JsonObject j = (JsonObject) o;
 									String filename = j.getString("profile");
-									r.addUser(filename, j.putString("state", r.translate(Report.State.DELETED.name()))
-											.putString("translatedProfile", r.translate(j.getString("profile"))));
+									r.addUser(filename, j.put("state", r.translate(Report.State.DELETED.name()))
+											.put("translatedProfile", r.translate(j.getString("profile"))));
 								}
-								r.getResult().putArray("usersExternalIds", externalIds);
+								r.getResult().put("usersExternalIds", externalIds);
 							} else {
 								r.addError("error.find.preDelete");
 							}
 							if (handler != null) {
 								handler.handle(r);
 							} else {
-								sendOK(message, new JsonObject().putObject("result", r.getResult()));
+								sendOK(message, new JsonObject().put("result", r.getResult()));
 							}
 						}
 					});
@@ -380,7 +380,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 					if (handler != null) {
 						handler.handle(r);
 					} else {
-						sendOK(message, new JsonObject().putObject("result", r.getResult()));
+						sendOK(message, new JsonObject().put("result", r.getResult()));
 					}
 				}
 			}
@@ -401,8 +401,8 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 					logger.info(m.body().encode());
 					message.reply(m.body());
 					eb.publish(USER_REPOSITORY, new JsonObject()
-							.putString("action", "exported")
-							.putString("exportFormat", exporter.getName())
+							.put("action", "exported")
+							.put("exportFormat", exporter.getName())
 					);
 				}
 			});
@@ -419,7 +419,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 				@Override
 				public void handle(Message<JsonObject> m) {
 					if (m != null && "ok".equals(m.body().getString("status"))) {
-						Transition.publishDeleteGroups(eb, logger, m.body().getArray("result", new JsonArray()));
+						Transition.publishDeleteGroups(eb, logger, m.body().getJsonArray("result", new JsonArray()));
 						AbstractTimetableImporter.transition(structureExternalId);
 						if (handler != null) {
 							handler.handle(m);
@@ -491,8 +491,8 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 								return;
 							}
 							final JsonObject ir = importReport.getResult();
-							final JsonArray existingUsers = ir.getArray("usersExternalIds");
-							final JsonArray profiles = ir.getArray(Report.PROFILES);
+							final JsonArray existingUsers = ir.getJsonArray("usersExternalIds");
+							final JsonArray profiles = ir.getJsonArray(Report.PROFILES);
 							if (preDelete && structureExternalId != null && existingUsers != null &&
 									existingUsers.size() > 0 && !importReport.containsErrors()) {
 								new User.PreDeleteTask(0).preDeleteMissingUsersInStructure(
@@ -502,16 +502,16 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 										if (!"ok".equals(event.body().getString("status"))) {
 											importReport.addError("preDelete.error");
 										}
-										sendOK(message, new JsonObject().putObject("result", importReport.getResult()));
+										sendOK(message, new JsonObject().put("result", importReport.getResult()));
 									}
 								});
 							} else {
-								sendOK(message, new JsonObject().putObject("result", importReport.getResult()));
+								sendOK(message, new JsonObject().put("result", importReport.getResult()));
 							}
 						}
 					});
 				} else if (report != null) {
-					sendOK(message, new JsonObject().putObject("result", report.getResult()));
+					sendOK(message, new JsonObject().put("result", report.getResult()));
 				} else {
 					sendError(message, "validation.error");
 				}
@@ -556,7 +556,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 									if (m != null) {
 										logger.error(m.body().getString("message"));
 										report.addError(m.body().getString("message"));
-									} else if (report.getResult().getObject("errors").size() < 1) {
+									} else if (report.getResult().getJsonObject("errors").size() < 1) {
 										logger.error("Import return null value.");
 										report.addError("import.error");
 									}
@@ -566,7 +566,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 								final long endTime = System.currentTimeMillis();
 								report.setEndTime(endTime);
 								report.setStartTime(start);
-								report.countDiff(new VoidHandler() {
+								report.countDiff(new Handler<Void>() {
 									@Override
 									protected void handle() {
 										report.emailReport(vertx, container);

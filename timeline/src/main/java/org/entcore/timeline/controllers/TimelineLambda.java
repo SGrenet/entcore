@@ -24,12 +24,12 @@ import com.samskivert.mustache.Template;
 import fr.wseduc.webutils.I18n;
 import fr.wseduc.webutils.Utils;
 import fr.wseduc.webutils.http.Renders;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.json.DecodeException;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.DecodeException;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -104,7 +104,7 @@ public final class TimelineLambda {
 				JsonArray nestedArray = new JsonArray((List<Object>) ctx.get("nestedTemplatesArray"));
 				try {
 					JsonObject nestedTemplate = (JsonObject) nestedArray.get(Integer.parseInt(nestedTemplatePos) - 1);
-					ctx.putAll(nestedTemplate.getObject("params", new JsonObject()).toMap());
+					ctx.putAll(nestedTemplate.getJsonObject("params", new JsonObject()).toMap());
 					Mustache.compiler()
 							.compile(nestedTemplate.getString("template", ""))
 							.execute(ctx, out);

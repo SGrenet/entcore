@@ -29,15 +29,15 @@ import fr.wseduc.webutils.I18n;
 import fr.wseduc.webutils.email.EmailSender;
 import org.entcore.common.email.EmailFactory;
 import org.joda.time.DateTime;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.eventbus.EventBus;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.shareddata.ConcurrentSharedMap;
-import org.vertx.java.platform.Container;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.shareddata.ConcurrentSharedMap;
+import io.vertx.platform.Container;
 import org.entcore.common.neo4j.Neo;
 import org.entcore.common.neo4j.Neo4jResult;
 import org.entcore.common.validation.StringValidation;
@@ -102,22 +102,22 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 			@Override
 			public void handle(Message<JsonObject> res) {
 				if ("ok".equals(res.body().getString("status"))
-						&& res.body().getObject("result").getObject("0") != null) {
+						&& res.body().getJsonObject("result").getJsonObject("0") != null) {
 					JsonObject jo = new JsonObject()
-							.putString("userId", res.body().getObject("result").getObject("0").getString("id"))
-							.putString("profile", res.body().getObject("result").getObject("0").getString("profile"))
-							.putObject("request", new JsonObject()
-									.putObject("headers", new JsonObject()
-											.putString("Accept-Language", I18n.acceptLanguage(request))
-											.putString("Host", Renders.getHost(request))
+							.put("userId", res.body().getJsonObject("result").getJsonObject("0").getString("id"))
+							.put("profile", res.body().getJsonObject("result").getJsonObject("0").getString("profile"))
+							.put("request", new JsonObject()
+									.put("headers", new JsonObject()
+											.put("Accept-Language", I18n.acceptLanguage(request))
+											.put("Host", Renders.getHost(request))
 									)
 							);
 					if (isNotEmpty(theme)) {
-						jo.putString("theme", theme);
+						jo.put("theme", theme);
 					}
 					Server.getEventBus(vertx).publish("activation.ack", jo);
 					handler.handle(new Either.Right<String, String>(
-							res.body().getObject("result").getObject("0").getString("id")));
+							res.body().getJsonObject("result").getJsonObject("0").getString("id")));
 				} else {
 					String q =
 							"MATCH (n:User) " +
@@ -130,11 +130,11 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 						@Override
 						public void handle(Message<JsonObject> event) {
 							if ("ok".equals(event.body().getString("status")) &&
-									event.body().getObject("result").getObject("0") != null &&
-									BCrypt.checkpw(password, event.body().getObject("result").getObject("0")
+									event.body().getJsonObject("result").getJsonObject("0") != null &&
+									BCrypt.checkpw(password, event.body().getJsonObject("result").getJsonObject("0")
 											.getString("password", ""))) {
 								handler.handle(new Either.Right<String, String>(
-										event.body().getObject("result").getObject("0").getString("id")));
+										event.body().getJsonObject("result").getJsonObject("0").getString("id")));
 							} else {
 								handler.handle(new Either.Left<String, String>("invalid.activation"));
 							}
@@ -155,8 +155,8 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 				"RETURN true as exists";
 
 		JsonObject params = new JsonObject()
-			.putString("login", login)
-			.putString("activationCode", potentialActivationCode);
+			.put("login", login)
+			.put("activationCode", potentialActivationCode);
 		neo.execute(query, params, Neo4jResult.validUniqueResultHandler(new Handler<Either<String,JsonObject>>() {
 			@Override
 			public void handle(Either<String, JsonObject> event) {
@@ -177,8 +177,8 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 				"RETURN true as exists";
 
 		JsonObject params = new JsonObject()
-			.putString("login", login)
-			.putString("resetCode", potentialResetCode);
+			.put("login", login)
+			.put("resetCode", potentialResetCode);
 		neo.execute(query, params, Neo4jResult.validUniqueResultHandler(new Handler<Either<String,JsonObject>>() {
 			@Override
 			public void handle(Either<String, JsonObject> event) {
@@ -193,7 +193,7 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 	@Override
 	public void findByMail(final String email, final Handler<Either<String,JsonObject>> handler) {
 		String query = "MATCH (u:User) WHERE u.email = {mail} AND u.activationCode IS NULL RETURN u.login as login, u.mobile as mobile";
-		JsonObject params = new JsonObject().putString("mail", email);
+		JsonObject params = new JsonObject().put("mail", email);
 
 		neo.execute(query, params, Neo4jResult.validUniqueResultHandler(handler));
 	}
@@ -207,11 +207,11 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 				(setFirstname ? " AND u.firstName =~ {firstName}" : "") +
 				(setStructure ? " AND s.id = {structure}" : "") +
 				" AND u.activationCode IS NULL RETURN DISTINCT u.login as login, u.mobile as mobile, s.name as structureName, s.id as structureId";
-		JsonObject params = new JsonObject().putString("mail", email);
+		JsonObject params = new JsonObject().put("mail", email);
 		if(setFirstname)
-			params.putString("firstName", "(?i)"+firstName);
+			params.put("firstName", "(?i)"+firstName);
 		if(setStructure)
-			params.putString("structure", structure);
+			params.put("structure", structure);
 		neo.execute(query, params, Neo4jResult.validResultHandler(handler));
 	}
 
@@ -237,10 +237,10 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 			(setResetCode ? "SET n.resetCode = {resetCode}, n.resetDate = {today} " : "") +
 			"RETURN p.email as email";
 
-		final JsonObject params = new JsonObject().putString("login", login);
+		final JsonObject params = new JsonObject().put("login", login);
 		if(setResetCode)
-			params.putString("resetCode", resetCode)
-				.putNumber("today", new Date().getTime());
+			params.put("resetCode", resetCode)
+				.put("today", new Date().getTime());
 
 		neo.execute(basicQuery, params, Neo4jResult.validUniqueResultHandler(new Handler<Either<String,JsonObject>>() {
 			public void handle(Either<String, JsonObject> result) {
@@ -260,7 +260,7 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 								return;
 							}
 
-							resultTeacher.right().getValue().putString("mobile", mobile);
+							resultTeacher.right().getValue().put("mobile", mobile);
 							handler.handle(resultTeacher);
 						}
 					}));
@@ -278,8 +278,8 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 			return;
 		}
 		JsonObject json = new JsonObject()
-				.putString("host", notification.getHost(request))
-				.putString("resetUri", notification.getHost(request) + "/auth/reset/" + resetCode);
+				.put("host", notification.getHost(request))
+				.put("resetUri", notification.getHost(request) + "/auth/reset/" + resetCode);
 		container.logger().debug(json.encode());
 		notification.sendEmail(
 				request,
@@ -310,8 +310,8 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 		}
 
 		JsonObject json = new JsonObject()
-			.putString("login", login)
-			.putString("host", notification.getHost(request));
+			.put("login", login)
+			.put("host", notification.getHost(request));
 		container.logger().debug(json.encode());
 		notification.sendEmail(
 				request,
@@ -347,13 +347,13 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 			public void handle(String body) {
 				if (body != null) {
 					JsonObject smsObject = new JsonObject()
-						.putString("provider", smsProvider)
-		    			.putString("action", "send-sms")
-		    			.putObject("parameters", new JsonObject()
-		    				.putArray("receivers", new JsonArray().add(formattedPhone))
-		    				.putString("message", body)
-		    				.putBoolean("senderForResponse", true)
-		    				.putBoolean("noStopClause", true));
+						.put("provider", smsProvider)
+		    			.put("action", "send-sms")
+		    			.put("parameters", new JsonObject()
+		    				.put("receivers", new JsonArray().add(formattedPhone))
+		    				.put("message", body)
+		    				.put("senderForResponse", true)
+		    				.put("noStopClause", true));
 
 					vertx.eventBus().send(smsAddress, smsObject, new Handler<Message<JsonObject>>() {
 						public void handle(Message<JsonObject> event) {
@@ -374,8 +374,8 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 	@Override
 	public void sendResetPasswordSms(HttpServerRequest request, String phone, String resetCode, final Handler<Either<String, JsonObject>> handler){
 		JsonObject params = new JsonObject()
-			.putString("resetCode", resetCode)
-			.putString("resetUri", resetCode);
+			.put("resetCode", resetCode)
+			.put("resetUri", resetCode);
 
 		sendSms(request, phone, "phone/forgotPassword.txt", params, handler);
 	}
@@ -383,7 +383,7 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 	@Override
 	public void sendForgottenIdSms(HttpServerRequest request, String login, String phone, final Handler<Either<String, JsonObject>> handler){
 		JsonObject params = new JsonObject()
-			.putString("login", login);
+			.put("login", login);
 
 		sendSms(request, phone, "phone/forgotId.txt", params, handler);
 	}
@@ -430,13 +430,13 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 				"SET n.resetCode = {resetCode}, n.resetDate = {today} " +
 				"RETURN count(n) as nb";
 		final String code = StringValidation.generateRandomCode(8);
-		JsonObject params = new JsonObject().putString("login", login).putString("resetCode", code).putNumber("today", new Date().getTime());
+		JsonObject params = new JsonObject().put("login", login).putString("resetCode", code).put("today", new Date().getTime());
 		neo.execute(query, params, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
 				if ("ok".equals(event.body().getString("status")) &&
-						event.body().getArray("result") != null && event.body().getArray("result").size() == 1 &&
-						1 == ((JsonObject) event.body().getArray("result").get(0)).getInteger("nb")) {
+						event.body().getJsonArray("result") != null && event.body().getArray("result").size() == 1 &&
+						1 == ((JsonObject) event.body().getJsonArray("result").get(0)).getInteger("nb")) {
 					sendResetPasswordMail(request, email, code, new Handler<Either<String, JsonObject>>() {
 						public void handle(Either<String, JsonObject> event) {
 							handler.handle(event.isRight());
@@ -452,13 +452,13 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 	@Override
 	public void blockUser(String id, boolean block, final Handler<Boolean> handler) {
 		String query = "MATCH (n:`User` { id : {id}}) SET n.blocked = {block} return count(*) = 1 as exists";
-		JsonObject params = new JsonObject().putString("id", id).putBoolean("block", block);
+		JsonObject params = new JsonObject().put("id", id).put("block", block);
 		neo.execute(query, params, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> r) {
 				handler.handle("ok".equals(r.body().getString("status")) &&
-						r.body().getArray("result") != null && r.body().getArray("result").get(0) != null &&
-						((JsonObject) r.body().getArray("result").get(0)).getBoolean("exists", false));
+						r.body().getJsonArray("result") != null && r.body().getArray("result").get(0) != null &&
+						((JsonObject) r.body().getJsonArray("result").get(0)).getBoolean("exists", false));
 			}
 		});
 	}
@@ -470,16 +470,16 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 				"SET u.lastDomain = {domain}, u.lastScheme = {scheme}, u.lastLogin = {now} " +
 				"return count(*) = 1 as exists";
 		JsonObject params = new JsonObject()
-			.putString("id", id)
-			.putString("domain", domain)
-			.putString("scheme", scheme)
-			.putString("now", DateTime.now().toString());
+			.put("id", id)
+			.put("domain", domain)
+			.put("scheme", scheme)
+			.put("now", DateTime.now().toString());
 		neo.execute(query, params, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> r) {
 				handler.handle("ok".equals(r.body().getString("status")) &&
-						r.body().getArray("result") != null && r.body().getArray("result").get(0) != null &&
-						((JsonObject) r.body().getArray("result").get(0)).getBoolean("exists", false));
+						r.body().getJsonArray("result") != null && r.body().getArray("result").get(0) != null &&
+						((JsonObject) r.body().getJsonArray("result").get(0)).getBoolean("exists", false));
 			}
 		});
 	};
@@ -491,10 +491,10 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 
 			@Override
 			public void handle(Message<JsonObject> res) {
-				JsonObject r = res.body().getObject("result");
+				JsonObject r = res.body().getJsonObject("result");
 				handler.handle("ok".equals(res.body().getString("status"))
-						&& r.getObject("0") != null
-						&& pw.equals(r.getObject("0").getString("pw")));
+						&& r.getJsonObject("0") != null
+						&& pw.equals(r.getJsonObject("0").getString("pw")));
 			}
 		});
 	}

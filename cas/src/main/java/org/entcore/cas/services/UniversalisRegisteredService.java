@@ -22,10 +22,10 @@ package org.entcore.cas.services;
 import java.util.List;
 import java.util.Map;
 
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -42,7 +42,7 @@ public class UniversalisRegisteredService extends AbstractCas20ExtensionRegister
 	protected static final String UNVS_FIRSTNAME = "Prenoms";
 
 	@Override
-	public void configure(org.vertx.java.core.eventbus.EventBus eb, java.util.Map<String,Object> conf) {
+	public void configure(io.vertx.core.eventbus.EventBus eb, java.util.Map<String,Object> conf) {
 		super.configure(eb, conf);
 		this.directoryAction = "getUserInfos";
 	};
@@ -58,7 +58,7 @@ public class UniversalisRegisteredService extends AbstractCas20ExtensionRegister
 			}
 
 			// Structures
-			for (Object o : data.getArray("structures", new JsonArray()).toList()) {
+			for (Object o : data.getJsonArray("structures", new JsonArray()).toList()) {
 				Map<String, Object> structure = ((Map<String, Object>) o);
 				if (structure.containsKey("UAI")) {
 					additionnalAttributes.add(createTextElement(UNVS_STRUCTURE_UAI, structure.get("UAI").toString(), doc));

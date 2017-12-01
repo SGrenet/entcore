@@ -46,15 +46,15 @@ import org.entcore.timeline.events.TimelineEventStore;
 import org.entcore.timeline.events.TimelineEventStore.AdminAction;
 import org.entcore.timeline.services.TimelineConfigService;
 import org.entcore.timeline.services.TimelineMailerService;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.http.RouteMatcher;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.platform.Container;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.Handler<Void>;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.RouteMatcher;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.platform.Container;
 
 import java.io.StringReader;
 import java.io.Writer;
@@ -134,8 +134,8 @@ public class TimelineController extends BaseController {
 		JsonArray reply = new JsonArray();
 		for (String key : registeredNotifications.keySet()) {
 			JsonObject notif = new JsonObject(registeredNotifications.get(key))
-					.putString("key", key);
-			notif.removeField("template");
+					.put("key", key);
+			notif.remove("template");
 			reply.add(notif);
 		}
 		renderJson(request, reply);
@@ -174,14 +174,14 @@ public class TimelineController extends BaseController {
 							store.get(user, types, offset, 25, notifs.right().getValue(), mine, new Handler<JsonObject>() {
 								public void handle(final JsonObject res) {
 									if (res != null && "ok".equals(res.getString("status"))) {
-										JsonArray results = res.getArray("results", new JsonArray());
+										JsonArray results = res.getJsonArray("results", new JsonArray());
 										final JsonArray compiledResults = new JsonArray();
 
 										final AtomicInteger countdown = new AtomicInteger(results.size());
-										final VoidHandler endHandler = new VoidHandler() {
+										final Handler<Void> endHandler = new Handler<Void>() {
 											protected void handle() {
 												if (countdown.decrementAndGet() <= 0) {
-													res.putArray("results", compiledResults);
+													res.put("results", compiledResults);
 													renderJson(request, res);
 												}
 											}
@@ -210,9 +210,9 @@ public class TimelineController extends BaseController {
 											JsonObject registeredNotif = new JsonObject(stringifiedRegisteredNotif);
 
 											StringReader reader = new StringReader(registeredNotif.getString("template", ""));
-											processTemplate(request,notif.getObject("params",new JsonObject()),key, reader, new Handler<Writer>() {
+											processTemplate(request,notif.getJsonObject("params",new JsonObject()),key, reader, new Handler<Writer>() {
 												public void handle(Writer writer) {
-													notif.putString("message", writer.toString());
+													notif.put("message", writer.toString());
 													compiledResults.add(notif);
 													endHandler.handle(null);
 												}
@@ -316,13 +316,13 @@ public class TimelineController extends BaseController {
 				JsonArray reply = new JsonArray();
 
 				for (String key : registeredNotifications.keySet()) {
-					JsonObject notif = new JsonObject(registeredNotifications.get(key)).putString("key", key);
-					notif.removeField("template");
+					JsonObject notif = new JsonObject(registeredNotifications.get(key)).put("key", key);
+					notif.remove("template");
 					for(Object admcDefaultObj : admcDefaults){
 						JsonObject admcDefault = (JsonObject) admcDefaultObj;
 						if(admcDefault.getString("key", "").equals(key)){
 							notif.mergeIn(admcDefault);
-							notif.removeField("_id");
+							notif.remove("_id");
 							break;
 						}
 					}
@@ -405,12 +405,12 @@ public class TimelineController extends BaseController {
 
 						final List<String> structureIds = user.getStructures();
 						final JsonObject params = new JsonObject()
-							.putString("username", user.getUsername())
-							.putString("uri", "/userbook/annuaire#" + user.getUserId() + "#" + user.getType());
+							.put("username", user.getUsername())
+							.put("uri", "/userbook/annuaire#" + user.getUserId() + "#" + user.getType());
 
 						final AtomicInteger countdown = new AtomicInteger(structureIds.size());
 						final Set<String> recipientsSet = new HashSet<>();
-						final VoidHandler finalHandler = new VoidHandler() {
+						final Handler<Void> finalHandler = new Handler<Void>() {
 							protected void handle() {
 								if(countdown.decrementAndGet() == 0){
 									ArrayList<String> recipients = new ArrayList<>();
@@ -428,8 +428,8 @@ public class TimelineController extends BaseController {
 
 						for(final String structureId : structureIds){
 							JsonObject message = new JsonObject()
-								.putString("action", "list-adml")
-								.putString("structureId", structureId);
+								.put("action", "list-adml")
+								.put("structureId", structureId);
 
 							eb.send("directory", message, new Handler<Message<JsonArray>>() {
 								public void handle(Message<JsonArray> result) {
@@ -476,7 +476,7 @@ public class TimelineController extends BaseController {
 				final JsonArray compiledResults = new JsonArray();
 
 				final AtomicInteger countdown = new AtomicInteger(results.size());
-				final VoidHandler endHandler = new VoidHandler() {
+				final Handler<Void> endHandler = new Handler<Void>() {
 					protected void handle() {
 						if (countdown.decrementAndGet() <= 0) {
 							renderJson(request, compiledResults);
@@ -507,9 +507,9 @@ public class TimelineController extends BaseController {
 					JsonObject registeredNotif = new JsonObject(stringifiedRegisteredNotif);
 
 					StringReader reader = new StringReader(registeredNotif.getString("template", ""));
-					processTemplate(request,notif.getObject("params",new JsonObject()),key, reader, new Handler<Writer>() {
+					processTemplate(request,notif.getJsonObject("params",new JsonObject()),key, reader, new Handler<Writer>() {
 						public void handle(Writer writer) {
-							notif.putString("message", writer.toString());
+							notif.put("message", writer.toString());
 							compiledResults.add(notif);
 							endHandler.handle(null);
 						}
@@ -586,8 +586,8 @@ public class TimelineController extends BaseController {
 		}
 		final JsonObject json = message.body();
 		if (json == null) {
-			message.reply(new JsonObject().putString("status", "error")
-					.putString("message", "Invalid body."));
+			message.reply(new JsonObject().put("status", "error")
+					.put("message", "Invalid body."));
 			return;
 		}
 
@@ -600,8 +600,8 @@ public class TimelineController extends BaseController {
 		String action = json.getString("action");
 		if (action == null) {
 			log.warn("Invalid action.");
-			message.reply(new JsonObject().putString("status", "error")
-					.putString("message", "Invalid action."));
+			message.reply(new JsonObject().put("status", "error")
+					.put("message", "Invalid action."));
 			return;
 		}
 
@@ -612,9 +612,9 @@ public class TimelineController extends BaseController {
 				store.add(json, new Handler<JsonObject>() {
 					public void handle(JsonObject result) {
 						mailerService.sendImmediateMails(
-								new JsonHttpServerRequest(json.getObject("request")),
-								json.getString("notificationName"), json.getObject("notification"), json.getObject("params"),
-								json.getArray("recipientsIds")
+								new JsonHttpServerRequest(json.getJsonObject("request")),
+								json.getString("notificationName"), json.getJsonObject("notification"), json.getJsonObject("params"),
+								json.getJsonArray("recipientsIds")
 						);
 						handler.handle(result);
 					}
@@ -623,8 +623,8 @@ public class TimelineController extends BaseController {
 					eventTypes = null;
 				}
 			} else {
-				message.reply(new JsonObject().putString("status", "error")
-						.putString("message", "flood"));
+				message.reply(new JsonObject().put("status", "error")
+						.put("message", "flood"));
 			}
 			break;
 		case "get":
@@ -643,14 +643,14 @@ public class TimelineController extends BaseController {
 			store.listTypes(new Handler<JsonArray>() {
 				@Override
 				public void handle(JsonArray types) {
-					message.reply(new JsonObject().putString("status", "ok")
-							.putArray("types", types));
+					message.reply(new JsonObject().put("status", "ok")
+							.put("types", types));
 				}
 			});
 			break;
 		default:
-			message.reply(new JsonObject().putString("status", "error")
-					.putString("message", "Invalid action."));
+			message.reply(new JsonObject().put("status", "error")
+					.put("message", "Invalid action."));
 		}
 	}
 
@@ -676,9 +676,9 @@ public class TimelineController extends BaseController {
 							restriction.equals(TimelineNotificationsLoader.Restrictions.HIDDEN.name())) {
 						String notifType = notif.getString("type");
 						if (!restricted.containsField(notifType)) {
-							restricted.putArray(notifType, new JsonArray());
+							restricted.put(notifType, new JsonArray());
 						}
-						restricted.getArray(notifType).add(notif.getString("event-type"));
+						restricted.getJsonArray(notifType).add(notif.getString("event-type"));
 					}
 				}
 				handler.handle(new Either.Right<String, JsonObject>(restricted));

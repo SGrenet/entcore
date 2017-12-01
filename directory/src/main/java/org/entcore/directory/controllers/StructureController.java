@@ -36,16 +36,16 @@ import org.entcore.common.user.UserInfos;
 import org.entcore.common.user.UserUtils;
 import org.entcore.directory.pojo.Ent;
 import org.entcore.directory.services.SchoolService;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.http.RouteMatcher;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.platform.Container;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.RouteMatcher;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.platform.Container;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -101,13 +101,13 @@ public class StructureController extends BaseController {
 			public void handle(Either<String, JsonObject> r) {
 				if (r.isRight()) {
 					if (r.right().getValue() != null && r.right().getValue().size() > 0) {
-						JsonArray a = new JsonArray().addString(userId);
+						JsonArray a = new JsonArray().add(userId);
 						ApplicationUtils.sendModifiedUserGroup(eb, a, new Handler<Message<JsonObject>>() {
 							@Override
 							public void handle(Message<JsonObject> message) {
 								JsonObject j = new JsonObject()
-										.putString("action", "setDefaultCommunicationRules")
-										.putString("schoolId", structureId);
+										.put("action", "setDefaultCommunicationRules")
+										.put("schoolId", structureId);
 								eb.send("wse.communication", j);
 							}
 						});
@@ -116,7 +116,7 @@ public class StructureController extends BaseController {
 						notFound(request);
 					}
 				} else {
-					renderJson(request, new JsonObject().putString("error", r.left().getValue()), 400);
+					renderJson(request, new JsonObject().put("error", r.left().getValue()), 400);
 				}
 			}
 		});
@@ -238,13 +238,13 @@ public class StructureController extends BaseController {
 						null;
 
 				filter
-					.putArray("profiles", new JsonArray(request.params().getAll("p").toArray()))
-					.putArray("levels", new JsonArray(request.params().getAll("l").toArray()))
-					.putArray("classes", new JsonArray(request.params().getAll("c").toArray()))
-					.putArray("sort", new JsonArray(sorts.toArray()));
+					.put("profiles", new JsonArray(request.params().getAll("p").toArray()))
+					.put("levels", new JsonArray(request.params().getAll("l").toArray()))
+					.put("classes", new JsonArray(request.params().getAll("c").toArray()))
+					.put("sort", new JsonArray(sorts.toArray()));
 
 				if(request.params().contains("a")){
-					filter.putString("activated", request.params().get("a"));
+					filter.put("activated", request.params().get("a"));
 				}
 
 				structureService.massmailUsers(structureId, filter, true, true, filterMail, infos, arrayResponseHandler(request));
@@ -264,13 +264,13 @@ public class StructureController extends BaseController {
 				null;
 
 		filter
-			.putArray("profiles", new JsonArray(request.params().getAll("p").toArray()))
-			.putArray("levels", new JsonArray(request.params().getAll("l").toArray()))
-			.putArray("classes", new JsonArray(request.params().getAll("c").toArray()))
-			.putArray("sort", new JsonArray(request.params().getAll("s").toArray()));
+			.put("profiles", new JsonArray(request.params().getAll("p").toArray()))
+			.put("levels", new JsonArray(request.params().getAll("l").toArray()))
+			.put("classes", new JsonArray(request.params().getAll("c").toArray()))
+			.put("sort", new JsonArray(request.params().getAll("s").toArray()));
 
 		if(request.params().contains("a")){
-			filter.putString("activated", request.params().get("a"));
+			filter.put("activated", request.params().get("a"));
 		}
 
 		this.assetsPath = (String) vertx.sharedData().getMap("server").get("assetPath");
@@ -280,7 +280,7 @@ public class StructureController extends BaseController {
 		final String templatePath = assetsPath + "/template/directory/";
 		final String baseUrl = getScheme(request) + "://" + Renders.getHost(request) + "/assets/themes/" + this.skins.get(Renders.getHost(request)) + "/img/";
 
-		final boolean groupClasses = !filter.getArray("sort").contains("classname");
+		final boolean groupClasses = !filter.getJsonArray("sort").contains("classname");
 
 		UserUtils.getUserInfos(eb, request, new Handler<UserInfos>() {
 			public void handle(final UserInfos infos) {
@@ -294,7 +294,7 @@ public class StructureController extends BaseController {
 								return;
 							}
 
-							final JsonObject templateProps = new JsonObject().putArray("users", result.right().getValue());
+							final JsonObject templateProps = new JsonObject().put("users", result.right().getValue());
 
 							vertx.fileSystem().readFile(templatePath + "massmail.pdf.xhtml", new Handler<AsyncResult<Buffer>>() {
 
@@ -319,7 +319,7 @@ public class StructureController extends BaseController {
 											JsonObject actionObject = new JsonObject();
 					    		        	actionObject
 					    		        		.putBinary("content", processedTemplate.getBytes())
-					    		        		.putString("baseUrl", baseUrl);
+					    		        		.put("baseUrl", baseUrl);
 
 											eb.send(node + "entcore.pdf.generator", actionObject, new Handler<Message<JsonObject>>() {
 												public void handle(Message<JsonObject> reply) {
@@ -333,7 +333,7 @@ public class StructureController extends BaseController {
 													request.response().putHeader("Content-Type", "application/pdf");
 													request.response().putHeader("Content-Disposition",
 															"attachment; filename="+filename+".pdf");
-													request.response().end(new Buffer(pdf));
+													request.response().end(Buffer.buffer(pdf));
 												}
 					        	        	});
 										}
@@ -364,8 +364,8 @@ public class StructureController extends BaseController {
 									}
 
 									StringReader reader = new StringReader(result.result().toString("UTF-8"));
-									final JsonArray mailHeaders = new JsonArray().addObject(
-											new JsonObject().putString("name", "Content-Type").putString("value", "text/html; charset=\"UTF-8\""));
+									final JsonArray mailHeaders = new JsonArray().add(
+											new JsonObject().put("name", "Content-Type").putString("value", "text/html; charset=\"UTF-8\""));
 
 									for(Object userObj : users){
 										final JsonObject user = (JsonObject) userObj;

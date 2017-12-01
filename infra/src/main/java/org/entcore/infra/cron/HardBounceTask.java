@@ -28,12 +28,12 @@ import fr.wseduc.webutils.email.EmailSender;
 import org.entcore.common.http.request.JsonHttpServerRequest;
 import org.entcore.common.neo4j.Neo4j;
 import org.entcore.common.notification.TimelineHelper;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
-import org.vertx.java.core.logging.Logger;
-import org.vertx.java.core.logging.impl.LoggerFactory;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import java.util.*;
 
@@ -76,20 +76,20 @@ public class HardBounceTask implements Handler<Long> {
 						return;
 					}
 
-					JsonObject q = new JsonObject().putString("type", PLATFORM_ITEM_TYPE);
-					JsonObject modifier = new JsonObject().putObject("$addToSet", new JsonObject().putObject("invalid-emails",
-							new JsonObject().putArray("$each", new JsonArray(emails.toArray()))));
+					JsonObject q = new JsonObject().put("type", PLATFORM_ITEM_TYPE);
+					JsonObject modifier = new JsonObject().put("$addToSet", new JsonObject().putObject("invalid-emails",
+							new JsonObject().put("$each", new JsonArray(emails.toArray()))));
 					MongoDb.getInstance().update(PLATEFORM_COLLECTION, q, modifier, true, false);
 
 					String query = "MATCH (u:User) WHERE u.email IN {emails} REMOVE u.email RETURN collect(distinct u.id) as ids";
-					JsonObject params = new JsonObject().putArray("emails", new JsonArray(emails.toArray()));
+					JsonObject params = new JsonObject().put("emails", new JsonArray(emails.toArray()));
 					Neo4j.getInstance().execute(query, params, new Handler<Message<JsonObject>>() {
 						@Override
 						public void handle(Message<JsonObject> event) {
 							if ("ok".equals(event.body().getString("status"))) {
-								JsonArray res = event.body().getArray("result");
+								JsonArray res = event.body().getJsonArray("result");
 								if (res != null && res.size() == 1 && res.get(0) != null) {
-									notifyOnTimeline(res.<JsonObject>get(0).getArray("ids"));
+									notifyOnTimeline(res.<JsonObject>get(0).getJsonArray("ids"));
 								}
 							} else {
 								log.error(event.body().getString("message"));

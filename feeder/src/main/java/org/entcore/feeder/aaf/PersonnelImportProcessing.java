@@ -21,11 +21,11 @@ package org.entcore.feeder.aaf;
 
 import static org.entcore.feeder.dictionary.structures.DefaultProfiles.*;
 import org.entcore.feeder.dictionary.structures.Structure;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -48,22 +48,22 @@ public class PersonnelImportProcessing extends BaseImportProcessing {
 
 	@Override
 	public void process(JsonObject object) {
-		List<String> c = object.getArray("classes") != null ? object.getArray("classes").toList() : new LinkedList<String>();
-		createGroups(object.getArray("groups"), c);
+		List<String> c = object.getJsonArray("classes") != null ? object.getArray("classes").toList() : new LinkedList<String>();
+		createGroups(object.getJsonArray("groups"), c);
 		createClasses(new JsonArray(c));
-		linkMef(object.getArray("modules"));
+		linkMef(object.getJsonArray("modules"));
 		String profile = detectProfile(object);
-		object.putArray("profiles", new JsonArray()
+		object.put("profiles", new JsonArray()
 				.add((TEACHER_PROFILE_EXTERNAL_ID.equals(profile) ? "Teacher" : "Personnel")));
 		String email = object.getString("email");
 		if (email != null && !email.trim().isEmpty()) {
-			object.putString("emailAcademy", email);
+			object.put("emailAcademy", email);
 		}
 		importer.createOrUpdatePersonnel(object, profile, null, null, null, true, false);
 	}
 
 	protected String detectProfile(JsonObject object) {
-		JsonArray functions = object.getArray("functions");
+		JsonArray functions = object.getJsonArray("functions");
 		if (object.getBoolean("teaches", false)) {
 			return TEACHER_PROFILE_EXTERNAL_ID;
 		} else if (functions != null && functions.size() > 0) {
