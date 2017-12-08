@@ -74,7 +74,7 @@ public class DefaultExternalApplicationService implements ExternalApplicationSer
 					JsonObject appData = application.getJsonObject("data");
 					JsonArray scope = appData.getJsonArray("scope");
 					if (scope != null && scope.size() > 0) {
-						appData.put("scope", Joiner.on(" ").join(scope.toArray()));
+						appData.put("scope", Joiner.on(" ").join(scope));
 					} else {
 						appData.put("scope", "");
 					}
@@ -175,11 +175,11 @@ public class DefaultExternalApplicationService implements ExternalApplicationSer
 			public void handle(Message<JsonObject> m) {
 				JsonArray results = m.body().getJsonArray("results");
 				if ("ok".equals(m.body().getString("status")) && results != null) {
-					JsonArray appRes = results.get(0);
-					JsonArray roleRes = results.get(1);
+					JsonArray appRes = results.getJsonArray(0);
+					JsonArray roleRes = results.getJsonArray(1);
 					JsonObject j = new JsonObject()
-							.mergeIn(appRes.size() > 0 ? (JsonObject) appRes.get(0) : new JsonObject())
-							.mergeIn(roleRes.size() > 0 ? (JsonObject) roleRes.get(0) : new JsonObject());
+							.mergeIn(appRes.size() > 0 ? appRes.getJsonObject(0) : new JsonObject())
+							.mergeIn(roleRes.size() > 0 ? roleRes.getJsonObject(0) : new JsonObject());
 					handler.handle(new Either.Right<String, JsonObject>(j));
 				} else {
 					handler.handle(new Either.Left<String, JsonObject>(m.body().getString("message")));
@@ -208,7 +208,7 @@ public class DefaultExternalApplicationService implements ExternalApplicationSer
 			"CREATE UNIQUE (pg)-[:AUTHORIZED]->(r) ";
 		JsonObject params = new JsonObject()
 				.put("appId", appId)
-				.put("profiles", new JsonArray(profiles.toArray()));
+				.put("profiles", new JsonArray(profiles));
 
 		neo.execute(query, params, validEmptyHandler(handler));
 	}
@@ -224,7 +224,7 @@ public class DefaultExternalApplicationService implements ExternalApplicationSer
 				"DELETE auth ";
 			JsonObject params = new JsonObject()
 					.put("appId", appId)
-					.put("profiles", new JsonArray(profiles.toArray()));
+					.put("profiles", new JsonArray(profiles));
 
 			neo.execute(query, params, validEmptyHandler(handler));
 	}

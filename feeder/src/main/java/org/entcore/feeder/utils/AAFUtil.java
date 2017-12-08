@@ -92,10 +92,10 @@ public class AAFUtil {
 		for (Object o : value) {
 			if (!(o instanceof JsonArray)) continue;
 			JsonArray a = (JsonArray) o;
-			final String c = a.get(0);
+			final String c = a.getString(0);
 			if (c != null) {
 				final String code = functionCodes.getString(c, c);
-				for (Object s : (JsonArray) a.get(1)) {
+				for (Object s : a.getJsonArray(1)) {
 					res.add("EtabEducNat$" + s + "$" + code);
 				}
 			}

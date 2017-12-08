@@ -49,6 +49,7 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static fr.wseduc.webutils.request.RequestUtils.bodyToJson;
 import static org.entcore.common.appregistry.AppRegistryEvents.APP_REGISTRY_PUBLISH_ADDRESS;
 import static org.entcore.common.appregistry.AppRegistryEvents.PROFILE_GROUP_ACTIONS_UPDATED;
@@ -360,7 +361,7 @@ public class AppRegistryController extends BaseController {
 	@ResourceFilter(AdminFilter.class)
 	public void listCasTypes(final HttpServerRequest request) {
 		Server.getEventBus(vertx).send("cas.configuration", new JsonObject().put("action", "list-services"),
-				new Handler<Message<JsonObject>>() {
+				handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 			public void handle(Message<JsonObject> event) {
 				if ("ok".equals(event.body().getString("status"))) {
 					renderJson(request, event.body().getJsonArray("result"));
@@ -368,7 +369,7 @@ public class AppRegistryController extends BaseController {
 					log.error(event.body().getString("message"));
 				}
 			}
-		});
+		}));
 	}
 
 	@BusAddress("wse.app.registry")
@@ -384,29 +385,29 @@ public class AppRegistryController extends BaseController {
 					if (event.isRight()) {
 						j.put("status", "ok");
 					} else {
-						j.put("status", "error").putString("message", event.left().getValue());
+						j.put("status", "error").put("message", event.left().getValue());
 					}
 					message.reply(j);
 				}
 			});
 		} else {
-			message.reply(new JsonObject().put("status", "error").putString("message", "invalid.parameters"));
+			message.reply(new JsonObject().put("status", "error").put("message", "invalid.parameters"));
 		}
 	}
 
 	@Put("/application")
 	public void recordApplication(final HttpServerRequest request) {
-		if (("localhost:"+ container.config().getInteger("port", 8012))
+		if (("localhost:"+ config.getInteger("port", 8012))
 				.equalsIgnoreCase(request.headers().get("Host"))) {
 			bodyToJson(request, new Handler<JsonObject>() {
 				@Override
 				public void handle(JsonObject jo) {
-					eb.send(container.config().getString("address"), jo, new Handler<Message<JsonObject>>() {
+					eb.send(config.getString("address"), jo, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 						@Override
 						public void handle(Message<JsonObject> reply) {
 							renderJson(request, reply.body());
 						}
-					});
+					}));
 				}
 			});
 		} else {

@@ -19,6 +19,7 @@
 
 package org.entcore.registry.controllers;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static fr.wseduc.webutils.request.RequestUtils.bodyToJson;
 import static org.entcore.common.http.response.DefaultResponseHandler.*;
 
@@ -170,17 +171,17 @@ public class WidgetController extends BaseController {
 
 	@Post("/widget")
 	public void recordWidget(final HttpServerRequest request) {
-		if (("localhost:"+ container.config().getInteger("port", 8012))
+		if (("localhost:"+ config.getInteger("port", 8012))
 				.equalsIgnoreCase(request.headers().get("Host"))) {
 			bodyToJson(request, new Handler<JsonObject>() {
 				@Override
 				public void handle(JsonObject jo) {
-					eb.send("wse.app.registry.widgets", jo, new Handler<Message<JsonObject>>() {
+					eb.send("wse.app.registry.widgets", jo, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 						@Override
 						public void handle(Message<JsonObject> reply) {
 							renderJson(request, reply.body());
 						}
-					});
+					}));
 				}
 			});
 		} else {
@@ -191,10 +192,10 @@ public class WidgetController extends BaseController {
 	@BusAddress("wse.app.registry.widgets")
 	public void collectWidgets(final Message<JsonObject> message) {
 		final JsonArray widgets = message.body().getJsonArray("widgets", new JsonArray());
-		if(widgets.size() == 0 && message.body().containsField("widget")){
+		if(widgets.size() == 0 && message.body().containsKey("widget")){
 			widgets.add(message.body().getJsonObject("widget"));
 		} else if(widgets.size() == 0){
-			message.reply(new JsonObject().put("status", "error").putString("message", "invalid.parameters"));
+			message.reply(new JsonObject().put("status", "error").put("message", "invalid.parameters"));
 			return;
 		}
 
@@ -232,13 +233,13 @@ public class WidgetController extends BaseController {
 					if (event.isRight()) {
 						j.put("status", "ok");
 					} else {
-						j.put("status", "error").putString("message", event.left().getValue());
+						j.put("status", "error").put("message", event.left().getValue());
 					}
 					handler.handle(j);
 				}
 			});
 		} else {
-			handler.handle(new JsonObject().put("status", "error").putString("message", "invalid.parameters"));
+			handler.handle(new JsonObject().put("status", "error").put("message", "invalid.parameters"));
 		}
 	}
 }

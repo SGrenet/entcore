@@ -28,7 +28,6 @@ import org.entcore.common.storage.Storage;
 import org.entcore.common.storage.StorageFactory;
 import org.entcore.infra.services.AntivirusService;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler<AsyncResult>;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -45,6 +44,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
+
 public abstract class AbstractAntivirusService implements AntivirusService, Handler<Message<JsonObject>> {
 
 	protected static final Logger log = LoggerFactory.getLogger(AntivirusService.class);
@@ -60,12 +61,12 @@ public abstract class AbstractAntivirusService implements AntivirusService, Hand
 		vertx.eventBus().localConsumer("antivirus", this);
 	}
 
-	protected abstract void parseScanReport(String path, Handler<AsyncResult><List<InfectedFile>> handler);
+	protected abstract void parseScanReport(String path, Handler<AsyncResult<List<InfectedFile>>> handler);
 
 
 	@Override
 	public void replaceInfectedFiles(String path, final Handler<Either<String, JsonObject>> handler) {
-		parseScanReport(path, new Handler<AsyncResult><List<InfectedFile>>() {
+		parseScanReport(path, new Handler<AsyncResult<List<InfectedFile>>>() {
 			@Override
 			public void handle(AsyncResult<List<InfectedFile>> event) {
 				if (event.succeeded()) {
@@ -141,7 +142,7 @@ public abstract class AbstractAntivirusService implements AntivirusService, Hand
 										.put("name", i.getName() + ".txt")
 										.put("contentType", "text/plain")
 										.put("action", "updateInfos");
-								message.reply(m, new Handler<Message<JsonObject>>() {
+								message.reply(m, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 									@Override
 									public void handle(Message<JsonObject> r) {
 										if ("ok".equals(r.body().getString("status")) && r.body().getInteger("count", -1) > 0) {
@@ -150,7 +151,7 @@ public abstract class AbstractAntivirusService implements AntivirusService, Hand
 											log.error("Error updating file info " + i.getId());
 										}
 									}
-								});
+								}));
 							}
 						}
 					});

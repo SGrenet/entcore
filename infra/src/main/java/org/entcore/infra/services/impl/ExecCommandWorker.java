@@ -19,10 +19,10 @@
 
 package org.entcore.infra.services.impl;
 
-import io.vertx.busmods.BusModBase;
 import io.vertx.core.Handler;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
+import org.vertx.java.busmods.BusModBase;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

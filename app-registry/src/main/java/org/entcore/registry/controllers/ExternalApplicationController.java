@@ -167,7 +167,7 @@ public class ExternalApplicationController extends BaseController {
 				externalAppService.listExternalApps(structureId, busArrayHandler(message));
 				break;
 			default:
-				message.reply(new JsonObject().put("status", "error").putString("message", "invalid.action"));
+				message.reply(new JsonObject().put("status", "error").put("message", "invalid.action"));
 		}
 	}
 

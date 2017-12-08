@@ -65,7 +65,7 @@ public class RoleGroupFilter implements ResourcesProvider {
 		final JsonObject params = new JsonObject()
 			.put("groupId", groupId)
 			.put("roleId", roleId)
-			.put("scopedStructures", new JsonArray(adminLocal.getScope().toArray()));
+			.put("scopedStructures", new JsonArray(adminLocal.getScope()));
 
 		final String regularQuery =
 				"MATCH (s:Structure)<-[:BELONGS*0..1]-()<-[:DEPENDS]-(:Group {id: {groupId}}), (r:Role) " +
@@ -84,8 +84,8 @@ public class RoleGroupFilter implements ResourcesProvider {
 			public void handle(Message<JsonObject> event) {
 				JsonArray r = event.body().getJsonArray("result");
 				if("ok".equals(event.body().getString("status")) && r != null && r.size() == 1){
-					boolean exists = ((JsonObject) r.get(0)).getBoolean("exists", false);
-					int nbExt = ((JsonObject) r.get(0)).getInteger("nbExt", 0);
+					boolean exists = r.getJsonObject(0).getBoolean("exists", false);
+					int nbExt = r.getJsonObject(0).getInteger("nbExt", 0);
 					if(!exists){
 						handler.handle(false);
 					} else if(nbExt == 0){
@@ -95,7 +95,7 @@ public class RoleGroupFilter implements ResourcesProvider {
 							public void handle(Message<JsonObject> event) {
 								JsonArray r = event.body().getJsonArray("result");
 								if("ok".equals(event.body().getString("status")) && r != null && r.size() == 1){
-									handler.handle(((JsonObject) r.get(0)).getBoolean("exists", false));
+									handler.handle(r.getJsonObject(0).getBoolean("exists", false));
 								} else {
 									handler.handle(false);
 								}

@@ -323,10 +323,10 @@ public class DefaultAppRegistryService implements AppRegistryService {
 			public void handle(Message<JsonObject> m) {
 				JsonArray results = m.body().getJsonArray("results");
 				if ("ok".equals(m.body().getString("status")) && results != null) {
-					JsonArray r = results.get(0);
+					JsonArray r = results.getJsonArray(0);
 					JsonObject j;
 					if (r.size() > 0) {
-						j = r.get(0);
+						j = r.getJsonObject(0);
 					} else {
 						j = new JsonObject();
 					}
@@ -354,10 +354,10 @@ public class DefaultAppRegistryService implements AppRegistryService {
 			public void handle(Message<JsonObject> res) {
 				JsonArray r = res.body().getJsonArray("result");
 				if (r != null && r.size() == 1) {
-					JsonObject j = r.get(0);
+					JsonObject j = r.getJsonObject(0);
 					JsonArray scope = j.getJsonArray("scope");
 					if (scope != null && scope.size() > 0) {
-						j.put("scope", Joiner.on(" ").join(scope.toArray()));
+						j.put("scope", Joiner.on(" ").join(scope));
 					} else {
 						j.put("scope", "");
 					}
@@ -468,7 +468,7 @@ public class DefaultAppRegistryService implements AppRegistryService {
 					JsonObject app = (JsonObject) o;
 					String address = app.getString("address", "");
 					JsonArray patterns = app.getJsonArray("patterns", new JsonArray());
-					if(patterns.size() == 0 || patterns.size() > 0 && patterns.get(0).toString().isEmpty()){
+					if(patterns.size() == 0 || patterns.size() > 0 && patterns.getString(0).isEmpty()){
 						final URL addressURL = checkCasUrl(address);
 
 						if (addressURL != null) {

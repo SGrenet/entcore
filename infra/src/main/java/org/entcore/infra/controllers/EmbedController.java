@@ -12,16 +12,15 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.RouteMatcher;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.platform.Container;
 
 import fr.wseduc.rs.*;
 import fr.wseduc.security.ActionType;
 import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.request.RequestUtils;
 import fr.wseduc.security.SecuredAction;
+import org.vertx.java.core.http.RouteMatcher;
 
 import static fr.wseduc.webutils.http.response.DefaultResponseHandler.*;
 
@@ -33,16 +32,16 @@ public class EmbedController extends BaseController {
 	private final EmbedService service = new MongoDbEmbedService("embed");
 
 	@Override
-	public void init(Vertx vertx, Container container, RouteMatcher rm,
+	public void init(Vertx vertx, JsonObject config, RouteMatcher rm,
 			Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions) {
-		super.init(vertx, container, rm, securedActions);
+		super.init(vertx, config, rm, securedActions);
 		this.refreshDefault();
 	}
 
 	private boolean refreshDefault() {
-		boolean exists = vertx.fileSystem().existsSync(defaultEmbedLocation);
+		boolean exists = vertx.fileSystem().existsBlocking(defaultEmbedLocation);
 		if(exists) {
-			Buffer buff = vertx.fileSystem().readFileSync(defaultEmbedLocation);
+			Buffer buff = vertx.fileSystem().readFileBlocking(defaultEmbedLocation);
 			try {
 				this.defaultEmbedProviders = new JsonArray(buff.toString("UTF-8"));
 			} catch (Exception e) {

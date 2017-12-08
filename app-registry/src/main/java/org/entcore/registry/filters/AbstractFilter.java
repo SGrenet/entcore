@@ -60,7 +60,7 @@ public abstract class AbstractFilter implements ResourcesProvider {
 		}
 		String roleId = resourceRequest.params().get("id");
 		JsonObject params = new JsonObject();
-		params.put("structures", new JsonArray(adminLocal.getScope().toArray()));
+		params.put("structures", new JsonArray(adminLocal.getScope()));
 		if (roleId != null && !roleId.trim().isEmpty()) {
 			String query =
 					"MATCH (r:" + label + " {id : {id}}) " +
@@ -83,7 +83,7 @@ public abstract class AbstractFilter implements ResourcesProvider {
 				handler.handle(
 						"ok".equals(event.body().getString("status")) &&
 								r != null && r.size() == 1 &&
-								((JsonObject) r.get(0)).getBoolean("exists", false)
+								r.getJsonObject(0).getBoolean("exists", false)
 				);
 			}
 		});

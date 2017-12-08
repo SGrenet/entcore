@@ -68,7 +68,7 @@ public class WidgetLinkFilter implements ResourcesProvider{
 			"RETURN count(g) = 1 as exists";
 		JsonObject params = new JsonObject()
 			.put("groupId", groupId)
-			.put("adminScope", new JsonArray(adminLocal.getScope().toArray()));
+			.put("adminScope", new JsonArray(adminLocal.getScope()));
 
 		neo4j.execute(query, params, new Handler<Message<JsonObject>>() {
 			public void handle(Message<JsonObject> event) {
@@ -76,7 +76,7 @@ public class WidgetLinkFilter implements ResourcesProvider{
 				handler.handle(
 					"ok".equals(event.body().getString("status")) &&
 							r != null && r.size() == 1 &&
-							((JsonObject) r.get(0)).getBoolean("exists", false)
+							r.getJsonObject(0).getBoolean("exists", false)
 				);
 			}
 		});

@@ -30,7 +30,7 @@ import org.entcore.registry.services.impl.NopAppRegistryEventService;
 public class AppRegistry extends BaseServer {
 
 	@Override
-	public void start() {
+	public void start() throws Exception {
 		super.start();
 		addController(new AppRegistryController());
 		addController(new ExternalApplicationController());

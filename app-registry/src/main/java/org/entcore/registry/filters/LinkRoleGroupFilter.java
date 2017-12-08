@@ -64,7 +64,7 @@ public class LinkRoleGroupFilter implements ResourcesProvider {
 				final JsonArray roleIds = body.getJsonArray("roleIds");
 				final String groupId = body.getString("groupId");
 				JsonObject params = new JsonObject();
-				params.put("structures", new JsonArray(adminLocal.getScope().toArray()));
+				params.put("structures", new JsonArray(adminLocal.getScope()));
 				if (roleIds != null && groupId != null &&
 						roleIds.size() > 0 && !groupId.trim().isEmpty()) {
 					String query =
@@ -92,7 +92,7 @@ public class LinkRoleGroupFilter implements ResourcesProvider {
 				handler.handle(
 						"ok".equals(event.body().getString("status")) &&
 								r != null && r.size() == 1 &&
-								((JsonObject) r.get(0)).getBoolean("exists", false)
+								r.getJsonObject(0).getBoolean("exists", false)
 				);
 			}
 		});

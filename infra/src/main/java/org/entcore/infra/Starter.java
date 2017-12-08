@@ -24,9 +24,13 @@ import fr.wseduc.mongodb.MongoDb;
 import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.request.CookieHelper;
 import fr.wseduc.webutils.validation.JsonSchemaValidator;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.shareddata.AsyncMap;
+import io.vertx.core.shareddata.LocalMap;
 import org.entcore.common.email.EmailFactory;
 import org.entcore.common.http.BaseServer;
 import org.entcore.common.notification.TimelineHelper;
+import org.entcore.common.utils.AsyncMapFactory;
 import org.entcore.common.utils.StringUtils;
 import org.entcore.infra.controllers.AntiVirusController;
 import org.entcore.infra.controllers.EmbedController;
@@ -39,43 +43,44 @@ import org.entcore.infra.services.impl.ExecCommandWorker;
 import org.entcore.infra.services.impl.MongoDbEventStore;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.file.FileProps;
-import io.vertx.core.impl.VertxInternal;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.shareddata.ConcurrentSharedMap;
-import io.vertx.core.spi.cluster.ClusterManager;
 
 import java.io.File;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 
 public class Starter extends BaseServer {
 
 	private String node;
 	private boolean cluster;
-	private ConcurrentSharedMap<String, String> versionMap;
-	private ConcurrentSharedMap<String, String> deploymentsIdMap;
+	private LocalMap<String, String> versionMap;
+	private LocalMap<String, String> deploymentsIdMap;
 
 	@Override
 	public void start() {
 		try {
-			if (container.config() == null || container.config().size() == 0) {
+			if (config() == null || config().size() == 0) {
 				config = getConfig("", "mod.json");
 			}
+//			System.setProperty("vertx.cwd", "infra");
+//			System.setProperty("vertx.cwd", "build/infra");
+//			System.setProperty("user.dir", "build/infra");
+//			System.setProperty("vertx.disableFileCaching", "true");
 			super.start();
-			final ConcurrentSharedMap<Object, Object> serverMap = vertx.sharedData().getMap("server");
-			deploymentsIdMap = vertx.sharedData().getMap("deploymentsId");
-			versionMap = vertx.sharedData().getMap("versions");
+			final LocalMap<Object, Object> serverMap = vertx.sharedData().getLocalMap("server");
+			deploymentsIdMap = vertx.sharedData().getLocalMap("deploymentsId");
+			versionMap = vertx.sharedData().getLocalMap("versions");
 			serverMap.put("signKey", config.getString("key", "zbxgKWuzfxaYzbXcHnK3WnWK" + Math.random()));
 			CookieHelper.getInstance().init((String) vertx
-					.sharedData().getMap("server").get("signKey"), log);
+					.sharedData().getLocalMap("server").get("signKey"), log);
 			cluster = config.getBoolean("cluster", false);
 			serverMap.put("cluster", cluster);
 			node = config.getString("node", "");
@@ -109,29 +114,45 @@ public class Starter extends BaseServer {
 				serverMap.put(field, sharedConf.getValue(field));
 			}
 
-			vertx.sharedData().getMap("skins").putAll(config.getJsonObject("skins", new JsonObject()).toMap());
+			vertx.fileSystem();
+			vertx.sharedData().getLocalMap("skins").putAll(config.getJsonObject("skins", new JsonObject()).getMap());
 
-			deployPreRequiredModules(config.getJsonArray("pre-required-modules"), new Handler<Void>() {
-				@Override
-				protected void handle() {
-					JsonSchemaValidator validator = JsonSchemaValidator.getInstance();
-					validator.setEventBus(getEventBus(vertx));
-					validator.setAddress(node + "json.schema.validator");
-					validator.loadJsonSchema(getPathPrefix(config), vertx);
+			List<String> list = vertx.fileSystem().readDirBlocking(".", "^SecuredAction-.*json$");
+			log.info("Working Directory = " +
+					System.getProperty("user.dir"));
 
-					deployModule(config.getJsonObject("app-registry"), false, false, new Handler<AsyncResult<String>>() {
-						@Override
-						public void handle(AsyncResult<String> event) {
-							if (event.succeeded()) {
-								deployModules(config.getJsonArray("external-modules", new JsonArray()), false);
-								deployModules(config.getJsonArray("one-modules", new JsonArray()), true);
-								registerGlobalWidgets(config.getString("widgets-path", "../../assets/widgets"));
-								loadInvalidEmails();
-							}
-						}
-					});
-				}
-			});
+//			List<String> extraclasspath = new ArrayList<>();
+//			extraclasspath.add(config.getString("baseCP") + "registry");
+//			vertx.deployVerticle("org.entcore.registry.AppRegistry", new DeploymentOptions()
+//					.setConfig(config.getJsonObject("app-registry").getJsonObject("config"))
+//					.setIsolationGroup("_EntCore_registry")
+//					.setExtraClasspath(extraclasspath)
+//					, event -> {
+//						if (event.failed()) {
+//							log.error("Fail deploy app-registry", event.cause());
+//						}
+//					});
+//			deployPreRequiredModules(config.getJsonArray("pre-required-modules"), new Handler<Void>() {
+//				@Override
+//				public void handle(Void v) {
+//					JsonSchemaValidator validator = JsonSchemaValidator.getInstance();
+//					validator.setEventBus(getEventBus(vertx));
+//					validator.setAddress(node + "json.schema.validator");
+//					validator.loadJsonSchema(getPathPrefix(config), vertx);
+//
+//					deployModule(config.getJsonObject("app-registry"), false, false, new Handler<AsyncResult<String>>() {
+//						@Override
+//						public void handle(AsyncResult<String> event) {
+//							if (event.succeeded()) {
+//								deployModules(config.getJsonArray("external-modules", new JsonArray()), false);
+//								deployModules(config.getJsonArray("one-modules", new JsonArray()), true);
+//								registerGlobalWidgets(config.getString("widgets-path", "../../assets/widgets"));
+//								loadInvalidEmails();
+//							}
+//						}
+//					});
+//				}
+//			});
 		} catch (Exception ex) {
 			log.error(ex.getMessage());
 		}
@@ -145,49 +166,61 @@ public class Starter extends BaseServer {
 		if (config.getBoolean("antivirus", false)) {
 			ClamAvService antivirusService = new ClamAvService();
 			antivirusService.setVertx(vertx);
-			antivirusService.setTimeline(new TimelineHelper(vertx, getEventBus(vertx), container));
-			antivirusService.setRender(new Renders(vertx, container));
+			antivirusService.setTimeline(new TimelineHelper(vertx, getEventBus(vertx), config));
+			antivirusService.setRender(new Renders(vertx, config));
 			antivirusService.init();
 			AntiVirusController antiVirusController = new AntiVirusController();
 			antiVirusController.setAntivirusService(antivirusService);
 			addController(antiVirusController);
-			container.deployWorkerVerticle(ExecCommandWorker.class.getName());
+			vertx.deployVerticle(ExecCommandWorker.class.getName(), new DeploymentOptions().setWorker(true));
 		}
 	}
 
 	private void loadInvalidEmails() {
-		final Map<Object, Object> invalidEmails;
-		if (cluster) {
-			ClusterManager cm = ((VertxInternal) vertx).clusterManager();
-			invalidEmails = cm.getSyncMap("invalidEmails");
-		} else {
-			invalidEmails = vertx.sharedData().getMap("invalidEmails");
-		}
-		if (invalidEmails != null && invalidEmails.isEmpty()) {
-			MongoDb.getInstance().findOne(HardBounceTask.PLATEFORM_COLLECTION, new JsonObject()
-					.put("type", HardBounceTask.PLATFORM_ITEM_TYPE), new Handler<Message<JsonObject>>() {
-				@Override
-				public void handle(Message<JsonObject> event) {
-					JsonObject res = event.body().getJsonObject("result");
-					if ("ok".equals(event.body().getString("status")) && res != null && res.getJsonArray("invalid-emails") != null) {
-						for (Object o : res.getJsonArray("invalid-emails")) {
-							invalidEmails.put(o, "");
+		AsyncMapFactory.getClusterMap("invalidEmails", vertx, new Handler<AsyncMap<Object, Object>>() {
+			@Override
+			public void handle(final AsyncMap<Object, Object> invalidEmails) {
+				if (invalidEmails != null) {
+					invalidEmails.size(new Handler<AsyncResult<Integer>>() {
+						@Override
+						public void handle(AsyncResult<Integer> event) {
+							if (event.succeeded() && event.result() < 1) {
+								MongoDb.getInstance().findOne(HardBounceTask.PLATEFORM_COLLECTION, new JsonObject()
+										.put("type", HardBounceTask.PLATFORM_ITEM_TYPE), new Handler<Message<JsonObject>>() {
+									@Override
+									public void handle(Message<JsonObject> event) {
+										JsonObject res = event.body().getJsonObject("result");
+										if ("ok".equals(event.body().getString("status")) && res != null && res.getJsonArray("invalid-emails") != null) {
+											for (Object o : res.getJsonArray("invalid-emails")) {
+												invalidEmails.put(o, "", new Handler<AsyncResult<Void>>() {
+													@Override
+													public void handle(AsyncResult<Void> event) {
+														if (event.failed()) {
+															log.error("Error adding invalid email.", event.cause());
+														}
+													}
+												});
+											}
+										} else {
+											log.error(event.body().getString("message"));
+										}
+									}
+								});
+							}
 						}
-					} else {
-						log.error(event.body().getString("message"));
-					}
+					});
 				}
-			});
-		}
-		EmailFactory emailFactory = new EmailFactory(vertx, container);
-		try {
-			new CronTrigger(vertx, config.getString("hard-bounces-cron", "0 0 7 * * ? *"))
-					.schedule(new HardBounceTask(emailFactory.getSender(), config.getInteger("hard-bounces-day", -1),
-							new TimelineHelper(vertx, getEventBus(vertx), container), invalidEmails));
-		} catch (ParseException e) {
-			log.error(e.getMessage(), e);
-			vertx.stop();
-		}
+				EmailFactory emailFactory = new EmailFactory(vertx, config);
+				try {
+					new CronTrigger(vertx, config.getString("hard-bounces-cron", "0 0 7 * * ? *"))
+							.schedule(new HardBounceTask(emailFactory.getSender(), config.getInteger("hard-bounces-day", -1),
+									new TimelineHelper(vertx, getEventBus(vertx), config), invalidEmails));
+				} catch (ParseException e) {
+					log.error(e.getMessage(), e);
+					vertx.close();
+				}
+			}
+		});
 	}
 
 	private void deployPreRequiredModules(final JsonArray array, final Handler<Void> handler) {
@@ -204,7 +237,7 @@ public class Starter extends BaseServer {
 					handler.handle(null);
 				} else {
 					log.error("Error deploying pre-required module.", event.cause());
-					vertx.stop();
+					vertx.close();
 				}
 			}
 		};
@@ -215,10 +248,10 @@ public class Starter extends BaseServer {
 				@Override
 				public void handle(AsyncResult<String> event) {
 					if (event.succeeded()) {
-						deployModule(array.<JsonObject>get(j), false, cluster, handlers[j + 1]);
+						deployModule(array.getJsonObject(j), false, cluster, handlers[j + 1]);
 					} else {
 						log.error("Error deploying pre-required module.", event.cause());
-						vertx.stop();
+						vertx.close();
 					}
 				}
 			};
@@ -266,8 +299,8 @@ public class Starter extends BaseServer {
 		if (overideBusAddress && !node.isEmpty() && address != null) {
 			conf.put("address", node + address);
 		}
-		container.deployModule(module.getString("name"),
-				conf, module.getInteger("instances", 1), handler);
+//		container.deployModule(module.getString("name"),
+//				conf, module.getInteger("instances", 1), handler);
 	}
 
 	private void addAppVersion(final JsonObject module, final String deploymentId) {
@@ -294,15 +327,15 @@ public class Starter extends BaseServer {
 				}
 			}
 			conf = conf.mergeIn(module.getJsonObject("config", new JsonObject()));
-			container.deployModule(module.getString("name"),
-					conf, module.getInteger("instances", 1), new Handler<AsyncResult<String>>() {
-						@Override
-						public void handle(AsyncResult<String> event) {
-							if (event.succeeded()) {
-								addAppVersion(module, event.result());
-							}
-						}
-					});
+//			vertx.deployModule(module.getString("name"),
+//					conf, module.getInteger("instances", 1), new Handler<AsyncResult<String>>() {
+//						@Override
+//						public void handle(AsyncResult<String> event) {
+//							if (event.succeeded()) {
+//								addAppVersion(module, event.result());
+//							}
+//						}
+//					});
 		}
 	}
 
@@ -313,13 +346,13 @@ public class Starter extends BaseServer {
 				.put("js", "/assets/widgets/"+widgetName+"/"+widgetName+".js")
 				.put("path", "/assets/widgets/"+widgetName+"/"+widgetName+".html");
 
-		if(vertx.fileSystem().existsSync(widgetPath+"/i18n")){
+		if(vertx.fileSystem().existsBlocking(widgetPath + "/i18n")){
 			widget.put("i18n", "/assets/widgets/"+widgetName+"/i18n");
 		}
 
 		JsonObject message = new JsonObject()
 				.put("widget", widget);
-		vertx.eventBus().send("wse.app.registry.widgets", message, new Handler<Message<JsonObject>>() {
+		vertx.eventBus().send("wse.app.registry.widgets", message, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 			public void handle(Message<JsonObject> event) {
 				if("error".equals(event.body().getString("status"))){
 					log.error("Error while registering widget "+widgetName+". "+event.body().getJsonArray("errors"));
@@ -327,17 +360,17 @@ public class Starter extends BaseServer {
 				}
 				log.info("Successfully registered widget "+widgetName);
 			}
-		});
+		}));
 	}
 
 	private void registerGlobalWidgets(String widgetsPath) {
-		vertx.fileSystem().readDir(widgetsPath, new Handler<AsyncResult<String[]>>() {
-			public void handle(AsyncResult<String[]> asyn) {
+		vertx.fileSystem().readDir(widgetsPath, new Handler<AsyncResult<List<String>>>() {
+			public void handle(AsyncResult<List<String>> asyn) {
 				if(asyn.failed()){
 					log.error("Error while registering global widgets.", asyn.cause());
 					return;
 				}
-				String[] paths = asyn.result();
+				final List<String> paths = asyn.result();
 				for(final String path: paths){
 					vertx.fileSystem().props(path, new Handler<AsyncResult<FileProps>>() {
 						public void handle(AsyncResult<FileProps> asyn) {
@@ -356,7 +389,7 @@ public class Starter extends BaseServer {
 	}
 
 	protected JsonObject getConfig(String path, String fileName) throws Exception {
-		Buffer b = vertx.fileSystem().readFileSync(path + fileName);
+		Buffer b = vertx.fileSystem().readFileBlocking(path + fileName);
 		if (b == null) {
 			log.error("Configuration file "+ fileName +"not found");
 			throw new Exception("Configuration file "+ fileName +" not found");

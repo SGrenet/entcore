@@ -925,7 +925,7 @@ public class AuthController extends BaseController {
 		request.endHandler(new Handler<Void>() {
 
 			@Override
-			protected void handle() {
+			public void handle(Void v) {
 				final String login = request.formAttributes().get("login");
 				final String resetCode = request.formAttributes().get("resetCode");
 				final String oldPassword = request.formAttributes().get("oldPassword");

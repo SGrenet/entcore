@@ -61,7 +61,7 @@ public class EventStoreController extends BaseController {
 
 	@Post("/event/localhost/store")
 	public void storeLocalhost(final HttpServerRequest request) {
-		if (("localhost:"+ container.config().getInteger("port", 8001))
+		if (("localhost:"+ config.getInteger("port", 8001))
 				.equalsIgnoreCase(request.headers().get("Host"))) {
 			store(request);
 		} else {
