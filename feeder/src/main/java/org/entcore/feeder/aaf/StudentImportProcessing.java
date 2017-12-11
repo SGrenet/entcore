@@ -57,7 +57,7 @@ public class StudentImportProcessing extends BaseImportProcessing {
 		createGroups(object.getJsonArray("groups"));
 		JsonArray r = parseRelativeField(object.getJsonArray("relative"));
 		if (r != null) {
-			resp.addAll(r.toList());
+			resp.addAll(r.getList());
 		}
 		object.put("profiles", new JsonArray().add("Student"));
 		importer.createOrUpdateStudent(object, DefaultProfiles.STUDENT_PROFILE_EXTERNAL_ID,

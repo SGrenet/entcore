@@ -27,7 +27,6 @@ import org.entcore.common.neo4j.Neo;
 import org.entcore.common.user.DefaultFunctions;
 import org.entcore.common.user.UserInfos;
 import io.vertx.core.Handler;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
@@ -99,7 +98,7 @@ public class AuthResourcesProvider implements ResourcesProvider {
 				request.resume();
 				handler.handle(
 						"ok".equals(r.body().getString("status")) &&
-								res.size() == 1 && ((JsonObject) res.get(0)).getBoolean("exists", false)
+								res.size() == 1 && (res.getJsonObject(0)).getBoolean("exists", false)
 				);
 			}
 		});
@@ -110,7 +109,7 @@ public class AuthResourcesProvider implements ResourcesProvider {
 		request.setExpectMultipart(true);
 		request.endHandler(new Handler<Void>() {
 			@Override
-			protected void handle() {
+			public void handle(Void v) {
 				if (user.getFunctions() != null && user.getFunctions().containsKey("SUPER_ADMIN")) {
 					handler.handle(true);
 					return;
@@ -143,7 +142,7 @@ public class AuthResourcesProvider implements ResourcesProvider {
 						JsonArray res = r.body().getJsonArray("result");
 						handler.handle(
 								"ok".equals(r.body().getString("status")) &&
-										res.size() == 1 && ((JsonObject) res.get(0)).getBoolean("exists", false)
+										res.size() == 1 && (res.getJsonObject(0)).getBoolean("exists", false)
 						);
 					}
 				});

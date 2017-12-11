@@ -61,10 +61,10 @@ public class UserInfoAdapterV1_0Json implements UserInfoAdapter {
 			filteredInfos.remove("structureNames");
 			filteredInfos.remove("federated");
 			if (classNames != null && classNames.size() > 0) {
-				filteredInfos.put("classId", classNames.<String>get(0));
+				filteredInfos.put("classId", classNames.getString(0));
 			}
 			if (structureNames != null && structureNames.size() > 0) {
-				filteredInfos.put("schoolName", structureNames.<String>get(0));
+				filteredInfos.put("schoolName", structureNames.getString(0));
 			}
 			filteredInfos.remove("functions");
 			filteredInfos.remove("groupsIds");

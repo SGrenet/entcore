@@ -32,6 +32,7 @@ import javax.xml.stream.XMLEventFactory;
 import javax.xml.stream.XMLEventWriter;
 import javax.xml.stream.XMLStreamException;
 import java.io.File;
+import java.util.ArrayList;
 
 public class EtabEducNatExportProcessing extends BaseExportProcessing {
 
@@ -43,7 +44,7 @@ public class EtabEducNatExportProcessing extends BaseExportProcessing {
 		super("dictionary/export/eliot/EtabEducNat.json", 5000, path + File.separator +
 				stdPrefix + "_Complet_" + date + "_EtabEducNat_", concat);
 		this.basePath = path;
-		attributes = new JsonArray(exportMapping.fieldNames().toArray()).add("externalId");
+		attributes = new JsonArray(new ArrayList<>(exportMapping.fieldNames())).add("externalId");
 		this.date = date;
 	}
 
@@ -72,9 +73,9 @@ public class EtabEducNatExportProcessing extends BaseExportProcessing {
 			public void handle(Message<JsonObject> result) {
 				JsonArray r = result.body().getJsonArray("results");
 				if ("ok".equals(result.body().getString("status")) && r != null && r.size() == 1) {
-					JsonArray rs = r.get(0);
+					JsonArray rs = r.getJsonArray(0);
 					if (rs != null && rs.size() == 1) {
-						JsonObject row = rs.get(0);
+						JsonObject row = rs.getJsonObject(0);
 						handler.handle(row.getInteger("nb", 0));
 						return;
 					}
@@ -96,7 +97,7 @@ public class EtabEducNatExportProcessing extends BaseExportProcessing {
 			public void handle(Message<JsonObject> result) {
 				JsonArray r = result.body().getJsonArray("results");
 				if ("ok".equals(result.body().getString("status")) && r != null && r.size() == 1) {
-					JsonArray rs = r.get(0);
+					JsonArray rs = r.getJsonArray(0);
 					handler.handle(rs);
 				} else {
 					handler.handle(null);

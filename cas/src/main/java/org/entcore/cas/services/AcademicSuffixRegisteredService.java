@@ -94,7 +94,7 @@ public class AcademicSuffixRegisteredService extends AbstractCas20ExtensionRegis
 
 		try {
 			// Define attribute : cas:user
-			if (data.containsField("externalId")) {
+			if (data.containsKey("externalId")) {
 				String initialExternalId = data.getString("externalId");
 
 				log.debug("PrepareUserCas20 : ExternalId Initial : " + initialExternalId);

@@ -127,7 +127,7 @@ public class CommunicationController extends BaseController {
 		if (userId != null && !userId.trim().isEmpty()) {
 			String schoolId = request.params().get("schoolId");
 			List<String> expectedTypes = request.params().getAll("expectedType");
-			visibleUsers(userId, schoolId, new JsonArray(expectedTypes.toArray()), arrayResponseHandler(request));
+			visibleUsers(userId, schoolId, new JsonArray(expectedTypes), arrayResponseHandler(request));
 		} else {
 			renderJson(request, new JsonArray());
 		}
@@ -204,7 +204,7 @@ public class CommunicationController extends BaseController {
 		RequestUtils.bodyToJson(request, new Handler<JsonObject>() {
 			@Override
 			public void handle(JsonObject body) {
-				JsonObject initDefaultRules = container.config().getJsonObject("initDefaultCommunicationRules");
+				JsonObject initDefaultRules = config.getJsonObject("initDefaultCommunicationRules");
 				JsonArray structures = body.getJsonArray("structures");
 				if (structures != null && structures.size() > 0) {
 					communicationService.initDefaultRules(structures,
@@ -224,7 +224,7 @@ public class CommunicationController extends BaseController {
 	@SecuredAction(value = "", type = ActionType.RESOURCE)
 	@ResourceFilter(AdminFilter.class)
 	public void getDefaultCommunicationRules(final HttpServerRequest request) {
-		JsonObject initDefaultRules = container.config().getJsonObject("initDefaultCommunicationRules");
+		JsonObject initDefaultRules = config.getJsonObject("initDefaultCommunicationRules");
 		Renders.renderJson(request, initDefaultRules, 200);
 	}
 
@@ -242,7 +242,7 @@ public class CommunicationController extends BaseController {
 
 	@BusAddress("wse.communication")
 	public void communicationEventBusHandler(final Message<JsonObject> message) {
-		JsonObject initDefaultRules = container.config().getJsonObject("initDefaultCommunicationRules");
+		JsonObject initDefaultRules = config.getJsonObject("initDefaultCommunicationRules");
 		final Handler<Either<String, JsonObject>> responseHandler = new Handler<Either<String, JsonObject>>() {
 
 			@Override

@@ -81,18 +81,18 @@ public class DefaultConversationService implements ConversationService {
 				"RETURN COLLECT(distinct (v.id + '$' + coalesce(v.displayName, ' ') + '$' + " +
 				"coalesce(v.name, ' ') + '$' + coalesce(v.groupDisplayName, ' '))) as displayNames ";
 		Set<String> ids = new HashSet<>();
-		ids.addAll(message.getJsonArray("to", new JsonArray()).toList());
-		ids.addAll(message.getJsonArray("cc", new JsonArray()).toList());
-		if (message.containsField("from")) {
+		ids.addAll(message.getJsonArray("to", new JsonArray()).getList());
+		ids.addAll(message.getJsonArray("cc", new JsonArray()).getList());
+		if (message.containsKey("from")) {
 			ids.add(message.getString("from"));
 		}
-		neo.execute(query, new JsonObject().put("ids", new JsonArray(ids.toArray())),
+		neo.execute(query, new JsonObject().put("ids", new JsonArray(new ArrayList<>(ids))),
 				new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> m) {
 				JsonArray r = m.body().getJsonArray("result");
 				if ("ok".equals(m.body().getString("status")) && r != null && r.size() == 1) {
-					JsonObject j = r.get(0);
+					JsonObject j = r.getJsonObject(0);
 					JsonArray d = j.getJsonArray("displayNames");
 					if (d != null && d.size() > 0) {
 						message.put("displayNames", d);
@@ -105,9 +105,9 @@ public class DefaultConversationService implements ConversationService {
 
 	private boolean displayNamesCondition(JsonObject message) {
 		return message != null && (
-				(message.containsField("from") && !message.getString("from").trim().isEmpty()) ||
-				(message.containsField("to") && message.getJsonArray("to").size() > 0) ||
-				(message.containsField("cc") && message.getJsonArray("cc").size() > 0));
+				(message.containsKey("from") && !message.getString("from").trim().isEmpty()) ||
+				(message.containsKey("to") && message.getJsonArray("to").size() > 0) ||
+				(message.containsKey("cc") && message.getJsonArray("cc").size() > 0));
 	}
 
 	private void save(String parentMessageId, JsonObject message, UserInfos user,
@@ -297,8 +297,8 @@ public class DefaultConversationService implements ConversationService {
 		findVisibles(eb, user.getUserId(), query, params, true, true, false, new Handler<JsonArray>() {
 			@Override
 			public void handle(JsonArray event) {
-				if (event != null && event.size() == 1 && (event.get(0) instanceof JsonObject)) {
-					result.handle(new Either.Right<String, JsonObject>((JsonObject) event.get(0)));
+				if (event != null && event.size() == 1 && (event.getValue(0) instanceof JsonObject)) {
+					result.handle(new Either.Right<String, JsonObject>(event.getJsonObject(0)));
 				} else {
 					result.handle(new Either.Left<String, JsonObject>("conversation.send.error"));
 				}
@@ -309,7 +309,7 @@ public class DefaultConversationService implements ConversationService {
 	private void sendWithAttachments(final String parentMessageId, final String messageId, JsonArray attachments, final UserInfos user, final Handler<Either<String, JsonObject>> result) {
 		long totalAttachmentsSize = 0l;
 		for(Object o : attachments){
-			totalAttachmentsSize = totalAttachmentsSize + ((JsonObject) o).getLong("size", 0);
+			totalAttachmentsSize = totalAttachmentsSize + ((JsonObject) o).getLong("size", 0l);
 		}
 
 		final String usersQuery;
@@ -361,9 +361,9 @@ public class DefaultConversationService implements ConversationService {
 		findVisibles(eb, user.getUserId(), query, params, true, true, false, new Handler<JsonArray>() {
 			@Override
 			public void handle(JsonArray event) {
-				if (event != null && event.size() == 1 && (event.get(0) instanceof JsonObject)) {
+				if (event != null && event.size() == 1 && (event.getValue(0) instanceof JsonObject)) {
 
-					JsonObject resultObj = event.get(0);
+					JsonObject resultObj = event.getJsonObject(0);
 					JsonArray sentIds = resultObj.getJsonArray("sentIds");
 					String messageId = resultObj.getString("id");
 
@@ -387,8 +387,8 @@ public class DefaultConversationService implements ConversationService {
 					findVisibles(eb, user.getUserId(), query, params, true, true, false, new Handler<JsonArray>() {
 						@Override
 						public void handle(JsonArray event) {
-							if (event != null && event.size() == 1 && (event.get(0) instanceof JsonObject)) {
-								result.handle(new Either.Right<String, JsonObject>((JsonObject) event.get(0)));
+							if (event != null && event.size() == 1 && (event.getValue(0) instanceof JsonObject)) {
+								result.handle(new Either.Right<String, JsonObject>(event.getJsonObject(0)));
 							} else {
 								result.handle(new Either.Left<String, JsonObject>("conversation.send.error"));
 							}
@@ -667,7 +667,7 @@ public class DefaultConversationService implements ConversationService {
 				public void handle(JsonArray visibles) {
 					JsonArray users = new JsonArray();
 					JsonArray groups = new JsonArray();
-					visible.put("groups", groups).putArray("users", users);
+					visible.put("groups", groups).put("users", users);
 					for (Object o: visibles) {
 						if (!(o instanceof JsonObject)) continue;
 						JsonObject j = (JsonObject) o;
@@ -1095,14 +1095,14 @@ public class DefaultConversationService implements ConversationService {
 					return;
 				}
 
-				JsonArray result1 = (JsonArray) event.right().getValue().get(0);
-				JsonArray result3 = (JsonArray) event.right().getValue().get(1);
+				JsonArray result1 = event.right().getValue().getJsonArray(0);
+				JsonArray result3 = event.right().getValue().getJsonArray(1);
 
 				JsonObject jsonResult = result1.size() > 0 ?
-						(JsonObject) result1.get(0) :
+						result1.getJsonObject(0) :
 						new JsonObject();
 				jsonResult.put("deletionCheck", result3.size() > 0 ?
-							((JsonObject) result3.get(0)).getBoolean("deletionCheck", false) :
+							result3.getJsonObject(0).getBoolean("deletionCheck", false) :
 							false);
 
 				result.handle(new Either.Right<String, JsonObject>(jsonResult));

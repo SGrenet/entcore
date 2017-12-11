@@ -26,6 +26,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.file.AsyncFile;
+import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -61,7 +62,7 @@ public class CSVUtil {
 	}
 
 	public static void getCharset(Vertx vertx, String path, final Handler<String> handler) {
-		vertx.fileSystem().open(path, new Handler<AsyncResult<AsyncFile>>() {
+		vertx.fileSystem().open(path, new OpenOptions(), new Handler<AsyncResult<AsyncFile>>() {
 			@Override
 			public void handle(final AsyncResult<AsyncFile> event) {
 				if (event.succeeded()) {

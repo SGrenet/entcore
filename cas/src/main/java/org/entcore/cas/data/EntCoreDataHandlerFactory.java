@@ -47,7 +47,7 @@ public class EntCoreDataHandlerFactory implements DataHandlerFactory {
 		this.eb = eb;
 
 		JsonArray confServices = conf.getJsonArray(CONF_SERVICES, new JsonArray());
-		for (Object confObject : confServices.toList()) {
+		for (Object confObject : confServices.getList()) {
 			try {
 				Map<String, Object> confService = (Map<String, Object>) confObject;
 				String className = String.valueOf(confService.get(CONF_SERVICE_CLASS));

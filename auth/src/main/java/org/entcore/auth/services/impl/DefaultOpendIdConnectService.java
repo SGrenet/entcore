@@ -22,15 +22,14 @@ package org.entcore.auth.services.impl;
 import fr.wseduc.webutils.DefaultAsyncResult;
 import fr.wseduc.webutils.Either;
 import fr.wseduc.webutils.security.JWT;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import org.entcore.auth.services.OpenIdConnectService;
 import org.entcore.auth.services.OpenIdConnectServiceProvider;
 import org.entcore.common.neo4j.Neo4j;
-import io.vertx.core.Handler<AsyncResult>;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonElement;
 import io.vertx.core.json.JsonObject;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
@@ -51,14 +50,14 @@ public class DefaultOpendIdConnectService implements OpenIdConnectService, OpenI
 	}
 
 	@Override
-	public void generateIdToken(String userId, final String clientId, final Handler<AsyncResult><String> handler) {
+	public void generateIdToken(String userId, final String clientId, final Handler<AsyncResult<String>> handler) {
 		final  String query = "MATCH (u:User {id: {id}}) return u.externalId as sub, u.email as  email, u.displayName as name";
 		Neo4j.getInstance().execute(query, new JsonObject().put("id", userId), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
 				final JsonArray res = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && res != null && res.size() == 1) {
-					generatePayload(res.<JsonObject>get(0), clientId, handler);
+					generatePayload(res.getJsonObject(0), clientId, handler);
 				} else {
 					handler.handle(new DefaultAsyncResult<String>(new RuntimeException("invalid.userId")));
 				}
@@ -66,7 +65,7 @@ public class DefaultOpendIdConnectService implements OpenIdConnectService, OpenI
 		});
 	}
 
-	private void generatePayload(JsonObject payload, String clientId, Handler<AsyncResult><String> handler) {
+	private void generatePayload(JsonObject payload, String clientId, Handler<AsyncResult<String>> handler) {
 		if (payload != null) {
 			final long iat = System.currentTimeMillis() / 1000;
 			payload.put("iss", getIss())
@@ -89,18 +88,18 @@ public class DefaultOpendIdConnectService implements OpenIdConnectService, OpenI
 	}
 
 	@Override
-	public void executeFederate(JsonObject payload, Handler<Either<String, JsonElement>> handler) {
+	public void executeFederate(JsonObject payload, Handler<Either<String, Object>> handler) {
 		if (iss.equals(payload.getString("iss")) && payload.getLong("exp", 0l) > (System.currentTimeMillis() / 1000)) {
 			AbstractSSOProvider.executeFederateQuery(
 					"MATCH (u:User { externalId : {sub}}) ", payload, null, setFederated, Neo4j.getInstance(), handler);
 		} else {
-			handler.handle(new Either.Left<String, JsonElement>("invalid.openid.payload"));
+			handler.handle(new Either.Left<String, Object>("invalid.openid.payload"));
 		}
 	}
 
 	@Override
-	public void mappingUser(String login, String password, JsonObject payload, Handler<Either<String, JsonElement>> handler) {
-		handler.handle(new Either.Left<String, JsonElement>("unsupported"));
+	public void mappingUser(String login, String password, JsonObject payload, Handler<Either<String, Object>> handler) {
+		handler.handle(new Either.Left<String, Object>("unsupported"));
 	}
 
 	public void setSetFederated(boolean setFederated) {

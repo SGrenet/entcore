@@ -23,6 +23,7 @@ import fr.wseduc.mongodb.MongoDb;
 import fr.wseduc.webutils.Either;
 import fr.wseduc.webutils.email.EmailSender;
 import fr.wseduc.webutils.http.Renders;
+import io.vertx.core.eventbus.DeliveryOptions;
 import org.entcore.archive.Archive;
 import org.entcore.archive.services.ExportService;
 import org.entcore.archive.utils.User;
@@ -31,7 +32,6 @@ import org.entcore.common.neo4j.Neo4j;
 import org.entcore.common.notification.TimelineHelper;
 import org.entcore.common.storage.Storage;
 import org.entcore.common.user.UserInfos;
-import org.entcore.common.utils.Config;
 import org.entcore.common.utils.Zip;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -47,6 +47,8 @@ import io.vertx.core.logging.LoggerFactory;
 import java.io.File;
 import java.util.*;
 import java.util.zip.Deflater;
+
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 
 public class FileSystemExportService implements ExportService {
 
@@ -83,7 +85,7 @@ public class FileSystemExportService implements ExportService {
 					final String exportId = now + "_" +user.getUserId();
 					userExportInProgress.put(user.getUserId(), now);
 					final String exportDirectory = exportPath + File.separator + exportId;
-					fs.mkdir(exportDirectory, true, new Handler<AsyncResult<Void>>() {
+					fs.mkdirs(exportDirectory, new Handler<AsyncResult<Void>>() {
 						@Override
 						public void handle(AsyncResult<Void> event) {
 							if (event.succeeded()) {
@@ -92,12 +94,12 @@ public class FileSystemExportService implements ExportService {
 								User.getOldGroups(user.getUserId(), new Handler<JsonArray>() {
 									@Override
 									public void handle(JsonArray objects) {
-										g.addAll(objects.toList());
+										g.addAll(objects.getList());
 										JsonObject j = new JsonObject()
 												.put("action", "export")
 												.put("exportId", exportId)
 												.put("userId", user.getUserId())
-												.put("groups", new JsonArray(g.toArray()))
+												.put("groups", new JsonArray(new ArrayList<>(g)))
 												.put("path", exportDirectory)
 												.put("locale", locale)
 												.put("host", Renders.getScheme(request) + "://" + request.headers().get("Host"));
@@ -168,7 +170,7 @@ public class FileSystemExportService implements ExportService {
 					.put("status", "error")
 					.put("message", "export.error");
 			eb.publish("export." + exportId, j);
-			fs.delete(exportDirectory, true, new Handler<AsyncResult<Void>>() {
+			fs.deleteRecursive(exportDirectory, true, new Handler<AsyncResult<Void>>() {
 				@Override
 				public void handle(AsyncResult<Void> event) {
 					if (event.failed()) {
@@ -184,15 +186,15 @@ public class FileSystemExportService implements ExportService {
 		}
 
 		log.debug("Read export directory");
-		fs.readDir(exportDirectory, new Handler<AsyncResult<String[]>>() {
+		fs.readDir(exportDirectory, new Handler<AsyncResult<List<String>>>() {
 			@Override
-			public void handle(AsyncResult<String[]> event) {
+			public void handle(AsyncResult<List<String>> event) {
 				if (event.succeeded()) {
 					if (log.isDebugEnabled()) {
 						log.debug("read export directory : ok - Result length : "
-								+ event.result().length + ", expected " + expectedExports.size());
+								+ event.result().size() + ", expected " + expectedExports.size());
 					}
-					if (event.result().length == expectedExports.size()) {
+					if (event.result().size() == expectedExports.size()) {
 						Zip.getInstance().zipFolder(exportDirectory, exportDirectory + ".zip", true,
 								Deflater.NO_COMPRESSION, new Handler<Message<JsonObject>>() {
 							@Override
@@ -202,12 +204,12 @@ public class FileSystemExportService implements ExportService {
 											event.body().getString("message"));
 									event.body().put("message", "zip.export.error");
 									userExportInProgress.remove(getUserId(exportId));
-									fs.delete(exportDirectory, true, new Handler<AsyncResult<Void>>() {
+									fs.deleteRecursive(exportDirectory, true, new Handler<AsyncResult<Void>>() {
 										@Override
 										public void handle(AsyncResult<Void> event) {
-										if (event.failed()) {
-											log.error("Error deleting directory : " + exportDirectory, event.cause());
-										}
+											if (event.failed()) {
+												log.error("Error deleting directory : " + exportDirectory, event.cause());
+											}
 										}
 									});
 									publish(event);
@@ -256,7 +258,7 @@ public class FileSystemExportService implements ExportService {
 
 							private void publish(final Message<JsonObject> event) {
 								final String address = "export." + exportId;
-								eb.sendWithTimeout(address, event.body(), 5000l,
+								eb.send(address, event.body(), new DeliveryOptions().setSendTimeout(5000l),
 										new Handler<AsyncResult<Message<JsonObject>>>() {
 
 									@Override
@@ -336,7 +338,7 @@ public class FileSystemExportService implements ExportService {
 			public void handle(Message<JsonObject> event) {
 				JsonArray res = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && res != null && res.size() == 1) {
-					JsonObject e = res.get(0);
+					JsonObject e = res.getJsonObject(0);
 					String email = e.getString("email");
 					if (email != null && !email.trim().isEmpty()) {
 						HttpServerRequest r = new JsonHttpServerRequest(new JsonObject()
@@ -355,14 +357,14 @@ public class FileSystemExportService implements ExportService {
 							template = "email/export.ko.html";
 						}
 						notification.sendEmail(r, email, null, null, subject, template, p, true,
-								new Handler<Message<JsonObject>>() {
+								handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 							@Override
 							public void handle(Message<JsonObject> event) {
 								if (event == null || !"ok".equals(event.body().getString("status"))) {
 									log.error("Error sending export email for user " + userId);
 								}
 							}
-						});
+						}));
 					} else {
 						log.info("User " + userId + " hasn't email.");
 					}

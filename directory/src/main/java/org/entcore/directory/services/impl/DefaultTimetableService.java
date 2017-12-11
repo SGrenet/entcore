@@ -35,6 +35,7 @@ import io.vertx.core.json.JsonObject;
 
 import java.util.List;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 import static org.entcore.common.mongodb.MongoDbResult.validResultsHandler;
 import static org.entcore.common.neo4j.Neo4jResult.*;
@@ -44,10 +45,10 @@ public class DefaultTimetableService implements TimetableService {
 	private static final String COURSES = "courses";
 	private final EventBus eb;
 	private final Neo4j neo4j = Neo4j.getInstance();
-	private static final JsonObject KEYS = new JsonObject().put("_id", 1).putNumber("structureId", 1).putNumber("subjectId", 1)
-			.put("roomLabels", 1).putNumber("equipmentLabels", 1).putNumber("teacherIds", 1).putNumber("personnelIds", 1)
-			.put("classes", 1).putNumber("groups", 1).putNumber("dayOfWeek", 1).putNumber("startDate", 1).putNumber("endDate", 1)
-			.put("subjectId", 1).putNumber("roomLabels", 1);
+	private static final JsonObject KEYS = new JsonObject().put("_id", 1).put("structureId", 1).put("subjectId", 1)
+			.put("roomLabels", 1).put("equipmentLabels", 1).put("teacherIds", 1).put("personnelIds", 1)
+			.put("classes", 1).put("groups", 1).put("dayOfWeek", 1).put("startDate", 1).put("endDate", 1)
+			.put("subjectId", 1).put("roomLabels", 1);
 	private static final String START_DATE_PATTERN = "T00:00Z";
 	private static final String END_DATE_PATTERN = "T23.59Z";
 
@@ -165,7 +166,7 @@ public class DefaultTimetableService implements TimetableService {
 	public void initStructure(String structureId, JsonObject conf, Handler<Either<String, JsonObject>> handler) {
 		JsonObject action = new JsonObject().put("action", "manual-init-timetable-structure")
 				.put("conf", conf.put("structureId", structureId));
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(handler));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(handler)));
 	}
 
 	@Override
@@ -246,7 +247,7 @@ public class DefaultTimetableService implements TimetableService {
 							.put("path", path)
 							.put("UAI", event.right().getValue().getString("UAI"))
 							.put("language", acceptLanguage);
-					eb.send(Directory.FEEDER, action, new Handler<Message<JsonObject>>() {
+					eb.send(Directory.FEEDER, action, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 						@Override
 						public void handle(Message<JsonObject> event) {
 							if ("ok".equals(event.body().getString("status"))) {
@@ -261,7 +262,7 @@ public class DefaultTimetableService implements TimetableService {
 								handler.handle(new Either.Left<JsonObject, JsonObject>(ge));
 							}
 						}
-					});
+					}));
 				} else {
 					errors.add(I18n.getInstance().translate("invalid.structure", domain, acceptLanguage));
 					handler.handle(new Either.Left<JsonObject, JsonObject>(ge));

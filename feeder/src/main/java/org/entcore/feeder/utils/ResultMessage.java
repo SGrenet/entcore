@@ -21,9 +21,9 @@ package org.entcore.feeder.utils;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
+import io.vertx.core.MultiMap;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 public class ResultMessage implements Message<JsonObject> {
@@ -40,7 +40,7 @@ public class ResultMessage implements Message<JsonObject> {
 	}
 
 	public ResultMessage put(String attr, Object o) {
-		body.putValue(attr, o);
+		body.put(attr, o);
 		return this;
 	}
 
@@ -56,6 +56,11 @@ public class ResultMessage implements Message<JsonObject> {
 	}
 
 	@Override
+	public MultiMap headers() {
+		return null;
+	}
+
+	@Override
 	public JsonObject body() {
 		return body;
 	}
@@ -66,214 +71,29 @@ public class ResultMessage implements Message<JsonObject> {
 	}
 
 	@Override
-	public void reply() {
-
+	public boolean isSend() {
+		return false;
 	}
 
 	@Override
 	public void reply(Object message) {
-
-	}
-
-	@Override
-	public void reply(JsonObject message) {
 		if (handler != null) {
-			handler.handle(message);
+			handler.handle((JsonObject) message);
 		}
 	}
 
 	@Override
-	public void reply(JsonArray message) {
+	public <R> void reply(Object message, Handler<AsyncResult<Message<R>>> replyHandler) {
 
 	}
 
 	@Override
-	public void reply(String message) {
+	public void reply(Object message, DeliveryOptions options) {
 
 	}
 
 	@Override
-	public void reply(Buffer message) {
-
-	}
-
-	@Override
-	public void reply(byte[] message) {
-
-	}
-
-	@Override
-	public void reply(Integer message) {
-
-	}
-
-	@Override
-	public void reply(Long message) {
-
-	}
-
-	@Override
-	public void reply(Short message) {
-
-	}
-
-	@Override
-	public void reply(Character message) {
-
-	}
-
-	@Override
-	public void reply(Boolean message) {
-
-	}
-
-	@Override
-	public void reply(Float message) {
-
-	}
-
-	@Override
-	public void reply(Double message) {
-
-	}
-
-	@Override
-	public <T1> void reply(Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(Object message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(Object message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(JsonObject message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(JsonObject message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(JsonArray message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(JsonArray message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(String message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(String message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(Buffer message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(Buffer message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(byte[] message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(byte[] message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(Integer message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(Integer message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(Long message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(Long message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(Short message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(Short message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(Character message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(Character message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(Boolean message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(Boolean message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(Float message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(Float message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
-
-	}
-
-	@Override
-	public <T1> void reply(Double message, Handler<Message<T1>> replyHandler) {
-
-	}
-
-	@Override
-	public <T> void replyWithTimeout(Double message, long timeout, Handler<AsyncResult<Message<T>>> replyHandler) {
+	public <R> void reply(Object message, DeliveryOptions options, Handler<AsyncResult<Message<R>>> replyHandler) {
 
 	}
 

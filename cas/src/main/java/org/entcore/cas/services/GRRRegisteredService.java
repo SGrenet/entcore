@@ -46,9 +46,9 @@ public class GRRRegisteredService extends AbstractCas20ExtensionRegisteredServic
 			additionnalAttributes.add(createTextElement("user_prenom_ldap", data.getString("firstName"), doc));
 			additionnalAttributes.add(createTextElement("user_mail_ldap", data.getString("email"), doc));
 			// Profile
-			if (data.getJsonArray("type") != null && data.getArray("type").size() > 0){
-				additionnalAttributes.add(createTextElement("user_code_fonction_ldap", data.getJsonArray("type").get(0).toString(), doc));
-				additionnalAttributes.add(createTextElement("user_libelle_fonction_ldap", data.getJsonArray("type").get(0).toString(), doc));
+			if (data.getJsonArray("type") != null && data.getJsonArray("type").size() > 0){
+				additionnalAttributes.add(createTextElement("user_code_fonction_ldap", data.getJsonArray("type").getString(0), doc));
+				additionnalAttributes.add(createTextElement("user_libelle_fonction_ldap", data.getJsonArray("type").getString(0), doc));
 			}
 			} catch (Exception e) {
 			log.error("Failed to transform User for GRR CAS extension", e);

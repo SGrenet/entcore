@@ -19,6 +19,7 @@
 
 package org.entcore.conversation.service.impl;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -49,24 +50,24 @@ public class Neo4jConversationService {
 			"coalesce(v.name, ' ') + '$' + coalesce(v.groupDisplayName, ' '))) as displayNames ";
 
 		Set<String> ids = new HashSet<>();
-		ids.addAll(message.getJsonArray("to", new JsonArray()).toList());
-		ids.addAll(message.getJsonArray("cc", new JsonArray()).toList());
-		if (message.containsField("from")) {
+		ids.addAll(message.getJsonArray("to", new JsonArray()).getList());
+		ids.addAll(message.getJsonArray("cc", new JsonArray()).getList());
+		if (message.containsKey("from")) {
 			ids.add(message.getString("from"));
 		}
 		if(parentMessage != null){
-			ids.addAll(parentMessage.getJsonArray("to", new JsonArray()).toList());
-			ids.addAll(parentMessage.getJsonArray("cc", new JsonArray()).toList());
-			if(parentMessage.containsField("from"))
+			ids.addAll(parentMessage.getJsonArray("to", new JsonArray()).getList());
+			ids.addAll(parentMessage.getJsonArray("cc", new JsonArray()).getList());
+			if(parentMessage.containsKey("from"))
 				ids.add(parentMessage.getString("from"));
 		}
-		neo.execute(query, new JsonObject().put("ids", new JsonArray(ids.toArray())),
+		neo.execute(query, new JsonObject().put("ids", new JsonArray(new ArrayList<>(ids))),
 				new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> m) {
 				JsonArray r = m.body().getJsonArray("result");
 				if ("ok".equals(m.body().getString("status")) && r != null && r.size() == 1) {
-					JsonObject j = r.get(0);
+					JsonObject j = r.getJsonObject(0);
 					JsonArray d = j.getJsonArray("displayNames");
 					if (d != null && d.size() > 0) {
 						message.put("displayNames", d);
@@ -79,17 +80,17 @@ public class Neo4jConversationService {
 
 	private boolean displayNamesCondition(JsonObject message) {
 		return message != null && (
-				(message.containsField("from") && !message.getString("from").trim().isEmpty()) ||
-				(message.containsField("to") && message.getJsonArray("to").size() > 0) ||
-				(message.containsField("cc") && message.getJsonArray("cc").size() > 0));
+				(message.containsKey("from") && !message.getString("from").trim().isEmpty()) ||
+				(message.containsKey("to") && message.getJsonArray("to").size() > 0) ||
+				(message.containsKey("cc") && message.getJsonArray("cc").size() > 0));
 	}
 
 	public void findInactives(final JsonObject message, long size, final Handler<JsonObject> handler){
 		Set<Object> dest = new HashSet<>();
-		dest.addAll(message.getJsonArray("to", new JsonArray()).toList());
-		dest.addAll(message.getJsonArray("cc", new JsonArray()).toList());
+		dest.addAll(message.getJsonArray("to", new JsonArray()).getList());
+		dest.addAll(message.getJsonArray("cc", new JsonArray()).getList());
 
-		JsonObject params = new JsonObject().put("dest", new JsonArray(dest.toArray()));
+		JsonObject params = new JsonObject().put("dest", new JsonArray(new ArrayList<Object>(dest)));
 
 		String returnClause = "";
 		if(size > 0){
@@ -122,7 +123,7 @@ public class Neo4jConversationService {
 					.put("allUsers", new JsonArray());
 
 				if ("ok".equals(event.body().getString("status")) && r != null && r.size() == 1) {
-					JsonObject j = r.get(0);
+					JsonObject j = r.getJsonObject(0);
 					formattedResult.put("inactives", j.getJsonArray("inactives", new JsonArray()));
 					formattedResult.put("undelivered", j.getJsonArray("undelivered", new JsonArray()));
 					formattedResult.put("allUsers", j.getJsonArray("userTargets", new JsonArray()));

@@ -48,7 +48,7 @@ public class LabomepRegisteredService extends AbstractCas20ExtensionRegisteredSe
 
 		try {
 			// Uid
-			if (data.containsField("externalId")) {
+			if (data.containsKey("externalId")) {
 				additionnalAttributes.add(createTextElement("uid", data.getString("externalId"), doc));
 			}
 
@@ -83,17 +83,17 @@ public class LabomepRegisteredService extends AbstractCas20ExtensionRegisteredSe
 			}
 
 			// Lastname
-			if (data.containsField("lastName")) {
+			if (data.containsKey("lastName")) {
 				additionnalAttributes.add(createTextElement("nom", data.getString("lastName"), doc));
 			}
 
 			// Firstname
-			if (data.containsField("firstName")) {
+			if (data.containsKey("firstName")) {
 				additionnalAttributes.add(createTextElement("prenom", data.getString("firstName"), doc));
 			}
 
 			// Email
-			if (data.containsField("email")) {
+			if (data.containsKey("email")) {
 				additionnalAttributes.add(createTextElement("email", data.getString("email"), doc));
 			}
 

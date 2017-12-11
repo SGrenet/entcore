@@ -21,23 +21,20 @@ package org.entcore.feeder.utils;
 
 import fr.wseduc.mongodb.MongoDb;
 import fr.wseduc.webutils.I18n;
-import fr.wseduc.webutils.http.Renders;
 import org.entcore.common.email.EmailFactory;
 import org.entcore.common.http.request.JsonHttpServerRequest;
-import org.entcore.common.http.response.JsonHttpResponse;
 import org.entcore.feeder.exceptions.TransactionException;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.platform.Container;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -61,7 +58,7 @@ public class Report {
 		final JsonObject errors = new JsonObject();
 		final JsonObject files = new JsonObject();
 		JsonObject ignored = new JsonObject();
-		result = new JsonObject().put("errors", errors).putObject("files", files).putObject("ignored", ignored);
+		result = new JsonObject().put("errors", errors).put("files", files).put("ignored", ignored);
 	}
 
 	public Report addError(String error) {
@@ -206,7 +203,7 @@ public class Report {
 			TransactionHelper tx = TransactionManager.getTransaction();
 			JsonObject params = new JsonObject()
 					.put("source", source)
-					.put("start", startTime).putNumber("end", endTime)
+					.put("start", startTime).put("end", endTime)
 					.put("startTime", new DateTime(startTime).toString())
 					.put("endTime", new DateTime(endTime).toString());
 			tx.add(
@@ -227,9 +224,9 @@ public class Report {
 					JsonArray results = event.body().getJsonArray("results");
 					if ("ok".equals(event.body().getString("status")) && results != null && results.size() == 3) {
 						try {
-							int created = results.<JsonArray>get(0).<JsonObject>get(0).getInteger("createdCount");
-							int modified = results.<JsonArray>get(1).<JsonObject>get(0).getInteger("modifiedCount");
-							int disappearance = results.<JsonArray>get(2).<JsonObject>get(0).getInteger("disappearanceCount");
+							int created = results.getJsonArray(0).getJsonObject(0).getInteger("createdCount");
+							int modified = results.getJsonArray(1).getJsonObject(0).getInteger("modifiedCount");
+							int disappearance = results.getJsonArray(2).getJsonObject(0).getInteger("disappearanceCount");
 							result.put("userCount", new JsonObject()
 									.put("created", created)
 									.put("modified", (modified - created))
@@ -238,7 +235,7 @@ public class Report {
 							result.put("source", source);
 							result.put("startTime", new DateTime(startTime).toString());
 							result.put("endTime", new DateTime(endTime).toString());
-							result.put("loadedFiles", new JsonArray(loadedFiles.toArray()));
+							result.put("loadedFiles", new JsonArray(new ArrayList<>(loadedFiles)));
 //							persist(new Handler<Message<JsonObject>>() {
 //								@Override
 //								public void handle(Message<JsonObject> event) {
@@ -266,32 +263,29 @@ public class Report {
 		}
 	}
 
-	public void emailReport(final Vertx vertx, final Container container) {
-		final JsonObject sendReport = container.config().getJsonObject("sendReport");
-		if (sendReport == null || sendReport.getJsonArray("to") == null || sendReport.getArray("to").size() == 0 ||
-				sendReport.getJsonArray("sources") == null || !sendReport.getArray("sources").contains(source) ) {
+	public void emailReport(final Vertx vertx, final JsonObject config) {
+		final JsonObject sendReport = config.getJsonObject("sendReport");
+		if (sendReport == null || sendReport.getJsonArray("to") == null || sendReport.getJsonArray("to").size() == 0 ||
+				sendReport.getJsonArray("sources") == null || !sendReport.getJsonArray("sources").contains(source) ) {
 			return;
 		}
 
 		final JsonObject reqParams = new JsonObject()
 				.put("headers", new JsonObject().put("Accept-Language", acceptLanguage));
-		EmailFactory emailFactory = new EmailFactory(vertx, container, container.config());
+		EmailFactory emailFactory = new EmailFactory(vertx, config);
 		emailFactory.getSender().sendEmail(
 				new JsonHttpServerRequest(reqParams),
-				sendReport.getJsonArray("to").toList(),
-				sendReport.getJsonArray("cc") != null ? sendReport.getArray("cc").toList() : null,
-				sendReport.getJsonArray("bcc") != null ? sendReport.getArray("bcc").toList() : null,
+				sendReport.getJsonArray("to").getList(),
+				sendReport.getJsonArray("cc") != null ? sendReport.getJsonArray("cc").getList() : null,
+				sendReport.getJsonArray("bcc") != null ? sendReport.getJsonArray("bcc").getList() : null,
 				sendReport.getString("project", "") + i18n.translate("import.report", I18n.DEFAULT_DOMAIN, acceptLanguage) +
 						" - " + DateTime.now().toString(DateTimeFormat.forPattern("yyyy-MM-dd")),
 				"email/report.html",
 				result,
 				false,
-				new Handler<Message<JsonObject>>() {
-					@Override
-					public void handle(Message<JsonObject> event) {
-						if (!"ok".equals(event.body().getString("status"))) {
-							log.error("Error sending report email : " + event.body().getString("message"));
-						}
+				ar -> {
+					if (ar.failed()) {
+						log.error("Error sending report email.", ar.cause());
 					}
 				}
 		);

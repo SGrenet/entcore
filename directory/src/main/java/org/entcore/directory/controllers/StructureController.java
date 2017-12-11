@@ -42,10 +42,9 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.RouteMatcher;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.platform.Container;
+import org.vertx.java.core.http.RouteMatcher;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -59,6 +58,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static fr.wseduc.webutils.request.RequestUtils.bodyToJson;
 import static org.entcore.common.http.response.DefaultResponseHandler.*;
 
@@ -71,9 +71,9 @@ public class StructureController extends BaseController {
 	private String node;
 
 	@Override
-	public void init(Vertx vertx, Container container, RouteMatcher rm, Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions) {
-		super.init(vertx, container, rm, securedActions);
-		node = (String) vertx.sharedData().getMap("server").get("node");
+	public void init(Vertx vertx, JsonObject config, RouteMatcher rm, Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions) {
+		super.init(vertx, config, rm, securedActions);
+		node = (String) vertx.sharedData().getLocalMap("server").get("node");
 		if (node == null) {
 			node = "";
 		}
@@ -102,7 +102,7 @@ public class StructureController extends BaseController {
 				if (r.isRight()) {
 					if (r.right().getValue() != null && r.right().getValue().size() > 0) {
 						JsonArray a = new JsonArray().add(userId);
-						ApplicationUtils.sendModifiedUserGroup(eb, a, new Handler<Message<JsonObject>>() {
+						ApplicationUtils.sendModifiedUserGroup(eb, a, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 							@Override
 							public void handle(Message<JsonObject> message) {
 								JsonObject j = new JsonObject()
@@ -110,7 +110,7 @@ public class StructureController extends BaseController {
 										.put("schoolId", structureId);
 								eb.send("wse.communication", j);
 							}
-						});
+						}));
 						renderJson(request, r.right().getValue(), 200);
 					} else {
 						notFound(request);
@@ -238,10 +238,10 @@ public class StructureController extends BaseController {
 						null;
 
 				filter
-					.put("profiles", new JsonArray(request.params().getAll("p").toArray()))
-					.put("levels", new JsonArray(request.params().getAll("l").toArray()))
-					.put("classes", new JsonArray(request.params().getAll("c").toArray()))
-					.put("sort", new JsonArray(sorts.toArray()));
+					.put("profiles", new JsonArray(request.params().getAll("p")))
+					.put("levels", new JsonArray(request.params().getAll("l")))
+					.put("classes", new JsonArray(request.params().getAll("c")))
+					.put("sort", new JsonArray(sorts));
 
 				if(request.params().contains("a")){
 					filter.put("activated", request.params().get("a"));
@@ -264,17 +264,17 @@ public class StructureController extends BaseController {
 				null;
 
 		filter
-			.put("profiles", new JsonArray(request.params().getAll("p").toArray()))
-			.put("levels", new JsonArray(request.params().getAll("l").toArray()))
-			.put("classes", new JsonArray(request.params().getAll("c").toArray()))
-			.put("sort", new JsonArray(request.params().getAll("s").toArray()));
+			.put("profiles", new JsonArray(request.params().getAll("p")))
+			.put("levels", new JsonArray(request.params().getAll("l")))
+			.put("classes", new JsonArray(request.params().getAll("c")))
+			.put("sort", new JsonArray(request.params().getAll("s")));
 
 		if(request.params().contains("a")){
 			filter.put("activated", request.params().get("a"));
 		}
 
-		this.assetsPath = (String) vertx.sharedData().getMap("server").get("assetPath");
-		this.skins = vertx.sharedData().getMap("skins");
+		this.assetsPath = (String) vertx.sharedData().getLocalMap("server").get("assetPath");
+		this.skins = vertx.sharedData().getLocalMap("skins");
 
 		final String assetsPath = this.assetsPath + "/assets/themes/" + this.skins.get(Renders.getHost(request));
 		final String templatePath = assetsPath + "/template/directory/";
@@ -318,10 +318,10 @@ public class StructureController extends BaseController {
 
 											JsonObject actionObject = new JsonObject();
 					    		        	actionObject
-					    		        		.putBinary("content", processedTemplate.getBytes())
+					    		        		.put("content", processedTemplate.getBytes())
 					    		        		.put("baseUrl", baseUrl);
 
-											eb.send(node + "entcore.pdf.generator", actionObject, new Handler<Message<JsonObject>>() {
+											eb.send(node + "entcore.pdf.generator", actionObject, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 												public void handle(Message<JsonObject> reply) {
 													JsonObject pdfResponse = reply.body();
 													if(!"ok".equals(pdfResponse.getString("status"))){
@@ -335,7 +335,7 @@ public class StructureController extends BaseController {
 															"attachment; filename="+filename+".pdf");
 													request.response().end(Buffer.buffer(pdf));
 												}
-					        	        	});
+					        	        	}));
 										}
 
 									});
@@ -365,7 +365,7 @@ public class StructureController extends BaseController {
 
 									StringReader reader = new StringReader(result.result().toString("UTF-8"));
 									final JsonArray mailHeaders = new JsonArray().add(
-											new JsonObject().put("name", "Content-Type").putString("value", "text/html; charset=\"UTF-8\""));
+											new JsonObject().put("name", "Content-Type").put("value", "text/html; charset=\"UTF-8\""));
 
 									for(Object userObj : users){
 										final JsonObject user = (JsonObject) userObj;
@@ -374,7 +374,7 @@ public class StructureController extends BaseController {
 											continue;
 										}
 
-										final String mailTitle = !user.containsField("activationCode") ||
+										final String mailTitle = !user.containsKey("activationCode") ||
 													user.getString("activationCode") == null ||
 													user.getString("activationCode").trim().isEmpty() ?
 												"directory.massmail.mail.subject.activated" :
@@ -400,13 +400,11 @@ public class StructureController extends BaseController {
 														userMail, null, null,
 														mailTitle,
 														processedTemplate, null, true, mailHeaders,
-														new Handler<Message<JsonObject>>() {
-													public void handle(Message<JsonObject> event) {
-														if("error".equals(event.body().getString("status"))){
-															log.error("[MassMail] Error while sending mail ("+event.body().getString("message", "")+")");
-														}
-													}
-												});
+														ar -> {
+															if(ar.failed()) {
+																log.error("[MassMail] Error while sending mail", ar.cause());
+															}
+														});
 											}
 
 										});

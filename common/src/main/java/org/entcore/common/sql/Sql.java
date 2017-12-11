@@ -26,6 +26,8 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import java.util.List;
+
 import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 
 public class Sql {
@@ -117,6 +119,10 @@ public class Sql {
 		return  "LOCK TABLE " + table + " IN SHARE ROW EXCLUSIVE MODE; " +
 				"WITH upsert AS ("+ updateQuery + " RETURNING *) " +
 				insertQuery +" WHERE NOT EXISTS (SELECT * FROM upsert);";
+	}
+
+	public static String listPrepared(List array) {
+		return listPrepared(array.toArray());
 	}
 
 	public static String listPrepared(Object[] array) {

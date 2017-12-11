@@ -29,7 +29,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.json.impl.Base64;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -46,6 +45,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Arrays;
+import java.util.Base64;
 
 import static fr.wseduc.webutils.Utils.isEmpty;
 
@@ -92,7 +92,7 @@ public class EDTUtils {
 		}
 		final Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 		cipher.init(Cipher.DECRYPT_MODE, privateKey);
-		final byte[] decryptedKey = cipher.doFinal(Base64.decode(encryptedKey));
+		final byte[] decryptedKey = cipher.doFinal(Base64.getDecoder().decode(encryptedKey));
 		final byte[] key = Arrays.copyOfRange(decryptedKey, 0, 16);
 		final byte[] iv = Arrays.copyOfRange(decryptedKey, 16, 32);
 		final byte[] sum = Arrays.copyOfRange(decryptedKey, 32, 48);

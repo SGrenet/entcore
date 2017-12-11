@@ -19,6 +19,7 @@
 
 package org.entcore.feeder.dictionary.structures;
 
+import io.vertx.core.http.*;
 import org.entcore.common.appregistry.ApplicationUtils;
 import org.entcore.common.events.EventStore;
 import org.entcore.common.events.EventStoreFactory;
@@ -29,9 +30,6 @@ import org.entcore.feeder.utils.TransactionManager;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -39,6 +37,8 @@ import io.vertx.core.logging.LoggerFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 
 
 public class PostImport {
@@ -70,12 +70,12 @@ public class PostImport {
 			duplicateUsers.markDuplicates(new Handler<JsonObject>() {
 				@Override
 				public void handle(final JsonObject event) {
-					duplicateUsers.autoMergeDuplicatesInStructure(new Handler<AsyncResult><JsonArray>() {
+					duplicateUsers.autoMergeDuplicatesInStructure(new Handler<AsyncResult<JsonArray>>() {
 						@Override
 						public void handle(AsyncResult<JsonArray> mergedUsers) {
 							applyComRules(new Handler<Void>() {
 								@Override
-								protected void handle() {
+								public void handle(Void v) {
 									if (config.getBoolean("notify-apps-after-import", true)) {
 										ApplicationUtils.afterImport(eb);
 									}
@@ -91,7 +91,7 @@ public class PostImport {
 		} else {
 			applyComRules(new Handler<Void>() {
 				@Override
-				protected void handle() {
+				public void handle(Void v) {
 					if (config.getBoolean("notify-apps-after-import", true)) {
 						ApplicationUtils.afterImport(eb);
 					}
@@ -109,15 +109,18 @@ public class PostImport {
 			if (endpoints == null || endpoints.size() < 1) continue;
 			try {
 				final URI uri = new URI(url);
-				final HttpClient client = vertx.createHttpClient().setHost(uri.getHost())
-						.setPort(uri.getPort()).setMaxPoolSize(16)
-						.setSSL("https".equals(uri.getScheme()))
+				HttpClientOptions options = new HttpClientOptions()
+						.setDefaultHost(uri.getHost())
+						.setDefaultPort(uri.getPort()).setMaxPoolSize(16)
+						.setSsl("https".equals(uri.getScheme()))
 						.setConnectTimeout(10000)
 						.setKeepAlive(false);
-				final Handler<Void>[] handlers = new Handler<Void>[endpoints.size() + 1];
+				final HttpClient client = vertx.createHttpClient(options);
+
+				final Handler[] handlers = new Handler[endpoints.size() + 1];
 				handlers[handlers.length -1] = new Handler<Void>() {
 					@Override
-					protected void handle() {
+					public void handle(Void v) {
 						client.close();
 					}
 				};
@@ -125,10 +128,10 @@ public class PostImport {
 					final int ji = i;
 					handlers[i] = new Handler<Void>() {
 						@Override
-						protected void handle() {
-							final JsonObject j = endpoints.get(ji);
+						public void handle(Void v) {
+							final JsonObject j = endpoints.getJsonObject(ji);
 							logger.info("endpoint : " + j.encode());
-							final HttpClientRequest req = client.request(j.getString("method"), j.getString("uri"), new Handler<HttpClientResponse>() {
+							final HttpClientRequest req = client.request(HttpMethod.valueOf(j.getString("method")), j.getString("uri"), new Handler<HttpClientResponse>() {
 								@Override
 								public void handle(HttpClientResponse resp) {
 									if (resp.statusCode() >= 300) {
@@ -169,7 +172,7 @@ public class PostImport {
 				JsonArray res = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && res != null && res.size() == 1) {
 					eventStore.createAndStoreEvent(Feeder.FeederEvent.IMPORT.name(),
-							(UserInfos) null, res.<JsonObject>get(0));
+							(UserInfos) null, res.getJsonObject(0));
 				} else {
 					logger.error(event.body().getString("message"));
 				}
@@ -188,9 +191,9 @@ public class PostImport {
 							ids.size() == 1) {
 						JsonObject j = new JsonObject()
 								.put("action", "initAndApplyDefaultCommunicationRules")
-								.put("schoolIds", ((JsonObject) ids.get(0))
+								.put("schoolIds", (ids.getJsonObject(0))
 										.getJsonArray("ids", new JsonArray()));
-						eb.send("wse.communication", j, new Handler<Message<JsonObject>>() {
+						eb.send("wse.communication", j, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 							@Override
 							public void handle(Message<JsonObject> event) {
 								if (!"ok".equals(event.body().getString("status"))) {
@@ -200,7 +203,7 @@ public class PostImport {
 								}
 								handler.handle(null);
 							}
-						});
+						}));
 					} else {
 						logger.error(message.body().getString("message"));
 						handler.handle(null);

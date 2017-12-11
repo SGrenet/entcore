@@ -23,7 +23,6 @@ import fr.wseduc.webutils.Either;
 import org.opensaml.saml2.core.Assertion;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonElement;
 import io.vertx.core.json.JsonObject;
 
 import java.util.List;
@@ -31,12 +30,12 @@ import java.util.List;
 public class SSOAten extends AbstractSSOProvider {
 
 	@Override
-	public void execute(Assertion assertion, Handler<Either<String, JsonElement>> handler) {
+	public void execute(Assertion assertion, Handler<Either<String, Object>> handler) {
 		if (!validConditions(assertion, handler)) return;
 
 		List<String> vectors = getAttributes(assertion, "FrEduVecteur");
 		if (vectors == null || vectors.isEmpty()) {
-			handler.handle(new Either.Left<String, JsonElement>("invalid.vector"));
+			handler.handle(new Either.Left<String, Object>("invalid.vector"));
 			return;
 		}
 
@@ -49,7 +48,7 @@ public class SSOAten extends AbstractSSOProvider {
 				String values[] = vector.split("\\|");
 				if (values.length < 5 || values[3].trim().isEmpty() || values[4].trim().isEmpty() ||
 						(!"1".equals(values[0]) && !"2".equals(values[0]))) {
-					handler.handle(new Either.Left<String, JsonElement>("invalid.vector"));
+					handler.handle(new Either.Left<String, Object>("invalid.vector"));
 					return;
 				}
 				uais.add(values[4]);
@@ -81,7 +80,7 @@ public class SSOAten extends AbstractSSOProvider {
 								"-[:DEPENDS]->(s:Structure) " +
 								"WHERE HEAD(u.profiles) = 'Relative' AND s.UAI = {UAI} " +
 								"AND u.firstName = {firstName} AND u.lastName = {lastName} ";
-						params.put("firstName", values[2]).putString("lastName", values[1]);
+						params.put("firstName", values[2]).put("lastName", values[1]);
 						break;
 					case "3": // Eleve 1d
 					case "4": // Eleve 2d
@@ -89,12 +88,12 @@ public class SSOAten extends AbstractSSOProvider {
 								"WHERE HEAD(u.profiles) = 'Student' AND s.UAI = {UAI} ";
 						break;
 					default:
-						handler.handle(new Either.Left<String, JsonElement>("invalid.user.profile"));
+						handler.handle(new Either.Left<String, Object>("invalid.user.profile"));
 						return;
 				}
 				executeQuery(query, params, assertion, handler);
 			} else {
-				handler.handle(new Either.Left<String, JsonElement>("invalid.vector"));
+				handler.handle(new Either.Left<String, Object>("invalid.vector"));
 			}
 		}
 	}

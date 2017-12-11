@@ -27,6 +27,7 @@ import fr.wseduc.webutils.Either;
 
 import fr.wseduc.webutils.I18n;
 import fr.wseduc.webutils.email.EmailSender;
+import io.vertx.core.shareddata.LocalMap;
 import org.entcore.common.email.EmailFactory;
 import org.joda.time.DateTime;
 import io.vertx.core.Handler;
@@ -36,8 +37,6 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.shareddata.ConcurrentSharedMap;
-import io.vertx.platform.Container;
 import org.entcore.common.neo4j.Neo;
 import org.entcore.common.neo4j.Neo4jResult;
 import org.entcore.common.validation.StringValidation;
@@ -46,28 +45,29 @@ import fr.wseduc.webutils.Server;
 import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.security.BCrypt;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 
 public class DefaultUserAuthAccount implements UserAuthAccount {
 
 	private final Neo neo;
 	private final Vertx vertx;
-	private final Container container;
+	private final JsonObject config;
 	private final EmailSender notification;
 	private final Renders render;
 
 	private String smsProvider;
 	private final String smsAddress;
 
-	public DefaultUserAuthAccount(Vertx vertx, Container container) {
+	public DefaultUserAuthAccount(Vertx vertx, JsonObject config) {
 		EventBus eb = Server.getEventBus(vertx);
-		this.neo = new Neo(vertx, eb, container.logger());
+		this.neo = new Neo(vertx, eb, null);
 		this.vertx = vertx;
-		this.container = container;
-		EmailFactory emailFactory = new EmailFactory(vertx, container, container.config());
+		this.config = config;
+		EmailFactory emailFactory = new EmailFactory(vertx, config);
 		notification = emailFactory.getSender();
-		render = new Renders(vertx, container);
-		ConcurrentSharedMap<Object, Object> server = vertx.sharedData().getMap("server");
+		render = new Renders(vertx, config);
+		LocalMap<Object, Object> server = vertx.sharedData().getLocalMap("server");
 		if(server != null && server.get("smsProvider") != null) {
 			smsProvider = (String) server.get("smsProvider");
 			final String node = (String) server.get("node");
@@ -252,7 +252,7 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 				final String mail = result.right().getValue().getString("email");
 				final String mobile = result.right().getValue().getString("mobile");
 
-				if(mail != null && container.config().getBoolean("teacherForgotPasswordEmail", false)){
+				if(mail != null && config.getBoolean("teacherForgotPasswordEmail", false)){
 					neo.execute(teacherQuery, params, Neo4jResult.validUniqueResultHandler(new Handler<Either<String,JsonObject>>() {
 						public void handle(Either<String, JsonObject> resultTeacher) {
 							if(resultTeacher.isLeft()){
@@ -280,18 +280,17 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 		JsonObject json = new JsonObject()
 				.put("host", notification.getHost(request))
 				.put("resetUri", notification.getHost(request) + "/auth/reset/" + resetCode);
-		container.logger().debug(json.encode());
 		notification.sendEmail(
 				request,
 				email,
-				container.config().getString("email", "noreply@one1d.fr"),
+				config.getString("email", "noreply@one1d.fr"),
 				null,
 				null,
 				"mail.reset.pw.subject",
 				"email/forgotPassword.html",
 				json,
 				true,
-				new Handler<Message<JsonObject>>() {
+				handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 					public void handle(Message<JsonObject> event) {
 						if("error".equals(event.body().getString("status"))){
 							handler.handle(new Either.Left<String, JsonObject>(event.body().getString("message", "")));
@@ -299,7 +298,7 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 							handler.handle(new Either.Right<String, JsonObject>(event.body()));
 						}
 					}
-				});
+				}));
 	}
 
 	@Override
@@ -312,18 +311,17 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 		JsonObject json = new JsonObject()
 			.put("login", login)
 			.put("host", notification.getHost(request));
-		container.logger().debug(json.encode());
 		notification.sendEmail(
 				request,
 				email,
-				container.config().getString("email", "noreply@one1d.fr"),
+				config.getString("email", "noreply@one1d.fr"),
 				null,
 				null,
 				"mail.reset.id.subject",
 				"email/forgotId.html",
 				json,
 				true,
-				new Handler<Message<JsonObject>>() {
+				handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 					public void handle(Message<JsonObject> event) {
 						if("error".equals(event.body().getString("status"))){
 							handler.handle(new Either.Left<String, JsonObject>(event.body().getString("message", "")));
@@ -331,7 +329,7 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 							handler.handle(new Either.Right<String, JsonObject>(event.body()));
 						}
 					}
-				});
+				}));
 	}
 
 	private void sendSms(HttpServerRequest request, final String phone, String template, JsonObject params, final Handler<Either<String, JsonObject>> handler){
@@ -355,7 +353,7 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 		    				.put("senderForResponse", true)
 		    				.put("noStopClause", true));
 
-					vertx.eventBus().send(smsAddress, smsObject, new Handler<Message<JsonObject>>() {
+					vertx.eventBus().send(smsAddress, smsObject, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 						public void handle(Message<JsonObject> event) {
 							if("error".equals(event.body().getString("status"))){
 								handler.handle(new Either.Left<String, JsonObject>(event.body().getString("message", "")));
@@ -363,7 +361,7 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 								handler.handle(new Either.Right<String, JsonObject>(event.body()));
 							}
 						}
-					});
+					}));
 				} else {
 					handler.handle(new Either.Left<String, JsonObject>("template.error"));
 				}
@@ -390,7 +388,7 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 
 	@Override
 	public void resetPassword(String login, String resetCode, String password, final Handler<Boolean> handler) {
-		final long codeDelay = container.config().getInteger("resetCodeDelay", 0);
+		final long codeDelay = config.getInteger("resetCodeDelay", 0);
 
 		String query =
 				"MATCH (n:User) " +
@@ -430,13 +428,13 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 				"SET n.resetCode = {resetCode}, n.resetDate = {today} " +
 				"RETURN count(n) as nb";
 		final String code = StringValidation.generateRandomCode(8);
-		JsonObject params = new JsonObject().put("login", login).putString("resetCode", code).put("today", new Date().getTime());
+		JsonObject params = new JsonObject().put("login", login).put("resetCode", code).put("today", new Date().getTime());
 		neo.execute(query, params, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
 				if ("ok".equals(event.body().getString("status")) &&
-						event.body().getJsonArray("result") != null && event.body().getArray("result").size() == 1 &&
-						1 == ((JsonObject) event.body().getJsonArray("result").get(0)).getInteger("nb")) {
+						event.body().getJsonArray("result") != null && event.body().getJsonArray("result").size() == 1 &&
+						1 == (event.body().getJsonArray("result").getJsonObject(0)).getInteger("nb")) {
 					sendResetPasswordMail(request, email, code, new Handler<Either<String, JsonObject>>() {
 						public void handle(Either<String, JsonObject> event) {
 							handler.handle(event.isRight());
@@ -457,8 +455,8 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 			@Override
 			public void handle(Message<JsonObject> r) {
 				handler.handle("ok".equals(r.body().getString("status")) &&
-						r.body().getJsonArray("result") != null && r.body().getArray("result").get(0) != null &&
-						((JsonObject) r.body().getJsonArray("result").get(0)).getBoolean("exists", false));
+						r.body().getJsonArray("result") != null && r.body().getJsonArray("result").getValue(0) != null &&
+						(r.body().getJsonArray("result").getJsonObject(0)).getBoolean("exists", false));
 			}
 		});
 	}
@@ -478,8 +476,8 @@ public class DefaultUserAuthAccount implements UserAuthAccount {
 			@Override
 			public void handle(Message<JsonObject> r) {
 				handler.handle("ok".equals(r.body().getString("status")) &&
-						r.body().getJsonArray("result") != null && r.body().getArray("result").get(0) != null &&
-						((JsonObject) r.body().getJsonArray("result").get(0)).getBoolean("exists", false));
+						r.body().getJsonArray("result") != null && r.body().getJsonArray("result").getValue(0) != null &&
+						(r.body().getJsonArray("result").getJsonObject(0)).getBoolean("exists", false));
 			}
 		});
 	};

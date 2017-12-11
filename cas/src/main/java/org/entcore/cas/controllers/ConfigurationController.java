@@ -37,6 +37,8 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
+
 
 public class ConfigurationController extends BaseController {
 
@@ -52,7 +54,7 @@ public class ConfigurationController extends BaseController {
 
 	public void loadPatterns() {
 		eb.send("wse.app.registry.bus", new JsonObject().put("action", "list-cas-connectors"),
-				new Handler<Message<JsonObject>>() {
+				handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
 				if ("ok".equals(event.body().getString("status"))) {
@@ -64,14 +66,14 @@ public class ConfigurationController extends BaseController {
 						String service = j.getString("service");
 						JsonArray patterns = j.getJsonArray("patterns");
 						if (service != null && !service.trim().isEmpty() && patterns != null && patterns.size() > 0) {
-							services.addPatterns(service,Arrays.copyOf(patterns.toArray(), patterns.size(), String[].class));
+							services.addPatterns(service,Arrays.copyOf(patterns.getList().toArray(), patterns.size(), String[].class));
 						}
 					}
 				} else {
 					log.error(event.body().getString("message"));
 				}
 			}
-		});
+		}));
 	}
 
 	@BusAddress(value = "cas.configuration", local = false)
@@ -85,10 +87,10 @@ public class ConfigurationController extends BaseController {
 				String service = message.body().getString("service");
 				JsonArray patterns = message.body().getJsonArray("patterns");
 				message.reply(new JsonObject().put("status",
-						services.addPatterns(service, Arrays.copyOf(patterns.toArray(), patterns.size(), String[].class)) ? "ok" : "error"));
+						services.addPatterns(service, Arrays.copyOf(patterns.getList().toArray(), patterns.size(), String[].class)) ? "ok" : "error"));
 				break;
 			default:
-				message.reply(new JsonObject().put("status", "error").putString("message", "invalid.action"));
+				message.reply(new JsonObject().put("status", "error").put("message", "invalid.action"));
 		}
 	}
 

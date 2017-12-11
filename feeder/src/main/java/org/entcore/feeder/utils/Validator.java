@@ -21,23 +21,19 @@ package org.entcore.feeder.utils;
 
 import fr.wseduc.webutils.I18n;
 import org.entcore.common.neo4j.Neo4j;
+import org.entcore.common.utils.MapFactory;
 import org.joda.time.DateTime;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
-import io.vertx.core.impl.VertxInternal;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.core.shareddata.ConcurrentSharedMap;
-import io.vertx.core.spi.cluster.ClusterManager;
 
 import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
@@ -45,7 +41,7 @@ import static fr.wseduc.webutils.Utils.isNotEmpty;
 public class Validator {
 
 	private static final Logger log = LoggerFactory.getLogger(Validator.class);
-	private static ConcurrentMap<Object, Object> logins;
+	private static Map<Object, Object> logins;
 	private static Map<Object, Object> invalidEmails;
 	private final I18n i18n = I18n.getInstance();
 	private final boolean notStoreLogins;
@@ -195,7 +191,7 @@ public class Validator {
 				if (err != null) {
 					return err;
 				}
-				if (value != null && generate.containsField(attr)) {
+				if (value != null && generate.containsKey(attr)) {
 					JsonObject g = generate.getJsonObject(attr);
 					if (g != null && "displayName".equals(g.getString("generator"))) {
 						if (generatedAttributes == null) {
@@ -226,7 +222,7 @@ public class Validator {
 	}
 
 	private String required(JsonObject object, String acceptLanguage) {
-		Map<String, Object> m = object.toMap();
+		Map<String, Object> m = object.getMap();
 		for (Object o : required) {
 			if (!m.containsKey(o.toString())) {
 				return i18n.translate("missing.attribute", I18n.DEFAULT_DOMAIN, acceptLanguage, i18n.translate(o.toString(), I18n.DEFAULT_DOMAIN, acceptLanguage));
@@ -237,7 +233,7 @@ public class Validator {
 
 	private void generate(JsonObject object) {
 		for (String attr : generate.fieldNames()) {
-			if (object.containsField(attr)) continue;
+			if (object.containsKey(attr)) continue;
 			JsonObject j = generate.getJsonObject(attr);
 			switch (j.getString("generator", "")) {
 				case "uuid4" :
@@ -269,7 +265,7 @@ public class Validator {
 		if (args != null && args.size() > 0) {
 			v = new String[args.size()];
 			for (int i = 0; i < args.size(); i++) {
-				v[i] = object.getString((String) args.get(i));
+				v[i] = object.getString(args.getString(i));
 			}
 		}
 		return v;
@@ -279,7 +275,7 @@ public class Validator {
 		String v = null;
 		JsonArray args = j.getJsonArray("args");
 		if (args != null && args.size() == 1) {
-			v = object.getString((String) args.get(0));
+			v = object.getString(args.getString(0));
 		}
 		return v;
 	}
@@ -417,56 +413,81 @@ public class Validator {
 
 	public static void initLogin(Neo4j neo4j, Vertx vertx) {
 		final long startInit = System.currentTimeMillis();
-		final boolean remove;
 		if (logins == null) {
-			ConcurrentSharedMap<Object, Object> server = vertx.sharedData().getMap("server");
-			Boolean cluster = (Boolean) server.get("cluster");
-			if (Boolean.TRUE.equals(cluster)) {
-				ClusterManager cm = ((VertxInternal) vertx).clusterManager();
-				logins = (ConcurrentMap<Object, Object>) cm.getSyncMap("usedLogins");
-			} else {
-				logins = new ConcurrentHashMap<>();
-			}
-			remove = false;
+//			MapFactory.getClusterMap("usedLogins", vertx, map -> {
+//				if (map == null) {
+//					log.error("Null usedLogins Map.");
+//					return;
+//				}
+//				logins = map;
+//				initLogins(neo4j, startInit, false);
+//			});
+			logins = MapFactory.getSyncClusterMap("usedLogins", vertx);
+			initLogins(neo4j, startInit, false);
 		} else {
-			remove = true;
+			initLogins(neo4j, startInit, true);
 		}
+
+		if (invalidEmails == null) {
+			invalidEmails = MapFactory.getSyncClusterMap("invalidEmails", vertx);
+//			MapFactory.getClusterMap("invalidEmails", vertx, map -> {
+//				if (map != null) {
+//					invalidEmails = map;
+//				} else {
+//					log.error("Null invalidEmails Map.");
+//				}
+//			});
+		}
+	}
+
+	protected static void initLogins(Neo4j neo4j, final long startInit, final boolean remove) {
 		String query = "MATCH (u:User) RETURN COLLECT(DISTINCT u.login) as logins";
 		neo4j.execute(query, new JsonObject(), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> message) {
 				JsonArray r = message.body().getJsonArray("result");
 				if ("ok".equals(message.body().getString("status")) && r != null && r.size() == 1) {
-					JsonArray l = ((JsonObject) r.get(0)).getJsonArray("logins");
+					JsonArray l = (r.getJsonObject(0)).getJsonArray("logins");
 					if (l != null) {
-						final Set<Object> tmp = new HashSet<>(l.toList());
+						final Set<Object> tmp = new HashSet<>(l.getList());
 						if (remove) {
+//							logins.keys(ar -> {
+//								if (ar.succeeded()) {
+//									for (Object key : ar.result()) {
+//										if (!tmp.contains(key)) {
+//											logins.remove(key, null);
+//										} else {
+//											tmp.remove(key);
+//										}
+//									}
+//									putLogin(tmp);
+//								} else {
+//									log.error("Error listing usedLogins.", ar.cause());
+//								}
+//							});
+
 							for (Object key : logins.keySet()) {
 								if (!tmp.contains(key)) {
-									logins.remove(key);
+									logins.remove(key, null);
 								} else {
 									tmp.remove(key);
 								}
 							}
+							putLogin(tmp);
+						} else {
+							putLogin(tmp);
 						}
-						for (Object o : tmp) {
-							logins.putIfAbsent(o, "");
-						}
-						log.info("Init delay : " + (System.currentTimeMillis() - startInit));
 					}
 				}
 			}
-		});
-		if (invalidEmails == null) {
-			ConcurrentSharedMap<Object, Object> server = vertx.sharedData().getMap("server");
-			Boolean cluster = (Boolean) server.get("cluster");
-			if (Boolean.TRUE.equals(cluster)) {
-				ClusterManager cm = ((VertxInternal) vertx).clusterManager();
-				invalidEmails = cm.getSyncMap("invalidEmails");
-			} else {
-				invalidEmails = vertx.sharedData().getMap("invalidEmails");
+
+			protected void putLogin(Set<Object> tmp) {
+				for (Object o : tmp) {
+					logins.putIfAbsent(o, "");
+				}
+				log.info("Init delay : " + (System.currentTimeMillis() - startInit));
 			}
-		}
+		});
 	}
 
 }

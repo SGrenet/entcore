@@ -27,12 +27,12 @@ import org.entcore.feeder.utils.ResultMessage;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -58,24 +58,24 @@ public class ImportsLauncher implements Handler<Long> {
 
 	@Override
 	public void handle(Long event) {
-		vertx.fileSystem().readDir(path, (edtUtils != null ? ".*.xml": ".*.zip"), new Handler<AsyncResult<String[]>>() {
+		vertx.fileSystem().readDir(path, (edtUtils != null ? ".*.xml": ".*.zip"), new Handler<AsyncResult<List<String>>>() {
 			@Override
-			public void handle(final AsyncResult<String[]> event) {
+			public void handle(final AsyncResult<List<String>> event) {
 				if (event.succeeded()) {
-					final Handler<Void>[] handlers = new Handler<Void>[event.result().length + 1];
+					final Handler[] handlers = new Handler[event.result().size() + 1];
 					handlers[handlers.length -1] = new Handler<Void>() {
 						@Override
-						protected void handle() {
+						public void handle(Void v) {
 							postImport.execute();
 						}
 					};
-					Arrays.sort(event.result());
-					for (int i = event.result().length - 1; i >= 0; i--) {
+					Collections.sort(event.result());
+					for (int i = event.result().size() - 1; i >= 0; i--) {
 						final int j = i;
 						handlers[i] = new Handler<Void>() {
 							@Override
-							protected void handle() {
-								final String file = event.result()[j];
+							public void handle(Void v) {
+								final String file = event.result().get(j);
 								log.info("Parsing file : " + file);
 								Matcher matcher;
 								if (file != null && (matcher = UAI_PATTERN.matcher(file)).find()) {

@@ -67,9 +67,9 @@ public class Aaf1dFeeder implements Feed {
 						log.error("Invalid importDirectories file.", e);
 						return;
 					}
-					vertx.fileSystem().readDir(path, new Handler<AsyncResult<String[]>>() {
+					vertx.fileSystem().readDir(path, new Handler<AsyncResult<List<String>>>() {
 						@Override
-						public void handle(AsyncResult<String[]> event) {
+						public void handle(AsyncResult<List<String>> event) {
 							if (event.succeeded()) {
 								final List<String> importsDirs = new ArrayList<>();
 								for (String dir : event.result()) {

@@ -29,6 +29,7 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static org.entcore.common.neo4j.Neo4jResult.validEmptyHandler;
 import static org.entcore.common.neo4j.Neo4jResult.validResultHandler;
 import static org.entcore.common.neo4j.Neo4jResult.validUniqueResultHandler;
@@ -48,7 +49,7 @@ public class DefaultProfileService implements ProfileService {
 				.put("action", "manual-create-function")
 				.put("profile", profile)
 				.put("data", function);
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(0, handler));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(0, handler)));
 	}
 
 	@Override
@@ -56,7 +57,7 @@ public class DefaultProfileService implements ProfileService {
 		JsonObject action = new JsonObject()
 				.put("action", "manual-delete-function")
 				.put("functionCode", functionCode);
-		eb.send(Directory.FEEDER, action, validEmptyHandler(handler));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validEmptyHandler(handler)));
 	}
 
 	@Override
@@ -67,7 +68,7 @@ public class DefaultProfileService implements ProfileService {
 				.put("functions", functionsCodes)
 				.put("externalId", externalId)
 				.put("name", name);
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(0, result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(0, result)));
 	}
 
 	@Override
@@ -75,7 +76,7 @@ public class DefaultProfileService implements ProfileService {
 		JsonObject action = new JsonObject()
 				.put("action", "manual-delete-function-group")
 				.put("groupId", functionGroupId);
-		eb.send(Directory.FEEDER, action, validEmptyHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validEmptyHandler(result)));
 	}
 
 	@Override

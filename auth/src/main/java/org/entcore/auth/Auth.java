@@ -20,6 +20,8 @@
 package org.entcore.auth;
 
 import fr.wseduc.webutils.security.JWT;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.shareddata.LocalMap;
 import org.entcore.auth.controllers.AuthController;
 import org.entcore.auth.controllers.ConfigurationController;
 import org.entcore.auth.controllers.OpenIdConnectController;
@@ -32,8 +34,6 @@ import org.entcore.auth.users.UserAuthAccount;
 import org.entcore.common.events.EventStore;
 import org.entcore.common.events.EventStoreFactory;
 import org.entcore.common.http.BaseServer;
-import fr.wseduc.webutils.request.filter.UserAuthFilter;
-import fr.wseduc.webutils.security.oauth.DefaultOAuthResourceProvider;
 import org.entcore.common.neo4j.Neo;
 import org.opensaml.xml.ConfigurationException;
 import io.vertx.core.AsyncResult;
@@ -41,19 +41,20 @@ import io.vertx.core.Handler;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.shareddata.ConcurrentSharedMap;
+
+import java.util.List;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 
 public class Auth extends BaseServer {
 
 	@Override
-	public void start() {
+	public void start() throws Exception {
 		final EventBus eb = getEventBus(vertx);
 		super.start();
-		setDefaultResourceFilter(new AuthResourcesProvider(new Neo(vertx, eb, container.logger())));
+		setDefaultResourceFilter(new AuthResourcesProvider(new Neo(vertx, eb, null)));
 
-		final UserAuthAccount userAuthAccount = new DefaultUserAuthAccount(vertx, container);
+		final UserAuthAccount userAuthAccount = new DefaultUserAuthAccount(vertx, config);
 		final EventStore eventStore = EventStoreFactory.getFactory().getEventStore(Auth.class.getSimpleName());
 
 		AuthController authController = new AuthController();
@@ -67,10 +68,10 @@ public class Auth extends BaseServer {
 
 		final String samlMetadataFolder = config.getString("saml-metadata-folder");
 		if (samlMetadataFolder != null && !samlMetadataFolder.trim().isEmpty()) {
-			vertx.fileSystem().readDir(samlMetadataFolder, new Handler<AsyncResult<String[]>>() {
+			vertx.fileSystem().readDir(samlMetadataFolder, new Handler<AsyncResult<List<String>>>() {
 				@Override
-				public void handle(AsyncResult<String[]> event) {
-					if (event.succeeded() && event.result().length > 0) {
+				public void handle(AsyncResult<List<String>> event) {
+					if (event.succeeded() && event.result().size() > 0) {
 						try {
 							SamlController samlController = new SamlController();
 							JsonObject conf = new JsonObject()
@@ -80,16 +81,16 @@ public class Auth extends BaseServer {
 									.put("saml-issuer", config.getString("saml-issuer"))
 									.put("saml-entng-idp-nq", config.getString("saml-entng-idp-nq"))
 									.put("saml-slo-relayState", config.getString("saml-slo-relayState", "NULL"));
-							container.deployWorkerVerticle(SamlValidator.class.getName(), conf);
+							vertx.deployVerticle(SamlValidator.class, new DeploymentOptions().setConfig(conf).setWorker(true));
 							samlController.setEventStore(eventStore);
 							samlController.setUserAuthAccount(userAuthAccount);
 							samlController.setServiceProviderFactory(new DefaultServiceProviderFactory(
 									config.getJsonObject("saml-services-providers")));
-							samlController.setSignKey((String) vertx.sharedData().getMap("server").get("signKey"));
+							samlController.setSignKey((String) vertx.sharedData().getLocalMap("server").get("signKey"));
 							samlController.setSamlWayfParams(config.getJsonObject("saml-wayf"));
 							samlController.setIgnoreCallBackPattern(config.getString("ignoreCallBackPattern"));
 							addController(samlController);
-							ConcurrentSharedMap<Object, Object> server = vertx.sharedData().getMap("server");
+							LocalMap<Object, Object> server = vertx.sharedData().getLocalMap("server");
 							if (server != null) {
 								String loginUri = config.getString("loginUri");
 								String callbackParam = config.getString("callbackParam");
@@ -129,7 +130,7 @@ public class Auth extends BaseServer {
 		if (openidFederate != null) {
 			openIdConnectController.setEventStore(eventStore);
 			openIdConnectController.setUserAuthAccount(userAuthAccount);
-			openIdConnectController.setSignKey((String) vertx.sharedData().getMap("server").get("signKey"));
+			openIdConnectController.setSignKey((String) vertx.sharedData().getLocalMap("server").get("signKey"));
 			openIdConnectController.setOpenIdConnectServiceProviderFactory(
 					new DefaultOpenIdServiceProviderFactory(vertx, openidFederate.getJsonObject("domains")));
 			openIdConnectController.setSubMapping(openidFederate.getBoolean("authorizeSubMapping", false));

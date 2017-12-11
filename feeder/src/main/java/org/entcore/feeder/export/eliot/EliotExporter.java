@@ -40,6 +40,9 @@ import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
+
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 
 public class EliotExporter implements Exporter {
 
@@ -59,7 +62,7 @@ public class EliotExporter implements Exporter {
 		this.exportBasePath = exportPath;
 		this.exportDestination = exportDestination;
 		this.vertx = vertx;
-		String n = (String) vertx.sharedData().getMap("server").get("node");
+		String n = (String) vertx.sharedData().getLocalMap("server").get("node");
 		this.node = (n != null) ? n : "";
 		this.concatFiles = concatFiles;
 		this.deleteExport = deleteExport;
@@ -78,13 +81,13 @@ public class EliotExporter implements Exporter {
 			public void handle(Message<JsonObject> result) {
 				JsonArray r = result.body().getJsonArray("results");
 				if ("ok".equals(result.body().getString("status")) && r != null && r.size() == 2) {
-					final String tenant = r.<JsonArray>get(0).<JsonObject>get(0).getString("name");
-					final String academy = r.<JsonArray>get(0).<JsonObject>get(0).getString("academy", r.<JsonArray>get(1).<JsonObject>get(0).getString("academy"));
+					final String tenant = r.getJsonArray(0).getJsonObject(0).getString("name");
+					final String academy = r.getJsonArray(0).getJsonObject(0).getString("academy", r.getJsonArray(1).getJsonObject(0).getString("academy"));
 					final Date exportDate = new Date();
 					final String path = exportBasePath + File.separator +
 							tenant + "_Complet_" + datetime.format(exportDate) + "_Export";
 					log.info("Export path " + path);
-					vertx.fileSystem().mkdir(path, true, new Handler<AsyncResult<Void>>() {
+					vertx.fileSystem().mkdirs(path, new Handler<AsyncResult<Void>>() {
 						@Override
 						public void handle(AsyncResult<Void> ar) {
 							if (ar.succeeded()) {
@@ -128,27 +131,27 @@ public class EliotExporter implements Exporter {
 	private void zipAndSend(final String path, final Handler<Message<JsonObject>> handler) {
 		final String zipPath = path + ".zip";
 		log.info("Export zip : " + zipPath);
-		vertx.fileSystem().readDir(path, new Handler<AsyncResult<String[]>>() {
+		vertx.fileSystem().readDir(path, new Handler<AsyncResult<List<String>>>() {
 			@Override
-			public void handle(AsyncResult<String[]> asyncResult) {
+			public void handle(AsyncResult<List<String>> asyncResult) {
 				if (asyncResult.succeeded()) {
 					JsonObject j = new JsonObject()
 							.put("path", new JsonArray(asyncResult.result()))
 							.put("zipFile", zipPath)
 							.put("deletePath", true);
-					vertx.eventBus().send(node + "entcore.zipper", j, new Handler<Message<JsonObject>>() {
+					vertx.eventBus().send(node + "entcore.zipper", j, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 						@Override
 						public void handle(Message<JsonObject> event) {
 							if ("ok".equals(event.body().getString("status"))) {
 								sendWithWebDav(zipPath, handler);
-								vertx.fileSystem().delete(path, true, null);
+								vertx.fileSystem().deleteRecursive(path, true, null);
 							} else {
 								log.error("Error zipping export : ");
 								log.error(event.body().encode());
 								handler.handle(event);
 							}
 						}
-					});
+					}));
 				} else {
 					log.error(asyncResult.cause().getMessage(), asyncResult.cause());
 					handler.handle(new ResultMessage().error(asyncResult.cause().getMessage()));
@@ -164,7 +167,7 @@ public class EliotExporter implements Exporter {
 				.put("uri", exportDestination +
 						file.substring(file.lastIndexOf(File.separator) + 1))
 				.put("file", file);
-		eb.send(node + WEBDAV_ADDRESS, j, new Handler<Message<JsonObject>>() {
+		eb.send(node + WEBDAV_ADDRESS, j, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> message) {
 				if ("ok".equals(message.body().getString("status"))) {
@@ -177,7 +180,7 @@ public class EliotExporter implements Exporter {
 				}
 				handler.handle(message);
 		  }
-		});
+		}));
 	}
 
 }

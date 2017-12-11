@@ -46,6 +46,7 @@ import io.vertx.core.json.JsonObject;
 import java.util.Arrays;
 import java.util.List;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static fr.wseduc.webutils.request.RequestUtils.bodyToJson;
 import static org.entcore.common.http.response.DefaultResponseHandler.*;
 
@@ -90,7 +91,7 @@ public class ClassController extends BaseController {
 					public void handle(Either<String, JsonObject> r) {
 						if (r.isRight()) {
 							final String userId = r.right().getValue().getString("id");
-							boolean notify = container.config().getBoolean("createdUserEmail", false) &&
+							boolean notify = config.getBoolean("createdUserEmail", false) &&
 									request.params().contains("sendCreatedUserEmail");
 							initPostCreate(classId, new JsonArray().add(userId), notify, request);
 							if (notify) {
@@ -121,7 +122,7 @@ public class ClassController extends BaseController {
 	@SecuredAction(value = "", type = ActionType.RESOURCE)
 	public void findUsers(final HttpServerRequest request) {
 		final String classId = request.params().get("classId");
-		JsonArray types = new JsonArray(request.params().getAll("type").toArray());
+		JsonArray types = new JsonArray(request.params().getAll("type"));
 	 	Handler<Either<String, JsonArray>> handler;
 		if ("csv".equals(request.params().get("format"))) {
 			handler = new Handler<Either<String, JsonArray>>() {
@@ -182,7 +183,7 @@ public class ClassController extends BaseController {
 					renderJson(request, new JsonObject().put("message", "invalid.file"), 400);
 					return;
 				}
-				event.dataHandler(new Handler<Buffer>() {
+				event.handler(new Handler<Buffer>() {
 					@Override
 					public void handle(Buffer event) {
 						buff.appendBuffer(event);
@@ -195,17 +196,17 @@ public class ClassController extends BaseController {
 								.put("action", "manual-csv-class-" + userType.toLowerCase())
 								.put("classId", classId)
 								.put("csv", buff.toString("ISO-8859-1"));
-						Server.getEventBus(vertx).send(container.config().getString("feeder",
-								"entcore.feeder"), j, new Handler<Message<JsonObject>>() {
+						Server.getEventBus(vertx).send(config.getString("feeder",
+								"entcore.feeder"), j, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 							@Override
 							public void handle(Message<JsonObject> message) {
 								JsonArray r = message.body().getJsonArray("results");
 								if ("ok".equals(message.body().getString("status")) && r != null) {
 									JsonArray users = new JsonArray();
 									for (int i = 0; i < r.size(); i++) {
-										JsonArray s = r.get(i);
+										JsonArray s = r.getJsonArray(i);
 										if (s != null && s.size() == 1) {
-											String u = ((JsonObject) s.get(0)).getString("id");
+											String u = s.getJsonObject(0).getString("id");
 											if (u != null) {
 												users.add(u);
 											}
@@ -222,7 +223,7 @@ public class ClassController extends BaseController {
 									renderJson(request, message.body(), 400);
 								}
 							}
-						});
+						}));
 					}
 				});
 			}
@@ -286,7 +287,7 @@ public class ClassController extends BaseController {
 
 	private void initPostCreate(final String classId, final JsonArray userIds, final boolean welcomeMessage,
 			final HttpServerRequest request) {
-		ApplicationUtils.sendModifiedUserGroup(eb, userIds, new Handler<Message<JsonObject>>() {
+		ApplicationUtils.sendModifiedUserGroup(eb, userIds, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> message) {
 				schoolService.getByClassId(classId, new Handler<Either<String, JsonObject>>() {
@@ -296,7 +297,7 @@ public class ClassController extends BaseController {
 							JsonObject j = new JsonObject()
 									.put("action", "setDefaultCommunicationRules")
 									.put("schoolId", s.right().getValue().getString("id"));
-							eb.send("wse.communication", j, new Handler<Message<JsonObject>>() {
+							eb.send("wse.communication", j, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 								public void handle(Message<JsonObject> event) {
 									if("error".equals(event.body().getString("status", ""))){
 										log.error("[initPostCreate] Set communication rules failed.");
@@ -313,13 +314,13 @@ public class ClassController extends BaseController {
 											});
 									}
 								}
-							});
+							}));
 						}
 					}
 				});
 
 		   }
-		});
+		}));
 	}
 
 	@Put("/class/:classId/link/:userId")

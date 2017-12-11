@@ -77,7 +77,7 @@ public class DefaultFolderService implements FolderService {
 		mongo.findOne(DOCUMENTS_COLLECTION,  MongoQueryBuilder.build(parentFolderQuery), new Handler<Message<JsonObject>>(){
 			@Override
 			public void handle(Message<JsonObject> event) {
-				if ("ok".equals(event.body().getString("status")) && event.body().containsField("result")){
+				if ("ok".equals(event.body().getString("status")) && event.body().containsKey("result")){
 					JsonObject parent = event.body().getJsonObject("result");
 					JsonArray parentSharedRights = parent != null ? parent.getJsonArray("shared", null) : null;
 
@@ -173,7 +173,7 @@ public class DefaultFolderService implements FolderService {
 			return;
 		}
 		QueryBuilder query = QueryBuilder.start("_id").is(id).put("owner").is(owner.getUserId());
-		JsonObject keys = new JsonObject().put("folder", 1).putNumber("name", 1);
+		JsonObject keys = new JsonObject().put("folder", 1).put("name", 1);
 		mongo.findOne(DOCUMENTS_COLLECTION, MongoQueryBuilder.build(query), keys,
 				new Handler<Message<JsonObject>>() {
 					@Override
@@ -306,7 +306,7 @@ public class DefaultFolderService implements FolderService {
 						null : event.right().getValue();
 
 				QueryBuilder query = QueryBuilder.start("_id").is(id).put("owner").is(owner.getUserId());
-				JsonObject keys = new JsonObject().put("folder", 1).putNumber("name", 1);
+				JsonObject keys = new JsonObject().put("folder", 1).put("name", 1);
 
 				mongo.findOne(DOCUMENTS_COLLECTION, MongoQueryBuilder.build(query), keys,
 						new Handler<Message<JsonObject>>() {
@@ -442,7 +442,7 @@ public class DefaultFolderService implements FolderService {
 
 		final QueryBuilder query = new QueryBuilder().and(resourceQuery.get(), rightQuery.get());
 
-		JsonObject keys = new JsonObject().put("folder", 1).putNumber("name", 1).putNumber("owner", 1);
+		JsonObject keys = new JsonObject().put("folder", 1).put("name", 1).put("owner", 1);
 		mongo.findOne(DOCUMENTS_COLLECTION, MongoQueryBuilder.build(query), keys,
 				new Handler<Message<JsonObject>>() {
 					@Override
@@ -495,7 +495,7 @@ public class DefaultFolderService implements FolderService {
 					QueryBuilder q = QueryBuilder.start("owner").is(owner.getUserId()).put("folder")
 							.regex(Pattern.compile("^" + Pattern.quote(folder) + "($|_)"));
 					JsonObject keys = new JsonObject().put("metadata", 1)
-							.put("owner", 1).putNumber("name", 1).putNumber("file", 1);
+							.put("owner", 1).put("name", 1).put("file", 1);
 					final JsonObject query = MongoQueryBuilder.build(q);
 					mongo.find(DOCUMENTS_COLLECTION, query, null, keys, new Handler<Message<JsonObject>>() {
 						@Override
@@ -655,7 +655,7 @@ public class DefaultFolderService implements FolderService {
 			managerCheck
 		);
 
-		JsonObject keys = new JsonObject().put("folder", 1).putNumber("name", 1);
+		JsonObject keys = new JsonObject().put("folder", 1).put("name", 1);
 
 		Handler<Message<JsonObject>> folderHandler = new Handler<Message<JsonObject>>(){
 			@Override
@@ -742,7 +742,7 @@ public class DefaultFolderService implements FolderService {
 		}
 
 		final QueryBuilder query = QueryBuilder.start("_id").is(id).put("owner").is(owner.getUserId()).and("file").exists(false);
-		final JsonObject keys = new JsonObject().put("folder", 1).putNumber("name", 1);
+		final JsonObject keys = new JsonObject().put("folder", 1).put("name", 1);
 
 		Handler<Message<JsonObject>> folderHandler = new Handler<Message<JsonObject>>(){
 			@Override

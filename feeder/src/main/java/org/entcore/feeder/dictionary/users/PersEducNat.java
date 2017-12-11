@@ -27,6 +27,7 @@ import org.entcore.feeder.utils.Validator;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 
@@ -48,8 +49,8 @@ public class PersEducNat extends AbstractUser {
 				String[][] linkClasses, String[][] linkGroups, boolean nodeQueries, boolean relationshipQueries) {
 		final String error = personnelValidator.validate(object);
 		if (error != null) {
-			if (object.getJsonArray("profiles") != null && object.getArray("profiles").size() == 1) {
-				report.addIgnored(object.getJsonArray("profiles").<String>get(0), error, object);
+			if (object.getJsonArray("profiles") != null && object.getJsonArray("profiles").size() == 1) {
+				report.addIgnored(object.getJsonArray("profiles").getString(0), error, object);
 			} else {
 				report.addIgnored("Personnel", error, object);
 			}
@@ -87,7 +88,7 @@ public class PersEducNat extends AbstractUser {
 					if (structures.size() == 1) {
 						query = "MATCH (s:Structure {externalId : {structureAdmin}}), (u:User {externalId : {userExternalId}}) " +
 								"MERGE u-[:ADMINISTRATIVE_ATTACHMENT]->s ";
-						p.put("structureAdmin", (String) structures.get(0));
+						p.put("structureAdmin", structures.getString(0));
 					} else {
 						query = "MATCH (s:Structure), (u:User {externalId : {userExternalId}}) " +
 								"WHERE s.externalId IN {structuresAdmin} " +
@@ -105,7 +106,7 @@ public class PersEducNat extends AbstractUser {
 								"(u:User { externalId : {userExternalId}}) " +
 								"WHERE NOT(HAS(u.mergedWith)) " +
 								"MERGE u-[:IN]->g";
-						p.put("structureAdmin", (String) structuresByFunctions.get(0))
+						p.put("structureAdmin", structuresByFunctions.getString(0))
 								.put("profileExternalId", profileExternalId);
 					} else {
 						query = "MATCH (s:Structure)<-[:DEPENDS]-(g:ProfileGroup)-[:HAS_PROFILE]->(p:Profile), " +
@@ -219,7 +220,7 @@ public class PersEducNat extends AbstractUser {
 							"MATCH (u:User {externalId : {userExternalId}})-[r:TEACHES_FOS]->(f:FieldOfStudy) " +
 							"WHERE NOT(f.externalId IN {fos}) AND (NOT(HAS(r.source)) OR r.source = {source}) " +
 							"DELETE r";
-					transactionHelper.add(deleteOldFoslg, pdfg.copy().put("fos", new JsonArray(fosm.fieldNames().toArray())));
+					transactionHelper.add(deleteOldFoslg, pdfg.copy().put("fos", new JsonArray(new ArrayList<>(fosm.fieldNames()))));
 					for (String fos: fgm.fieldNames()) {
 						String q2 =
 								"MATCH (u:User {externalId : {userExternalId}}), (f:FieldOfStudy {externalId:{feId}}) " +

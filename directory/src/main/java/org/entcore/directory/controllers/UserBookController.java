@@ -30,22 +30,20 @@ import fr.wseduc.webutils.Either;
 import fr.wseduc.webutils.I18n;
 import fr.wseduc.webutils.http.BaseController;
 
+import io.vertx.core.http.HttpClientOptions;
 import org.entcore.common.http.request.JsonHttpServerRequest;
 import org.entcore.common.notification.ConversationNotification;
 import org.entcore.common.validation.StringValidation;
 import org.entcore.directory.services.SchoolService;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler<AsyncResult>;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.RouteMatcher;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.platform.Container;
 import org.entcore.common.events.EventStore;
 import org.entcore.common.events.EventStoreFactory;
 import org.entcore.common.neo4j.Neo;
@@ -58,6 +56,7 @@ import org.entcore.common.user.UserUtils;
 import org.entcore.common.user.UserInfos;
 
 import fr.wseduc.security.SecuredAction;
+import org.vertx.java.core.http.RouteMatcher;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 import static org.entcore.common.http.response.DefaultResponseHandler.arrayResponseHandler;
@@ -79,31 +78,32 @@ public class UserBookController extends BaseController {
 	private Map<String, Map<String, String>> activationWelcomeMessage;
 
 	@Override
-	public void init(final Vertx vertx, Container container, RouteMatcher rm,
+	public void init(final Vertx vertx, JsonObject config, RouteMatcher rm,
 					 Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions) {
 		pathPrefix = "/userbook";
-		super.init(vertx, container, rm, securedActions);
+		super.init(vertx, config, rm, securedActions);
 		this.neo = new Neo(vertx, Server.getEventBus(vertx),log);
-		this.config = container.config();
+		this.config = config;
 		userBookData= config.getJsonObject("user-book-data");
-		client = vertx.createHttpClient()
-						.setHost(config.getString("workspace-url"))
-						.setPort(config.getInteger("workspace-port"))
-						.setMaxPoolSize(16)
-						.setKeepAlive(false);
+		final HttpClientOptions options = new HttpClientOptions()
+				.setDefaultHost(config.getString("workspace-url"))
+				.setDefaultPort(config.getInteger("workspace-port"))
+				.setMaxPoolSize(16)
+				.setKeepAlive(false);
+		client = vertx.createHttpClient(options);
 		getWithRegEx(".*", "proxyDocument");
 		eventStore = EventStoreFactory.getFactory().getEventStore(ANNUAIRE_MODULE);
 		if (config.getBoolean("activation-welcome-message", false)) {
 			activationWelcomeMessage = new HashMap<>();
-			String assetsPath = (String) vertx.sharedData().getMap("server").get("assetPath");
-			Map<String, String> skins = vertx.sharedData().getMap("skins");
+			String assetsPath = (String) vertx.sharedData().getLocalMap("server").get("assetPath");
+			Map<String, String> skins = vertx.sharedData().getLocalMap("skins");
 			if (skins != null) {
 				activationWelcomeMessage = new HashMap<>();
 				for (final Map.Entry<String, String> e: skins.entrySet()) {
 					String path = assetsPath + "/assets/themes/" + e.getValue() + "/template/directory/welcome/";
-					vertx.fileSystem().readDir(path, new Handler<AsyncResult><String[]>() {
+					vertx.fileSystem().readDir(path, new Handler<AsyncResult<List<String>>>() {
 						@Override
-						public void handle(AsyncResult<String[]> event) {
+						public void handle(AsyncResult<List<String>> event) {
 							if (event.succeeded()) {
 								final Map<String, String> messages = new HashMap<>();
 								activationWelcomeMessage.put(e.getKey(), messages);
@@ -337,8 +337,8 @@ public class UserBookController extends BaseController {
 							public void handle(JsonArray manualGroups) {
 								JsonObject result = new JsonObject()
 									.put("users", personnel)
-									.put("classes", ((JsonObject) classesAndProfileGroups.get(0)).getJsonArray("classes", new JsonArray()))
-									.put("profileGroups", ((JsonObject) classesAndProfileGroups.get(0)).getJsonArray("profileGroups", new JsonArray()))
+									.put("classes", classesAndProfileGroups.getJsonObject(0).getJsonArray("classes", new JsonArray()))
+									.put("profileGroups", classesAndProfileGroups.getJsonObject(0).getJsonArray("profileGroups", new JsonArray()))
 									.put("manualGroups", manualGroups);
 								renderJson(request, result);
 							}
@@ -594,7 +594,7 @@ public class UserBookController extends BaseController {
 									.put("message", event.left().getValue()));
 								return;
 							}
-							JsonArray results = ((JsonObject) event.right().getValue().get(0)).getJsonArray("preferences", new JsonArray());
+							JsonArray results = (event.right().getValue().getJsonObject(0)).getJsonArray("preferences", new JsonArray());
 							for(Object resultObj : results){
 								JsonObject result = (JsonObject) resultObj;
 								JsonObject prefs = new JsonObject();
@@ -624,8 +624,8 @@ public class UserBookController extends BaseController {
 	@SecuredAction(value = "userbook.authent", type = ActionType.AUTHENTICATED)
 	public void getAvatar(final HttpServerRequest request) {
 		String id = request.params().get("id");
-		final String assetsPath = (String) vertx.sharedData().getMap("server").get("assetPath") +
-				"/assets/themes/" + vertx.sharedData().getMap("skins").get(getHost(request));
+		final String assetsPath = (String) vertx.sharedData().getLocalMap("server").get("assetPath") +
+				"/assets/themes/" + vertx.sharedData().getLocalMap("skins").get(getHost(request));
 		final String defaultAvatarPath = assetsPath + "/img/illustrations/no-avatar.svg";
 
 		if (id != null && !id.trim().isEmpty()) {
@@ -767,7 +767,7 @@ public class UserBookController extends BaseController {
 				public void handle(JsonObject session) {
 					final JsonObject cache = session.getJsonObject("cache");
 
-					if(cache.containsField("preferences")){
+					if(cache.containsKey("preferences")){
 						handler.handle(new Either.Right<String, JsonObject>(
 								new JsonObject().put("preference", cache.getJsonObject("preferences").getString(application))));
 					} else {
@@ -842,7 +842,7 @@ public class UserBookController extends BaseController {
 											public void handle(JsonObject session) {
 												final JsonObject cache = session.getJsonObject("cache");
 
-												if(cache.containsField("preferences")){
+												if(cache.containsKey("preferences")){
 													JsonObject prefs = cache.getJsonObject("preferences");
 													prefs.put(application, params.getString("conf"));
 													if ("theme".equals(application)) {

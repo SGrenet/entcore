@@ -26,7 +26,6 @@ import fr.wseduc.webutils.security.Sha256;
 import org.entcore.auth.services.OpenIdConnectServiceProvider;
 import org.entcore.common.neo4j.Neo4j;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonElement;
 import io.vertx.core.json.JsonObject;
 
 import java.security.NoSuchAlgorithmException;
@@ -60,28 +59,28 @@ public class FranceConnectServiceProvider implements OpenIdConnectServiceProvide
 	}
 
 	@Override
-	public void executeFederate(final JsonObject payload, final Handler<Either<String, JsonElement>> handler) {
+	public void executeFederate(final JsonObject payload, final Handler<Either<String, Object>> handler) {
 		if (iss.equals(payload.getString("iss")) && payload.getLong("exp", 0l) > (System.currentTimeMillis() / 1000) &&
 				isNotEmpty(payload.getString("sub"))) {
 			neo4j.execute(QUERY_SUB_FC, payload, validUniqueResultHandler(new Handler<Either<String, JsonObject>>() {
 				@Override
 				public void handle(final Either<String, JsonObject> event) {
 					if (event.isRight() && event.right().getValue().getBoolean("blockedProfile", false)) {
-						handler.handle(new Either.Left<String, JsonElement>("blocked.profile"));
+						handler.handle(new Either.Left<String, Object>("blocked.profile"));
 					} else if (event.isRight() && event.right().getValue().size() > 0) {
-						handler.handle(new Either.Right<String, JsonElement>(event.right().getValue()));
+						handler.handle(new Either.Right<String, Object>(event.right().getValue()));
 					} else {
 						federateWithPivot(payload, handler);
 					}
 				}
 			}));
 		} else {
-			handler.handle(new Either.Left<String, JsonElement>("invalid.openid.payload"));
+			handler.handle(new Either.Left<String, Object>("invalid.openid.payload"));
 		}
 	}
 
-	private void federateWithPivot(JsonObject payload, final Handler<Either<String, JsonElement>> handler) {
-		if (!payload.containsField("preferred_username")) {
+	private void federateWithPivot(JsonObject payload, final Handler<Either<String, Object>> handler) {
+		if (!payload.containsKey("preferred_username")) {
 			payload.put("preferred_username", "");
 		}
 		payload.put("setFederated", setFederated);
@@ -89,19 +88,19 @@ public class FranceConnectServiceProvider implements OpenIdConnectServiceProvide
 			@Override
 			public void handle(final Either<String, JsonObject> event) {
 				if (event.isRight() && event.right().getValue().getBoolean("blockedProfile", false)) {
-					handler.handle(new Either.Left<String, JsonElement>("blocked.profile"));
+					handler.handle(new Either.Left<String, Object>("blocked.profile"));
 				} else if (event.isRight() && event.right().getValue().size() > 0) {
-					handler.handle(new Either.Right<String, JsonElement>(event.right().getValue()));
+					handler.handle(new Either.Right<String, Object>(event.right().getValue()));
 				} else {
-					handler.handle(new Either.Left<String, JsonElement>(UNRECOGNIZED_USER_IDENTITY));
+					handler.handle(new Either.Left<String, Object>(UNRECOGNIZED_USER_IDENTITY));
 				}
 			}
 		}));
 	}
 
 	@Override
-	public void mappingUser(String login, final String password, final JsonObject payload, final Handler<Either<String, JsonElement>> handler) {
-		final JsonObject params = new JsonObject().put("login", login).putString("password", password);
+	public void mappingUser(String login, final String password, final JsonObject payload, final Handler<Either<String, Object>> handler) {
+		final JsonObject params = new JsonObject().put("login", login).put("password", password);
 		neo4j.execute(QUERY_MAPPING_FC, params, validUniqueResultHandler(new Handler<Either<String, JsonObject>>() {
 			@Override
 			public void handle(Either<String, JsonObject> event) {
@@ -121,7 +120,7 @@ public class FranceConnectServiceProvider implements OpenIdConnectServiceProvide
 									success = BCrypt.checkpw(password, res.getString("password"));
 							}
 						} catch (NoSuchAlgorithmException e) {
-							handler.handle(new Either.Left<String, JsonElement>(e.getMessage()));
+							handler.handle(new Either.Left<String, Object>(e.getMessage()));
 						}
 					}
 					if (success) {
@@ -131,17 +130,17 @@ public class FranceConnectServiceProvider implements OpenIdConnectServiceProvide
 							@Override
 							public void handle(final Either<String, JsonObject> event) {
 								if (event.isRight() && event.right().getValue().getBoolean("blockedProfile", false)) {
-									handler.handle(new Either.Left<String, JsonElement>("blocked.profile"));
+									handler.handle(new Either.Left<String, Object>("blocked.profile"));
 								} else if (event.isRight()) {
-									handler.handle(new Either.Right<String, JsonElement>(event.right().getValue()));
+									handler.handle(new Either.Right<String, Object>(event.right().getValue()));
 								} else {
-									handler.handle(new Either.Left<String, JsonElement>("invalid.openid.payload"));
+									handler.handle(new Either.Left<String, Object>("invalid.openid.payload"));
 								}
 							}
 						}));
 					}
 				} else {
-					handler.handle(new Either.Left<String, JsonElement>(event.left().getValue()));
+					handler.handle(new Either.Left<String, Object>(event.left().getValue()));
 				}
 			}
 		}));

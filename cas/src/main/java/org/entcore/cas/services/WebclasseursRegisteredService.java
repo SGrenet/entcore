@@ -43,7 +43,7 @@ public class WebclasseursRegisteredService extends AbstractCas20ExtensionRegiste
 
 		try {
 			// Lastname
-			if (data.containsField("login")) {
+			if (data.containsKey("login")) {
 				additionnalAttributes.add(createTextElement(WEBCLASSEURS_LOGIN, data.getString("login"), doc));
 			}
 

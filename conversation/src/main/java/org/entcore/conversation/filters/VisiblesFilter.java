@@ -21,6 +21,7 @@ package org.entcore.conversation.filters;
 
 import static org.entcore.common.user.UserUtils.findVisibles;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -30,7 +31,6 @@ import org.entcore.common.sql.Sql;
 import org.entcore.common.sql.SqlResult;
 import org.entcore.common.user.UserInfos;
 import io.vertx.core.Handler;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -61,12 +61,12 @@ public class VisiblesFilter implements ResourcesProvider{
 
 		RequestUtils.bodyToJson(request, new Handler<JsonObject>() {
 			public void handle(final JsonObject message) {
-				ids.addAll(message.getJsonArray("to", new JsonArray()).toList());
-				ids.addAll(message.getJsonArray("cc", new JsonArray()).toList());
+				ids.addAll(message.getJsonArray("to", new JsonArray()).getList());
+				ids.addAll(message.getJsonArray("cc", new JsonArray()).getList());
 
 				final Handler<Void> checkHandler = new Handler<Void>() {
-					protected void handle() {
-						params.put("ids", new JsonArray(ids.toArray()));
+					public void handle(Void v) {
+						params.put("ids", new JsonArray(new ArrayList<>(ids)));
 						findVisibles(neo.getEventBus(), user.getUserId(), customReturn, params, true, true, true, new Handler<JsonArray>() {
 							public void handle(JsonArray visibles) {
 								handler.handle(visibles.size() == ids.size());
@@ -94,8 +94,8 @@ public class VisiblesFilter implements ResourcesProvider{
 
 							JsonObject parentMsg = parentMsgEvent.right().getValue();
 							ids.remove(parentMsg.getString("from"));
-							ids.removeAll(parentMsg.getJsonArray("to", new JsonArray()).toList());
-							ids.removeAll(parentMsg.getJsonArray("cc", new JsonArray()).toList());
+							ids.removeAll(parentMsg.getJsonArray("to", new JsonArray()).getList());
+							ids.removeAll(parentMsg.getJsonArray("cc", new JsonArray()).getList());
 
 							checkHandler.handle(null);
 						}

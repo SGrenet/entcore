@@ -49,7 +49,7 @@ public class AAFUtil {
 					res = ((boolean) value) ? "O" : "N";
 					break;
 				case "head-array" :
-					res = ((JsonArray) value).get(0);
+					res = ((JsonArray) value).getValue(0);
 					break;
 				case "date" :
 					Matcher m = datePatter.matcher(value.toString());

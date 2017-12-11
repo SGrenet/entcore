@@ -40,16 +40,15 @@ import org.entcore.directory.services.SchoolService;
 import org.entcore.directory.services.UserService;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.RouteMatcher;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.platform.Container;
+import org.vertx.java.core.http.RouteMatcher;
 
 import java.util.*;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static fr.wseduc.webutils.request.RequestUtils.bodyToJson;
 import static org.entcore.common.bus.BusResponseHandler.busArrayHandler;
 import static org.entcore.common.http.response.DefaultResponseHandler.*;
@@ -64,12 +63,12 @@ public class DirectoryController extends BaseController {
 	private UserService userService;
 	private GroupService groupService;
 
-	public void init(Vertx vertx, Container container, RouteMatcher rm,
+	public void init(Vertx vertx, JsonObject config, RouteMatcher rm,
 			Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions) {
-		super.init(vertx, container, rm, securedActions);
+		super.init(vertx, config, rm, securedActions);
 		this.neo = new Neo(vertx, eb,log);
-		this.config = container.config();
-		this.admin = new JsonObject(vertx.fileSystem().readFileSync("super-admin.json").toString());
+		this.config = config;
+		this.admin = new JsonObject(vertx.fileSystem().readFileBlocking("super-admin.json").toString());
 	}
 
 	@Get("/admin-console")
@@ -110,25 +109,25 @@ public class DirectoryController extends BaseController {
 		if (structureId != null) {
 			t.put("structureExternalId", structureId);
 		}
-		eb.send("entcore.feeder", t, new Handler<Message<JsonObject>>() {
+		eb.send("entcore.feeder", t, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 
 			@Override
 			public void handle(Message<JsonObject> event) {
 				renderJson(request, event.body());
 			}
-		});
+		}));
 	}
 
 	@Post("/duplicates/mark")
 	@SecuredAction("directory.duplicates.mark")
 	@IgnoreCsrf
 	public void markDuplicates(final HttpServerRequest request) {
-		eb.send("entcore.feeder", new JsonObject().put("action", "mark-duplicates"), new Handler<Message<JsonObject>>() {
+		eb.send("entcore.feeder", new JsonObject().put("action", "mark-duplicates"), handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
 				renderJson(request, event.body());
 			}
-		});
+		}));
 	}
 
 	@Post("/export")
@@ -181,12 +180,12 @@ public class DirectoryController extends BaseController {
 										.put("action", "initDefaultCommunicationRules")
 										.put("schoolIds", new JsonArray().add(
 												r.right().getValue().getString("id")));
-								eb.send("wse.communication", j, new Handler<Message<JsonObject>>() {
+								eb.send("wse.communication", j, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 									@Override
 									public void handle(Message<JsonObject> message) {
 										renderJson(request, r.right().getValue(), 201);
 									}
-								});
+								}));
 							} else {
 								request.response().setStatusCode(404).end();
 							}
@@ -232,12 +231,12 @@ public class DirectoryController extends BaseController {
 										request.params().contains("setDefaultRoles") &&
 										config.getBoolean("classDefaultRoles", false)) {
 									ApplicationUtils.setDefaultClassRoles(eb, classId,
-											new Handler<Message<JsonObject>>() {
+											handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 												@Override
 												public void handle(Message<JsonObject> message) {
 													renderJson(request, event.right().getValue(), 201);
 												}
-											});
+											}));
 								} else {
 									renderJson(request, event.right().getValue(), 201);
 								}
@@ -275,7 +274,7 @@ public class DirectoryController extends BaseController {
 		String types = "";
 		if (expectedTypes != null && !expectedTypes.isEmpty()) {
 			types = "AND p.name IN {expectedTypes} ";
-			params.put("expectedTypes", new JsonArray(expectedTypes.toArray()));
+			params.put("expectedTypes", new JsonArray(expectedTypes));
 		}
 		neo.send("MATCH (n:Class)<-[:DEPENDS]-(g:ProfileGroup)<-[:IN]-(m:User), "
 				+ "g-[:DEPENDS]->(pg:ProfileGroup)-[:HAS_PROFILE]->(p:Profile) "
@@ -283,7 +282,7 @@ public class DirectoryController extends BaseController {
 				+ "RETURN distinct m.id as userId, p.name as type, "
 				+ "m.activationCode as code, m.firstName as firstName,"
 				+ "m.lastName as lastName, n.id as classId "
-				+ "ORDER BY type DESC ", params.toMap(), request.response());
+				+ "ORDER BY type DESC ", params.getMap(), request.response());
 	}
 
 	@Get("/users")
@@ -292,7 +291,7 @@ public class DirectoryController extends BaseController {
 		String structureId = request.params().get("structureId");
 		String classId = request.params().get("classId");
 		List<String> profiles = request.params().getAll("profile");
-		userService.list(structureId, classId, new JsonArray(profiles.toArray()), arrayResponseHandler(request));
+		userService.list(structureId, classId, new JsonArray(profiles), arrayResponseHandler(request));
 	}
 
 	@Get("/api/details")
@@ -314,7 +313,7 @@ public class DirectoryController extends BaseController {
 		request.endHandler(new Handler<Void>() {
 
 			@Override
-			protected void handle() {
+			public void handle(Void v) {
 				final String classId = request.formAttributes().get("classId");
 				final String structureId = request.formAttributes().get("structureId");
 				if ((classId == null || classId.trim().isEmpty()) &&
@@ -331,7 +330,7 @@ public class DirectoryController extends BaseController {
 					user.put("birthDate", birthDate);
 				}
 				List<String> childrenIds = request.formAttributes().getAll("childrenIds");
-				user.put("childrenIds", new JsonArray(childrenIds.toArray()));
+				user.put("childrenIds", new JsonArray(childrenIds));
 				if (classId != null && !classId.trim().isEmpty()) {
 					userService.createInClass(classId, user, new Handler<Either<String, JsonObject>>() {
 						@Override
@@ -339,7 +338,7 @@ public class DirectoryController extends BaseController {
 							if (res.isRight() && res.right().getValue().size() > 0) {
 								JsonObject r = res.right().getValue();
 								JsonArray a = new JsonArray().add(r.getString("id"));
-								ApplicationUtils.sendModifiedUserGroup(eb, a, new Handler<Message<JsonObject>>() {
+								ApplicationUtils.sendModifiedUserGroup(eb, a, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 									@Override
 									public void handle(Message<JsonObject> message) {
 										schoolService.getByClassId(classId, new Handler<Either<String, JsonObject>>() {
@@ -354,7 +353,7 @@ public class DirectoryController extends BaseController {
 											}
 										});
 									}
-								});
+								}));
 								renderJson(request, r);
 							} else {
 								leftToResponse(request, res.left());
@@ -368,7 +367,7 @@ public class DirectoryController extends BaseController {
 							if (res.isRight() && res.right().getValue().size() > 0) {
 								JsonObject r = res.right().getValue();
 								JsonArray a = new JsonArray().add(r.getString("id"));
-								ApplicationUtils.sendModifiedUserGroup(eb, a, new Handler<Message<JsonObject>>() {
+								ApplicationUtils.sendModifiedUserGroup(eb, a, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 									@Override
 									public void handle(Message<JsonObject> message) {
 										JsonObject j = new JsonObject()
@@ -376,7 +375,7 @@ public class DirectoryController extends BaseController {
 												.put("schoolId", structureId);
 										eb.send("wse.communication", j);
 									}
-								});
+								}));
 								renderJson(request, r);
 							} else {
 								leftToResponse(request, res.left());

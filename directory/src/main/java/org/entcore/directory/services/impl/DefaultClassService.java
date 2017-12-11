@@ -35,6 +35,7 @@ import io.vertx.core.json.JsonObject;
 
 import java.util.List;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static org.entcore.common.neo4j.Neo4jResult.validResultHandler;
 import static org.entcore.common.neo4j.Neo4jResult.validUniqueResultHandler;
 import static org.entcore.common.user.DefaultFunctions.ADMIN_LOCAL;
@@ -56,7 +57,7 @@ public class DefaultClassService implements ClassService {
 				.put("action", "manual-create-class")
 				.put("structureId", schoolId)
 				.put("data", classe);
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(result)));
 	}
 
 	@Override
@@ -65,7 +66,7 @@ public class DefaultClassService implements ClassService {
 				.put("action", "manual-update-class")
 				.put("classId", classId)
 				.put("data", classe);
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(result)));
 	}
 
 	@Override
@@ -112,7 +113,7 @@ public class DefaultClassService implements ClassService {
 					public void handle(Message<JsonObject> r) {
 						JsonArray res = r.body().getJsonArray("result");
 						if ("ok".equals(r.body().getString("status")) && res != null && res.size() == 1) {
-							final String t = ((JsonObject)res.get(0)).getString("type");
+							final String t = (res.getJsonObject(0)).getString("type");
 							String customReturn =
 									"MATCH (c:`Class` { id : {classId}})<-[:DEPENDS]-(cpg:ProfileGroup)" +
 									"-[:DEPENDS]->(spg:ProfileGroup)-[:HAS_PROFILE]->(p:Profile {name : {profile}}), " +
@@ -147,13 +148,12 @@ public class DefaultClassService implements ClassService {
 													if(event.isLeft()){
 														result.handle(new Either.Left<String, JsonObject>("error.while.attaching.relatives"));
 													} else {
-														result.handle(new Either.Right<String, JsonObject>((JsonObject) users.get(0)));
+														result.handle(new Either.Right<String, JsonObject>(users.getJsonObject(0)));
 													}
 												}
 											}));
 										} else {
-											result.handle(new Either.Right<String, JsonObject>(
-													(JsonObject) users.get(0)));
+											result.handle(new Either.Right<String, JsonObject>(users.getJsonObject(0)));
 										}
 									} else {
 										result.handle(new Either.Left<String, JsonObject>("user.not.visible"));
@@ -173,7 +173,7 @@ public class DefaultClassService implements ClassService {
 				.put("action", "manual-add-user")
 				.put("classId", classId)
 				.put("userId", userId);
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(result)));
 	}
 
 	@Override
@@ -182,7 +182,7 @@ public class DefaultClassService implements ClassService {
 				.put("action", "manual-remove-user")
 				.put("classId", classId)
 				.put("userId", userId);
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(result)));
 	}
 
 	@Override
@@ -204,7 +204,7 @@ public class DefaultClassService implements ClassService {
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition = "WHERE (s.id IN {scope} OR c.id IN {scope}";
-				params.put("scope", new JsonArray(scope.toArray()));
+				params.put("scope", new JsonArray(scope));
 			}
 		}
 

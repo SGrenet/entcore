@@ -25,7 +25,6 @@ import org.entcore.feeder.utils.TransactionManager;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.file.FileSystem;
 import io.vertx.core.json.JsonArray;
@@ -35,11 +34,12 @@ import io.vertx.core.logging.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 
 public class CsvImportsLauncher implements Handler<Long> {
 
@@ -64,24 +64,24 @@ public class CsvImportsLauncher implements Handler<Long> {
 	@Override
 	public void handle(Long event) {
 		final FileSystem fs = vertx.fileSystem();
-		fs.readDir(path, ".*.zip", new Handler<AsyncResult<String[]>>() {
+		fs.readDir(path, ".*.zip", new Handler<AsyncResult<List<String>>>() {
 			@Override
-			public void handle(final AsyncResult<String[]> event) {
+			public void handle(final AsyncResult<List<String>> event) {
 				if (event.succeeded()) {
-					Arrays.sort(event.result());
-					final Handler<Void>[] handlers = new Handler<Void>[event.result().length + 1];
+					Collections.sort(event.result());
+					final Handler[] handlers = new Handler[event.result().size() + 1];
 					handlers[handlers.length - 1] = new Handler<Void>() {
 						@Override
-						protected void handle() {
+						public void handle(Void v) {
 							postImport.execute();
 						}
 					};
-					for (int i = event.result().length - 1; i >= 0; i--) {
+					for (int i = event.result().size() - 1; i >= 0; i--) {
 						final int j = i;
 						handlers[i] = new Handler<Void>() {
 							@Override
-							protected void handle() {
-								final String file = event.result()[j];
+							public void handle(Void v) {
+								final String file = event.result().get(j);
 								log.info("Importing file : " + file);
 								Matcher matcher;
 								Matcher nameMatcher;
@@ -97,21 +97,21 @@ public class CsvImportsLauncher implements Handler<Long> {
 											final String structureExternalId;
 											JsonArray res = event.body().getJsonArray("result");
 											if ("ok".equals(event.body().getString("status")) && res.size() > 0) {
-												structureExternalId = res.<JsonObject>get(0).getString("externalId");
+												structureExternalId = res.getJsonObject(0).getString("externalId");
 											} else {
 												structureExternalId = null;
 											}
 											final String parentDir = path + File.separator + UUID.randomUUID().toString();
 											final String dirName = parentDir + File.separator + structureName +
 													(structureExternalId != null ? "@" + structureExternalId : "") + "_" + uai;
-											fs.mkdir(dirName, true, new Handler<AsyncResult<Void>>() {
+											fs.mkdirs(dirName, new Handler<AsyncResult<Void>>() {
 												@Override
 												public void handle(AsyncResult<Void> event) {
 													try {
 														FileUtils.unzip(file.replaceAll("\\s", "%20"), dirName);
 																moveCsvFiles(structureExternalId, fs, dirName, parentDir, handlers, j);
 													} catch (IOException e) {
-														fs.delete(parentDir, true, null);
+														fs.deleteRecursive(parentDir, true, null);
 														log.error("Error unzip : " + file, e);
 														handlers[j + 1].handle(null);
 													}
@@ -136,11 +136,11 @@ public class CsvImportsLauncher implements Handler<Long> {
 
 	private void moveCsvFiles(final String structureExternalId, final FileSystem fs, final String dirName, final String parentDir,
 			final Handler<Void>[] handlers, final int j) {
-		fs.readDir(dirName, ".*.csv", new Handler<AsyncResult<String[]>>() {
+		fs.readDir(dirName, ".*.csv", new Handler<AsyncResult<List<String>>>() {
 			@Override
-			public void handle(final AsyncResult<String[]> l) {
+			public void handle(final AsyncResult<List<String>> l) {
 				if (l.succeeded()) {
-					final int size = l.result().length;
+					final int size = l.result().size();
 					if (!(size > 0)) {
 						emptyDirectory(fs, parentDir, handlers, j);
 						return;
@@ -177,7 +177,7 @@ public class CsvImportsLauncher implements Handler<Long> {
 										importFiles(validFilesCount, parentDir, structureExternalId, handlers, j, fs);
 									}
 								} else {
-									fs.delete(parentDir, true, null);
+									fs.deleteRecursive(parentDir, true, null);
 									log.error("Error mv csv file : " + f, l.cause());
 									handlers[j + 1].handle(null);
 								}
@@ -185,7 +185,7 @@ public class CsvImportsLauncher implements Handler<Long> {
 						});
 					}
 				} else {
-					fs.delete(parentDir, true, null);
+					fs.deleteRecursive(parentDir, true, null);
 					log.error("Error listing csv in directory : " + dirName, l.cause());
 					handlers[j + 1].handle(null);
 				}
@@ -203,25 +203,25 @@ public class CsvImportsLauncher implements Handler<Long> {
 					.put("structureExternalId", structureExternalId)
 					.put("postImport", false)
 					.put("preDelete", preDelete);
-			vertx.eventBus().send("entcore.feeder", action, new Handler<Message<JsonObject>>() {
+			vertx.eventBus().send("entcore.feeder", action, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> event) {
 					log.info(event.body().encodePrettily());
-					fs.delete(dirName, true, new Handler<AsyncResult<Void>>() {
+					fs.deleteRecursive(dirName, true, new Handler<AsyncResult<Void>>() {
 						@Override
 						public void handle(AsyncResult<Void> event) {
 							handlers[j + 1].handle(null);
 						}
 					});
 				}
-			});
+			}));
 		} else {
 			emptyDirectory(fs, dirName, handlers, j);
 		}
 	}
 
 	private void emptyDirectory(FileSystem fs, String dirName, Handler<Void>[] handlers, int j) {
-		fs.delete(dirName, true, null);
+		fs.deleteRecursive(dirName, true, null);
 		log.error("Empty directory : " + dirName);
 		handlers[j + 1].handle(null);
 	}

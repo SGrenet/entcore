@@ -125,7 +125,7 @@ public class ColumnsMapper {
 				.put("intervenant", "ignore");
 
 		mappings.mergeIn(additionnalsMappings);
-		namesMapping = mappings.toMap();
+		namesMapping = mappings.getMap();
 	}
 
 	void getColumsNames(String[] strings, List<String> columns, Handler<Message<JsonObject>> handler) {

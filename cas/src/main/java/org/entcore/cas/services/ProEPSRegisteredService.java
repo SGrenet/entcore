@@ -48,7 +48,7 @@ public class ProEPSRegisteredService extends AbstractCas20ExtensionRegisteredSer
 
 		try {
 			// Uid
-			if (data.containsField("externalId")) {
+			if (data.containsKey("externalId")) {
 				additionnalAttributes.add(createTextElement(UID, data.getString("externalId"), doc));
 			}
 
@@ -56,7 +56,7 @@ public class ProEPSRegisteredService extends AbstractCas20ExtensionRegisteredSer
 			for (Object o : data.getJsonArray("structures", new JsonArray())) {
 				if (!(o instanceof JsonObject)) continue;
 				JsonObject structure = (JsonObject) o;
-				if (structure.containsField("UAI")) {
+				if (structure.containsKey("UAI")) {
 					additionnalAttributes.add(createTextElement(STRUCTURE_UAI, structure.getString("UAI"), doc));
 				}
 			}

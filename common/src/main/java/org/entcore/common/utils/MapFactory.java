@@ -23,14 +23,19 @@ import fr.wseduc.webutils.collections.AsyncLocalMap;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.impl.VertxInternal;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.shareddata.AsyncMap;
 import io.vertx.core.shareddata.LocalMap;
+import io.vertx.core.spi.cluster.ClusterManager;
 
-public class AsyncMapFactory {
+import java.util.HashMap;
+import java.util.Map;
 
-	private static final Logger log = LoggerFactory.getLogger(AsyncMapFactory.class);
+public class MapFactory {
+
+	private static final Logger log = LoggerFactory.getLogger(MapFactory.class);
 
 	public static <K,V> AsyncMap<K,V> getAsyncMap(LocalMap<K,V> localMap) {
 		return getAsyncMap(localMap, null);
@@ -65,6 +70,20 @@ public class AsyncMapFactory {
 		} else {
 			handler.handle(getAsyncMap(vertx.sharedData().getLocalMap(name), vertx));
 		}
+	}
+
+	@Deprecated
+	public static <K,V> Map<K,V> getSyncClusterMap(String name, Vertx vertx) {
+		LocalMap<Object, Object> server = vertx.sharedData().getLocalMap("server");
+		Boolean cluster = (Boolean) server.get("cluster");
+		final Map<K, V> map;
+		if (Boolean.TRUE.equals(cluster)) {
+			ClusterManager cm = ((VertxInternal) vertx).getClusterManager();
+			map = cm.getSyncMap(name);
+		} else {
+			map = new HashMap<>();
+		}
+		return map;
 	}
 
 }

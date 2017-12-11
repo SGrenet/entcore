@@ -25,10 +25,7 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class PersonnelImportProcessing2 extends PersonnelImportProcessing {
 
@@ -58,7 +55,7 @@ public class PersonnelImportProcessing2 extends PersonnelImportProcessing {
 
 	@Override
 	public void process(JsonObject object) {
-		List<String> c = object.getJsonArray("classes") != null ? object.getArray("classes").toList() : new LinkedList<String>();
+		List<String> c = object.getJsonArray("classes") != null ? object.getJsonArray("classes").getList() : new LinkedList<String>();
 		String[][] groups = createGroups(object.getJsonArray("groups"), c);
 		String[][] classes = createClasses(new JsonArray(c));
 		JsonArray functions = object.getJsonArray("functions");
@@ -69,7 +66,7 @@ public class PersonnelImportProcessing2 extends PersonnelImportProcessing {
 				if (!(o instanceof String) || !o.toString().contains("$")) continue;
 				s.add(o.toString().substring(0, o.toString().indexOf('$')));
 			}
-			structuresByFunctions = new JsonArray(s.toArray());
+			structuresByFunctions = new JsonArray(new ArrayList<>(s));
 		}
 		importer.createOrUpdatePersonnel(object, detectProfile(object), structuresByFunctions,
 				classes, groups, false, true);

@@ -24,9 +24,11 @@ import fr.wseduc.webutils.collections.PersistantBuffer;
 import fr.wseduc.webutils.data.ZLib;
 import fr.wseduc.webutils.request.CookieHelper;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 import static fr.wseduc.webutils.request.filter.UserAuthFilter.SESSION_ID;
 
+import io.vertx.core.eventbus.DeliveryOptions;
 import net.sf.lamejb.*;
 import net.sf.lamejb.impl.std.StreamEncoderWAVImpl;
 import net.sf.lamejb.std.LameConfig;
@@ -37,7 +39,6 @@ import org.entcore.common.storage.StorageFactory;
 import org.entcore.common.user.UserUtils;
 import org.entcore.workspace.service.impl.AudioRecorderWorker;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler<AsyncResult>;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -45,7 +46,6 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.ServerWebSocket;
 import io.vertx.core.http.WebSocketFrame;
-import io.vertx.core.http.impl.ws.DefaultWebSocketFrame;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -85,7 +85,7 @@ public class AudioRecorderHandler implements Handler<ServerWebSocket> {
 				}
 				final String id = ws.path().replaceFirst("/audio/", "");
 				eb.send(AudioRecorderWorker.class.getSimpleName(),
-						new JsonObject().put("action", "open").putString("id", id), new Handler<Message<JsonObject>>() {
+						new JsonObject().put("action", "open").put("id", id), handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 					@Override
 					public void handle(Message<JsonObject> m) {
 						if ("ok".equals(m.body().getString("status"))) {
@@ -94,13 +94,14 @@ public class AudioRecorderHandler implements Handler<ServerWebSocket> {
 								public void handle(WebSocketFrame frame) {
 									if (frame.isBinary()) {
 										log.debug("frame handler");
-										eb.sendWithTimeout(AudioRecorderWorker.class.getSimpleName() + id,
-												((DefaultWebSocketFrame) frame).getBinaryData().array(), TIMEOUT,
-												new Handler<AsyncResult><Message<JsonObject>>() {
+										eb.send(AudioRecorderWorker.class.getSimpleName() + id,
+												frame.binaryData().getBytes(),
+												new DeliveryOptions().setSendTimeout(TIMEOUT),
+												new Handler<AsyncResult<Message<JsonObject>>>() {
 													@Override
 													public void handle(AsyncResult<Message<JsonObject>> ar) {
 														if (ar.failed() || !"ok".equals(ar.result().body().getString("status"))) {
-															ws.writeTextFrame("audio.chunk.error");
+															ws.writeTextMessage("audio.chunk.error");
 														}
 													}
 												});
@@ -124,10 +125,10 @@ public class AudioRecorderHandler implements Handler<ServerWebSocket> {
 							});
 							ws.resume();
 						} else {
-							ws.writeTextFrame(m.body().getString("message"));
+							ws.writeTextMessage(m.body().getString("message"));
 						}
 					}
-				});
+				}));
 			}
 		});
 	}
@@ -139,55 +140,55 @@ public class AudioRecorderHandler implements Handler<ServerWebSocket> {
 			message.put("name", name);
 		}
 		eb.send(AudioRecorderWorker.class.getSimpleName(), message,
-				new Handler<Message<JsonObject>>() {
+				handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 
 					@Override
 					public void handle(Message<JsonObject> event) {
 						if ("ok".equals(event.body().getString("status"))) {
-							ws.writeTextFrame("ok");
+							ws.writeTextMessage("ok");
 						} else {
-							ws.writeTextFrame(event.body().getString("message"));
+							ws.writeTextMessage(event.body().getString("message"));
 						}
 						ws.close();
 					}
-				});
+				}));
 	}
 
 	private void cancel(String id, final ServerWebSocket ws) {
 		eb.send(AudioRecorderWorker.class.getSimpleName(),
-				new JsonObject().put("action", "cancel").putString("id", id),
-				new Handler<Message<JsonObject>>() {
+				new JsonObject().put("action", "cancel").put("id", id),
+				handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 
 					@Override
 					public void handle(Message<JsonObject> event) {
 						if (ws != null) {
 							if ("ok".equals(event.body().getString("status"))) {
-								ws.writeTextFrame("ok");
+								ws.writeTextMessage("ok");
 							} else {
-								ws.writeTextFrame(event.body().getString("message"));
+								ws.writeTextMessage(event.body().getString("message"));
 							}
 							ws.close();
 						}
 					}
-				});
+				}));
 	}
 
 	private void disableCompression(String id, final ServerWebSocket ws) {
 		eb.send(AudioRecorderWorker.class.getSimpleName(),
-				new JsonObject().put("action", "rawdata").putString("id", id),
-				new Handler<Message<JsonObject>>() {
+				new JsonObject().put("action", "rawdata").put("id", id),
+				handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 
 					@Override
 					public void handle(Message<JsonObject> event) {
 						if (ws != null) {
 							if ("ok".equals(event.body().getString("status"))) {
-								ws.writeTextFrame("ok");
+								ws.writeTextMessage("ok");
 							} else {
-								ws.writeTextFrame(event.body().getString("message"));
+								ws.writeTextMessage(event.body().getString("message"));
 							}
 						}
 					}
-				});
+				}));
 	}
 
 }

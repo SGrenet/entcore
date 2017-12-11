@@ -55,7 +55,7 @@ public class KneRegisteredService extends AbstractCas20ExtensionRegisteredServic
 
 	private void addArray(String casLabel, String entLabel, JsonObject data, Document doc, List<Element> additionalAttributes, Mapper<String, String> mapper){
 		Element root = createElement(casLabel+"s", doc);
-		if(data.containsField(entLabel)){
+		if(data.containsKey(entLabel)){
 			for(Object item: data.getJsonArray(entLabel)){
 				root.appendChild(createTextElement(casLabel, mapper.map((String) item), doc));
 			}
@@ -79,7 +79,7 @@ public class KneRegisteredService extends AbstractCas20ExtensionRegisteredServic
 					if("UAI".equals(key)){
 						String value = pair.substring(pair.indexOf('=') + 1);
 						additionalAttributes.add(createTextElement("ENTPersonStructRattachUAI", value, doc));
-						for (Object o : data.getJsonArray("structureNodes", new JsonArray()).toList()) {
+						for (Object o : data.getJsonArray("structureNodes", new JsonArray()).getList()) {
 							@SuppressWarnings("unchecked")
 							Map<String, Object> structure = ((Map<String, Object>) o);
 							if(value.equals(structure.get("UAI"))){
@@ -113,7 +113,7 @@ public class KneRegisteredService extends AbstractCas20ExtensionRegisteredServic
 			}
 
 			Element rootProfiles;
-			String profile = data.getJsonArray("type", new JsonArray()).size() > 0 ? data.getArray("type").get(0).toString() : "";
+			String profile = data.getJsonArray("type", new JsonArray()).size() > 0 ? data.getJsonArray("type").getString(0) : "";
 			switch(profile) {
 				case "Student" :
 					rootProfiles = createElement("ENTPersonProfils", doc);

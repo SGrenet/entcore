@@ -489,7 +489,7 @@ public class Importer {
 								"MERGE u-[:ADMINISTRATIVE_ATTACHMENT]->s " +
 								"WITH u, g " +
 								"MERGE u-[:IN]->g";
-						p.put("structureAdmin", (String) structures.get(0))
+						p.put("structureAdmin", structures.getString(0))
 								.put("profileExternalId", profileExternalId);
 					} else {
 						query = "MATCH (s:Structure)<-[:DEPENDS]-(g:ProfileGroup)-[:HAS_PROFILE]->(p:Profile), " +

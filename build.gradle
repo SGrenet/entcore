@@ -13,6 +13,10 @@ subprojects {
 
 	repositories {
   mavenLocal()
+  maven {
+    url "http://maven.web-education.net/nexus/content/repositories/releases/"
+  }
+  mavenCentral()
   jcenter()
   maven {
     url "https://oss.sonatype.org/content/repositories/iovertx-3720/"
@@ -88,7 +92,7 @@ subprojects {
 			}
 		}
 		project.tasks['clean'].doLast {
-			rootProject.delete "mods/$archiveName"
+			rootProject.delete "mods"
 		}
 	}
 }

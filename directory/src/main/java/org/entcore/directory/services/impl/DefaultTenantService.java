@@ -28,6 +28,7 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static org.entcore.common.neo4j.Neo4jResult.validEmptyHandler;
 import static org.entcore.common.neo4j.Neo4jResult.validUniqueResultHandler;
 
@@ -44,7 +45,7 @@ public class DefaultTenantService implements TenantService {
 		JsonObject action = new JsonObject()
 				.put("action", "manual-create-tenant")
 				.put("data", tenant);
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(0, handler));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(0, handler)));
 	}
 
 }

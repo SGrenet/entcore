@@ -87,7 +87,7 @@ public class DefaultCommunicationService implements CommunicationService {
 				"MATCH g<-[:IN]-(u:User) " +
 				"CREATE UNIQUE " + createRelationship +
 				"RETURN COUNT(*) as number ";
-		JsonObject params = new JsonObject().put("groupId", groupId).putString("direction", direction.name());
+		JsonObject params = new JsonObject().put("groupId", groupId).put("direction", direction.name());
 		neo4j.execute(query, params, validUniqueResultHandler(handler));
 	}
 
@@ -162,7 +162,7 @@ public class DefaultCommunicationService implements CommunicationService {
 				"SET g.relativeCommuniqueStudent = {direction} " +
 				"CREATE UNIQUE " + createRelationship +
 				"RETURN COUNT(*) as number ";
-		JsonObject params = new JsonObject().put("groupId", groupId).putString("direction", direction.name());
+		JsonObject params = new JsonObject().put("groupId", groupId).put("direction", direction.name());
 		neo4j.execute(query, params, validUniqueResultHandler(handler));
 	}
 

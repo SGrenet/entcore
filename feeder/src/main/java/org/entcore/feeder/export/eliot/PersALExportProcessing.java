@@ -71,7 +71,7 @@ public class PersALExportProcessing extends BaseExportProcessing {
 			public void handle(Message<JsonObject> result) {
 				JsonArray r = result.body().getJsonArray("results");
 				if ("ok".equals(result.body().getString("status")) && r != null && r.size() == 1) {
-					JsonArray rs = r.get(0);
+					JsonArray rs = r.getJsonArray(0);
 					handler.handle(rs);
 				} else {
 					handler.handle(null);

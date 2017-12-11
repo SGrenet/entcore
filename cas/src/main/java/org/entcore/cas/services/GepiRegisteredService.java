@@ -47,7 +47,7 @@ public class GepiRegisteredService extends AbstractCas20ExtensionRegisteredServi
         user.setUser(data.getString(principalAttributeName));
         try{
             //uid
-            if (data.containsField("externalId")) {
+            if (data.containsKey("externalId")) {
                 additionnalAttributes.add(createTextElement(GP_ID, data.getString("externalId"), doc));
             }
             

@@ -48,7 +48,7 @@ public class DefaultTimelineEventStore implements TimelineEventStore {
 	public void add(JsonObject event, final Handler<JsonObject> result) {
 		JsonObject doc = validAndGet(event);
 		if (doc != null) {
-			if (!doc.containsField("date")) {
+			if (!doc.containsKey("date")) {
 				doc.put("date", MongoDb.now());
 			}
 			doc.put("created", doc.getJsonObject("date"));
@@ -78,7 +78,7 @@ public class DefaultTimelineEventStore implements TimelineEventStore {
 			final JsonObject query = new JsonObject()
 					.put("deleted", new JsonObject()
 						.put("$exists", false))
-					.put("date", new JsonObject().putObject("$lt", MongoDb.now()));
+					.put("date", new JsonObject().put("$lt", MongoDb.now()));
 			if (externalId == null || externalId.trim().isEmpty()) {
 				query.put(mine ? "sender" : "recipients.userId", recipient);
 			} else {
@@ -99,7 +99,7 @@ public class DefaultTimelineEventStore implements TimelineEventStore {
 			}
 			if(restrictionFilter != null && restrictionFilter.size() > 0){
 				JsonArray nor = new JsonArray();
-				for(String type : restrictionFilter.toMap().keySet()){
+				for(String type : restrictionFilter.getMap().keySet()){
 					for(Object eventType : restrictionFilter.getJsonArray(type, new JsonArray())){
 						nor.add(new JsonObject()
 							.put("type", type)
@@ -174,7 +174,7 @@ public class DefaultTimelineEventStore implements TimelineEventStore {
 					e.remove(attr);
 				}
 			}
-			if (e.toMap().keySet().containsAll(REQUIRED_FIELDS)) {
+			if (e.getMap().keySet().containsAll(REQUIRED_FIELDS)) {
 				return e;
 			}
 		}
@@ -208,7 +208,7 @@ public class DefaultTimelineEventStore implements TimelineEventStore {
 			}
 			JsonObject q = new JsonObject()
 					.put("_id", new JsonObject().put("$in", ids))
-					.put("recipients", new JsonObject().putObject("$elemMatch",
+					.put("recipients", new JsonObject().put("$elemMatch",
 							new JsonObject().put("userId", recipient).put("unread", 1)
 					));
 			mongo.update(TIMELINE_COLLECTION, q, new JsonObject().put("$set",

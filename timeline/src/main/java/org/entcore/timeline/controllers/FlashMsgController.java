@@ -11,9 +11,7 @@ import org.entcore.timeline.services.impl.FlashMsgServiceSqlImpl;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.RouteMatcher;
 import io.vertx.core.json.JsonObject;
-import io.vertx.platform.Container;
 
 import fr.wseduc.rs.*;
 import fr.wseduc.security.ActionType;
@@ -22,6 +20,7 @@ import fr.wseduc.webutils.I18n;
 import fr.wseduc.webutils.Utils;
 import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.request.RequestUtils;
+import org.vertx.java.core.http.RouteMatcher;
 
 import static org.entcore.common.http.response.DefaultResponseHandler.*;
 
@@ -29,9 +28,9 @@ public class FlashMsgController extends BaseController {
 
 	private FlashMsgService service = new FlashMsgServiceSqlImpl("flashmsg", "messages");
 
-	public void init(Vertx vertx, Container container, RouteMatcher rm,
+	public void init(Vertx vertx, JsonObject config, RouteMatcher rm,
 			Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions) {
-		super.init(vertx, container, rm, securedActions);
+		super.init(vertx, config, rm, securedActions);
 	}
 
 	/* User part */

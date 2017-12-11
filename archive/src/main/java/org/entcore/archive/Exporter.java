@@ -19,10 +19,10 @@
 
 package org.entcore.archive;
 
-import io.vertx.busmods.BusModBase;
 import io.vertx.core.Handler;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
+import org.vertx.java.busmods.BusModBase;
 
 
 public class Exporter extends BusModBase implements Handler<Message<JsonObject>> {
@@ -30,8 +30,7 @@ public class Exporter extends BusModBase implements Handler<Message<JsonObject>>
 	@Override
 	public void start() {
 		super.start();
-		vertx.eventBus().localConsumer(
-				container.config().getString("address", "entcore.exporter"), this);
+		vertx.eventBus().localConsumer(config.getString("address", "entcore.exporter"), this);
 	}
 
 

@@ -29,7 +29,6 @@ import org.entcore.feeder.utils.*;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -81,11 +80,11 @@ public class CsvFeeder implements Feed {
 	}
 
 	private void parse(final Importer importer, final String p, final Handler<Message<JsonObject>> handler) {
-		vertx.fileSystem().readDir(p, new Handler<AsyncResult<String[]>>() {
+		vertx.fileSystem().readDir(p, new Handler<AsyncResult<List<String>>>() {
 			@Override
-			public void handle(AsyncResult<String[]> event) {
-				if (event.succeeded() && event.result().length == 1) {
-					final String path = event.result()[0];
+			public void handle(AsyncResult<List<String>> event) {
+				if (event.succeeded() && event.result().size() == 1) {
+					final String path = event.result().get(0);
 					final Structure s;
 					try {
 						JsonObject structure = CSVUtil.getStructure(path);
@@ -101,9 +100,9 @@ public class CsvFeeder implements Feed {
 						handler.handle(new ResultMessage().error("structure.error"));
 						return;
 					}
-					vertx.fileSystem().readDir(path, new Handler<AsyncResult<String[]>>() {
+					vertx.fileSystem().readDir(path, new Handler<AsyncResult<List<String>>>() {
 						@Override
-						public void handle(final AsyncResult<String[]> event) {
+						public void handle(final AsyncResult<List<String>> event) {
 							if (event.succeeded()) {
 								checkNotModifiableExternalId(event.result(), new Handler<Message<JsonObject>>() {
 									@Override
@@ -127,24 +126,24 @@ public class CsvFeeder implements Feed {
 		});
 	}
 
-	private void launchFiles(final String path, final String[] files, final Structure structure,
+	private void launchFiles(final String path, final List<String> files, final Structure structure,
 			final Importer importer, final Handler<Message<JsonObject>> handler) {
-		Arrays.sort(files, Collections.reverseOrder());
+		Collections.sort(files, Collections.reverseOrder());
 		final Set<String> parsedFiles = new HashSet<>();
-		final Handler<Void>[] handlers = new Handler<Void>[files.length + 1];
+		final Handler[] handlers = new Handler[files.size() + 1];
 		handlers[handlers.length -1] = new Handler<Void>() {
 			@Override
-			protected void handle() {
+			public void handle(Void v) {
 				importer.restorePreDeletedUsers();
 				importer.persist(handler);
 			}
 		};
-		for (int i = files.length - 1; i >= 0; i--) {
+		for (int i = files.size() - 1; i >= 0; i--) {
 			final int j = i;
 			handlers[i] = new Handler<Void>() {
 				@Override
-				protected void handle() {
-					final String file = files[j];
+				public void handle(Void v) {
+					final String file = files.get(j);
 					if (!parsedFiles.add(file)) {
 						return;
 					}
@@ -185,11 +184,11 @@ public class CsvFeeder implements Feed {
 		return "CSV";
 	}
 
-	private void checkNotModifiableExternalId(String[] files, final Handler<Message<JsonObject>> handler) {
+	private void checkNotModifiableExternalId(List<String> files, final Handler<Message<JsonObject>> handler) {
 		final List<String> columns = new ArrayList<>();
 		final AtomicInteger externalIdIdx = new AtomicInteger(-1);
 		final JsonArray externalIds = new JsonArray();
-		final AtomicInteger count = new AtomicInteger(files.length);
+		final AtomicInteger count = new AtomicInteger(files.size());
 		for (final String file: files) {
 			CSVUtil.getCharset(vertx, file, new Handler<String>() {
 				@Override
@@ -242,8 +241,8 @@ public class CsvFeeder implements Feed {
 					if ("ok".equals(event.body().getString("status"))) {
 						JsonArray res = event.body().getJsonArray("result");
 						JsonArray ids;
-						if (res != null && res.size() > 0 && res.<JsonObject>get(0) != null &&
-								(ids = res.<JsonObject>get(0).getJsonArray("ids")) != null && ids.size() > 0) {
+						if (res != null && res.size() > 0 && res.getJsonObject(0) != null &&
+								(ids = res.getJsonObject(0).getJsonArray("ids")) != null && ids.size() > 0) {
 							handler.handle(new ResultMessage().error("unmodifiable.externalId-" + ids.encode()));
 						} else {
 							handler.handle(new ResultMessage());
@@ -380,7 +379,7 @@ public class CsvFeeder implements Feed {
 					}
 					if ("Student".equals(profile) && classesA != null && classesA.size() == 1) {
 						seed = defaultStudentSeed;
-						ca = classesA.get(0);
+						ca = classesA.getString(0);
 					} else {
 						ca = String.valueOf(i);
 						seed = System.currentTimeMillis();
@@ -432,10 +431,10 @@ public class CsvFeeder implements Feed {
 											((JsonArray) childFirstName).size() == ((JsonArray) childLastName).size()) {
 										for (int j = 0; j < ((JsonArray) childUsername).size(); j++) {
 											String mapping = structure.getExternalId() +
-													((JsonArray) childUsername).<String>get(j).trim() +
-													((JsonArray) childLastName).<String>get(j).trim() +
-													((JsonArray) childFirstName).<String>get(j).trim() +
-													((JsonArray) childClasses).<String>get(j).trim() +
+													((JsonArray) childUsername).getString(j).trim() +
+													((JsonArray) childLastName).getString(j).trim() +
+													((JsonArray) childFirstName).getString(j).trim() +
+													((JsonArray) childClasses).getString(j).trim() +
 													defaultStudentSeed;
 											relativeStudentMapping(linkStudents, mapping);
 										}
@@ -461,9 +460,9 @@ public class CsvFeeder implements Feed {
 											((JsonArray) childFirstName).size() == ((JsonArray) childLastName).size()) {
 										for (int j = 0; j < ((JsonArray) childLastName).size(); j++) {
 											String mapping = structure.getExternalId() +
-													((JsonArray) childLastName).<String>get(j).trim() +
-													((JsonArray) childFirstName).<String>get(j).trim() +
-													((JsonArray) childClasses).<String>get(j).trim() + defaultStudentSeed;
+													((JsonArray) childLastName).getString(j).trim() +
+													((JsonArray) childFirstName).getString(j).trim() +
+													((JsonArray) childClasses).getString(j).trim() + defaultStudentSeed;
 											relativeStudentMapping(linkStudents, mapping);
 										}
 									} else if (childLastName instanceof String && childFirstName instanceof String &&

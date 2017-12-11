@@ -32,6 +32,7 @@ import io.vertx.core.json.JsonObject;
 
 import java.util.List;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static org.entcore.common.neo4j.Neo4jResult.validEmptyHandler;
 import static org.entcore.common.neo4j.Neo4jResult.validResultHandler;
 import static org.entcore.common.neo4j.Neo4jResult.validUniqueResultHandler;
@@ -71,7 +72,7 @@ public class DefaultGroupService implements GroupService {
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition += "AND s.id IN {structures} ";
-				params.put("structures", new JsonArray(scope.toArray()));
+				params.put("structures", new JsonArray(scope));
 			}
 		}
 
@@ -98,7 +99,7 @@ public class DefaultGroupService implements GroupService {
 				.put("structureId", structureId)
 				.put("classId", classId)
 				.put("group", group);
-		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(0, result));
+		eventBus.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(0, result)));
 	}
 
 	@Override
@@ -106,7 +107,7 @@ public class DefaultGroupService implements GroupService {
 		JsonObject action = new JsonObject()
 				.put("action", "manual-delete-group")
 				.put("groupId", groupId);
-		eventBus.send(Directory.FEEDER, action, validEmptyHandler(result));
+		eventBus.send(Directory.FEEDER, action, handlerToAsyncHandler(validEmptyHandler(result)));
 	}
 
 	@Override

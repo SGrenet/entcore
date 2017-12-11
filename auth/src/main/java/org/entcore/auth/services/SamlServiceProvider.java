@@ -22,11 +22,9 @@ package org.entcore.auth.services;
 import fr.wseduc.webutils.Either;
 import org.opensaml.saml2.core.Assertion;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonElement;
-import io.vertx.core.json.JsonObject;
 
 public interface SamlServiceProvider {
 
-	void execute(Assertion assertion, Handler<Either<String, JsonElement>> handler);
+	void execute(Assertion assertion, Handler<Either<String, Object>> handler);
 
 }

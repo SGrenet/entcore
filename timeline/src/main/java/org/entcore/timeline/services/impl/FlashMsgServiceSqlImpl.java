@@ -60,7 +60,7 @@ public class FlashMsgServiceSqlImpl extends SqlCrudService implements FlashMsgSe
 		for(String id : ids){
 			try {
 				long idNb = Long.parseLong(id);
-				values.addNumber(idNb);
+				values.add(idNb);
 			} catch (NumberFormatException e) {
 				log.error("Bad id - not a number : " + id.toString());
 			}

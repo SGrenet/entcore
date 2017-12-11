@@ -164,7 +164,7 @@ public class TimetableController extends BaseController {
 	public void importTimetable(final HttpServerRequest request) {
 		request.pause();
 		final String importId = UUID.randomUUID().toString();
-		final String path = container.config().getString("timetable-path", "/tmp") + File.separator + importId;
+		final String path = config.getString("timetable-path", "/tmp") + File.separator + importId;
 		request.setExpectMultipart(true);
 		request.exceptionHandler(new Handler<Throwable>() {
 			@Override
@@ -232,7 +232,7 @@ public class TimetableController extends BaseController {
 				}
 				break;
 			case "get.subjects":
-				final List<String> teachers = message.body().getJsonArray("teacherIds", new JsonArray()).toList();
+				final List<String> teachers = message.body().getJsonArray("teacherIds", new JsonArray()).getList();
 				final String externalGroupId = message.body().getString("externalGroupId");
 				final boolean classes = message.body().getBoolean("classes", false);
 				final boolean groups = message.body().getBoolean("groups", false);

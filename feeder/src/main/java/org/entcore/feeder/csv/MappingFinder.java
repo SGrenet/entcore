@@ -121,7 +121,7 @@ public class MappingFinder {
 				if (!additionalColumn && values[externalIdIdx] != null && !values[externalIdIdx].isEmpty()) {
 					tx.add(NOP_QUERY, params.put("externalId", values[externalIdIdx]));
 				} else {
-					params.put("id", structureId).putString("profile", profile);
+					params.put("id", structureId).put("profile", profile);
 					try {
 						int i = 0;
 						for (String c : columns) {
@@ -167,13 +167,13 @@ public class MappingFinder {
 				JsonArray results = event.body().getJsonArray("results");
 				if ("ok".equals(event.body().getString("status")) && results != null && results.size() + 1 == lines.size()) {
 					for (int i = 0; i < results.size(); i++) {
-						JsonArray line = results.get(i);
+						JsonArray line = results.getJsonArray(i);
 						if (line.size() == 1) { // Si 0 ou plusieurs utilisateurs, on laisse la ligne d'origine
-							String eId = line.<JsonObject>get(0).getString("externalId", "");
+							String eId = line.getJsonObject(0).getString("externalId", "");
 							lines.get(i + 1)[externalIdIdx] = eId;
 						}
 					}
-					vertx.fileSystem().deleteSync(path);
+					vertx.fileSystem().deleteBlocking(path);
 
 					try {
 						CSVWriter writer = getCsvWriter(path, charset);
@@ -208,9 +208,9 @@ public class MappingFinder {
 		int idx = 0;
 		for (String c : columns) {
 			if ("childLastName".equals(c)) {
-				childLastNameIndex.addNumber(idx);
+				childLastNameIndex.add(idx);
 			} else if ("childUsername".equals(c)) {
-				childUsernameIndex.addNumber(idx);
+				childUsernameIndex.add(idx);
 			}
 			idx++;
 		}
@@ -227,10 +227,10 @@ public class MappingFinder {
 		final int maxNbChild = childLastNameIndex.size();
 		final int appendIdx;
 		if (childUsernameIndex.size() > 0) {
-			appendIdx = childLastNameIndex.<Integer>get(0) > childUsernameIndex.<Integer>get(0) ?
-					childUsernameIndex.<Integer>get(0) : childLastNameIndex.<Integer>get(0);
+			appendIdx = childLastNameIndex.getInteger(0) > childUsernameIndex.getInteger(0) ?
+					childUsernameIndex.getInteger(0) : childLastNameIndex.getInteger(0);
 		} else {
-			appendIdx =  childLastNameIndex.<Integer>get(0);
+			appendIdx =  childLastNameIndex.getInteger(0);
 		}
 		final String query =
 				"MATCH (s:Structure {externalId : {id}})<-[:DEPENDS]-(:ProfileGroup)<-[:IN]-(u:User) " +
@@ -298,8 +298,8 @@ public class MappingFinder {
 					for (int i = 0; i < fns; i++) {
 						JsonObject params = new JsonObject()
 								.put("id", structureId)
-								.put("firstName", firstNames.<String>get(i))
-								.put("lastName", lastNames.<String>get(i))
+								.put("firstName", firstNames.getString(i))
+								.put("lastName", lastNames.getString(i))
 								.put("rowIdx", rowIdx)
 								.put("itemIdx", i);
 						tx.add(query, params);
@@ -317,22 +317,22 @@ public class MappingFinder {
 				JsonArray results = event.body().getJsonArray("results");
 				if ("ok".equals(event.body().getString("status")) && results != null) {
 					for (int i = 0; i < results.size(); i++) {
-						JsonArray item = results.get(i);
+						JsonArray item = results.getJsonArray(i);
 						if (item.size() == 1) { // Si 0 ou plusieurs utilisateurs, on laisse la ligne d'origine
-							String eId = item.<JsonObject>get(0).getString("externalId", "");
-							int lineIdx =  item.<JsonObject>get(0).getInteger("line", -1);
-							int itemIdx =  item.<JsonObject>get(0).getInteger("item", -1);
+							String eId = item.getJsonObject(0).getString("externalId", "");
+							int lineIdx =  item.getJsonObject(0).getInteger("line", -1);
+							int itemIdx =  item.getJsonObject(0).getInteger("item", -1);
 							if (lineIdx > 0 && itemIdx >= 0) {
 								String [] line = lines.get(lineIdx);
 								line[itemIdx + appendIdx] = eId;
-								line[childLastNameIndex.<Integer>get(itemIdx) + maxNbChild] = "";
+								line[childLastNameIndex.getInteger(itemIdx) + maxNbChild] = "";
 								if (childUsernameIndex.size() > 0) {
-									line[childUsernameIndex.<Integer>get(itemIdx) + maxNbChild] = "";
+									line[childUsernameIndex.getInteger(itemIdx) + maxNbChild] = "";
 								}
 							}
 						}
 					}
-					vertx.fileSystem().deleteSync(path);
+					vertx.fileSystem().deleteBlocking(path);
 
 					try {
 						CSVWriter writer = getCsvWriter(path, charset);
@@ -355,7 +355,7 @@ public class MappingFinder {
 		JsonObject o = new JsonObject().put("key", s);
 		errors.add(o);
 		if (params.length > 0) {
-			o.put("params", new JsonArray(params));
+			o.put("params", new JsonArray(Arrays.asList(params)));
 		}
 	}
 

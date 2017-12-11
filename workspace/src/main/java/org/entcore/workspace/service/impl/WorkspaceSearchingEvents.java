@@ -65,9 +65,9 @@ public class WorkspaceSearchingEvents implements SearchingEvents {
                                final String locale, final Handler<Either<String, JsonArray>> handler) {
         if (appFilters.contains(WorkspaceSearchingEvents.class.getSimpleName())) {
 
-            final List<String> searchWordsLst = searchWords.toList();
+            final List<String> searchWordsLst = searchWords.getList();
 
-            final List<String> groupIdsLst = groupIds.toList();
+            final List<String> groupIdsLst = groupIds.getList();
             final List<DBObject> groups = new ArrayList<>();
             groups.add(QueryBuilder.start("userId").is(userId).get());
             for (String gpId: groupIdsLst) {
@@ -117,7 +117,7 @@ public class WorkspaceSearchingEvents implements SearchingEvents {
                         Boolean isFolderProcessing = false;
 
                         for (int i = 0; i < globalJa.size(); i++) {
-                            final JsonObject j = globalJa.get(i);
+                            final JsonObject j = globalJa.getJsonObject(i);
 
                             // processing only files that have a folder
                             if (j != null && !StringUtils.isEmpty(j.getString("folder"))) {
@@ -173,7 +173,7 @@ public class WorkspaceSearchingEvents implements SearchingEvents {
                             final Map<String, Map<String, String>> mapOwnerMapNameFolderId = new HashMap<>();
                             // fill the map owner key with map folder name key, folder id value
                             for (int i = 0; i < folderJa.size(); i++) {
-                                final JsonObject j = folderJa.get(i);
+                                final JsonObject j = folderJa.getJsonObject(i);
                                 if (j != null) {
                                     final String owner = j.getString("owner", "");
                                     if (mapOwnerMapNameFolderId.containsKey(owner)) {
@@ -199,11 +199,11 @@ public class WorkspaceSearchingEvents implements SearchingEvents {
     @SuppressWarnings("unchecked")
     private JsonArray formatSearchResult(final JsonArray results, final JsonArray columnsHeader, final List<String> words,
                                          final String locale, final String userId, final Map<String, Map<String, String>> mapOwnerMapNameFolderId) {
-        final List<String> aHeader = columnsHeader.toList();
+        final List<String> aHeader = columnsHeader.getList();
         final JsonArray traity = new JsonArray();
 
         for (int i=0;i<results.size();i++) {
-            final JsonObject j = results.get(i);
+            final JsonObject j = results.getJsonObject(i);
             final JsonObject jr = new JsonObject();
 
             if (j != null) {
@@ -220,7 +220,7 @@ public class WorkspaceSearchingEvents implements SearchingEvents {
                         words, modified, locale);
                 jr.put(aHeader.get(0), j.getString("name"));
                 jr.put(aHeader.get(1), map.get("description").toString());
-                jr.put(aHeader.get(2), new JsonObject().putValue("$date", ((Date) map.get("modified")).getTime()));
+                jr.put(aHeader.get(2), new JsonObject().put("$date", ((Date) map.get("modified")).getTime()));
                 jr.put(aHeader.get(3), j.getString("ownerName", ""));
                 jr.put(aHeader.get(4), owner);
                 //default front route (no folder and the file belongs to the owner)
@@ -262,7 +262,7 @@ public class WorkspaceSearchingEvents implements SearchingEvents {
 
         //get the last modified comment that match with searched words for create the description
         for(int i=0;i<ja.size();i++) {
-            final JsonObject jO = ja.get(i);
+            final JsonObject jO = ja.getJsonObject(i);
 
             final String commentTmp = jO.getString("comment", "");
             Date currentDate = null;

@@ -27,6 +27,7 @@ import fr.wseduc.webutils.http.StaticResource;
 import fr.wseduc.webutils.request.CookieHelper;
 import fr.wseduc.webutils.request.RequestUtils;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
+import io.vertx.core.shareddata.LocalMap;
 import org.entcore.common.events.EventStore;
 import org.entcore.common.events.EventStoreFactory;
 import org.entcore.common.http.filter.AdminFilter;
@@ -52,17 +53,16 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.file.FileProps;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.RouteMatcher;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.platform.Container;
+import org.vertx.java.core.http.RouteMatcher;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 import static org.entcore.common.user.SessionAttributes.*;
 
 public class PortalController extends BaseController {
 
-	private ConcurrentMap<String, String> staticRessources;
+	private LocalMap<String, String> staticRessources;
 	private boolean dev;
 	private Map<String, List<String>> themes;
 	private Map<String, JsonArray> themesDetails;
@@ -74,14 +74,14 @@ public class PortalController extends BaseController {
 	private String defaultSkin;
 
 	@Override
-	public void init(final Vertx vertx, Container container, RouteMatcher rm,
+	public void init(final Vertx vertx, JsonObject config, RouteMatcher rm,
 			Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions) {
-		super.init(vertx, container, rm, securedActions);
-		this.staticRessources = vertx.sharedData().getMap("staticRessources");
-		dev = "dev".equals(container.config().getString("mode"));
-		assetsPath = container.config().getString("assets-path", ".");
-		JsonObject skins = new JsonObject(vertx.sharedData().<String, Object>getMap("skins"));
-		defaultSkin = container.config().getString("skin", "raw");
+		super.init(vertx, config, rm, securedActions);
+		this.staticRessources = vertx.sharedData().getLocalMap("staticRessources");
+		dev = "dev".equals(config.getString("mode"));
+		assetsPath = config.getString("assets-path", ".");
+		JsonObject skins = new JsonObject(vertx.sharedData().<String, Object>getLocalMap("skins"));
+		defaultSkin = config.getString("skin", "raw");
 		themes = new HashMap<>();
 		themesDetails = new HashMap<>();
 		this.hostSkin = new HashMap<>();
@@ -121,7 +121,7 @@ public class PortalController extends BaseController {
 		}
 		eventStore = EventStoreFactory.getFactory().getEventStore(Portal.class.getSimpleName());
 		adminConsoleEventStore = EventStoreFactory.getFactory().getEventStore(ADMIN_CONSOLE_MODULE);
-		vertx.sharedData().getMap("server").put("assetPath", assetsPath);
+		vertx.sharedData().getLocalMap("server").put("assetPath", assetsPath);
 	}
 
 	@Get("/welcome")
@@ -138,7 +138,7 @@ public class PortalController extends BaseController {
 			@Override
 			public void handle(UserInfos user) {
 				if (user != null) {
-					redirectPermanent(request, container.config().getString("root-page", "/welcome"));
+					redirectPermanent(request, config.getString("root-page", "/welcome"));
 				} else {
 					unauthorized(request);
 				}
@@ -265,7 +265,7 @@ public class PortalController extends BaseController {
 						renderJson(request, new JsonObject(t.toString()));
 						return;
 					}
-					JsonObject urls = container.config().getJsonObject("urls", new JsonObject());
+					JsonObject urls = config.getJsonObject("urls", new JsonObject());
 					final JsonObject theme = new JsonObject()
 							.put("template", "/public/template/portal.html")
 							.put("logoutCallback", getLogoutCallback(request, urls));
@@ -281,7 +281,7 @@ public class PortalController extends BaseController {
 							if ("ok".equals(event.body().getString("status"))) {
 								JsonArray result = event.body().getJsonArray("result");
 								String userTheme = (result != null && result.size() == 1) ?
-										result.<JsonObject>get(0).getString("theme") : null;
+										result.getJsonObject(0).getString("theme") : null;
 								List<String> t = themes.get(getSkinFromConditions(request));
 								if (userTheme != null && t != null && t.contains(userTheme)) {
 									theme.put("skin", getThemePrefix(request) + "/skins/" + userTheme + "/");
@@ -342,12 +342,12 @@ public class PortalController extends BaseController {
 	@Get("/admin-urls")
 	@SecuredAction(value = "config", type = ActionType.AUTHENTICATED)
 	public void adminURLS(HttpServerRequest request){
-		renderJson(request, container.config().getJsonArray("admin-urls", new JsonArray()));
+		renderJson(request, config.getJsonArray("admin-urls", new JsonArray()));
 	}
 
 	@Get("/resources-applications")
 	public void resourcesApplications(HttpServerRequest request){
-		renderJson(request, container.config().getJsonArray("resources-applications", new JsonArray()));
+		renderJson(request, config.getJsonArray("resources-applications", new JsonArray()));
 	}
 
 	@Get("/quickstart")

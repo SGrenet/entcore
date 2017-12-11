@@ -23,7 +23,7 @@ import java.io.File;
 import java.util.List;
 
 import io.vertx.core.shareddata.AsyncMap;
-import org.entcore.common.utils.AsyncMapFactory;
+import org.entcore.common.utils.MapFactory;
 import org.entcore.common.utils.Config;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -74,7 +74,7 @@ public class TimelineNotificationsLoader {
 	private TimelineNotificationsLoader(Vertx vertx){
 		this.vertx = vertx;
 		scanNotifications();
-		AsyncMapFactory.getClusterMap(sharedMapName, vertx, new Handler<AsyncMap<String, String>>() {
+		MapFactory.getClusterMap(sharedMapName, vertx, new Handler<AsyncMap<String, String>>() {
 			@Override
 			public void handle(AsyncMap<String, String> map) {
 				sharedMap = map;

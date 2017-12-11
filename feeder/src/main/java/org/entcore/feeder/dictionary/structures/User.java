@@ -33,6 +33,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
@@ -62,7 +63,7 @@ public class User {
 					public void handle(Message<JsonObject> m) {
 						JsonArray results = m.body().getJsonArray("results");
 						if ("ok".equals(m.body().getString("status")) && results != null) {
-							JsonArray r = results.get(0);
+							JsonArray r = results.getJsonArray(0);
 							if (r != null && r.size() > 0) {
 								log.info("Delete users : " + r.encode());
 								eb.publish(Feeder.USER_REPOSITORY, new JsonObject()
@@ -315,7 +316,7 @@ public class User {
 				.put("functionCode", functionCode);
 		if (s != null) {
 			query += "SET rf.scope = {scope} ";
-			scope = new JsonArray(new HashSet<String>(s.toList()).toArray());
+			scope = new JsonArray(new ArrayList<>(new HashSet<String>(s.getList())));
 			params.put("scope", scope);
 		}
 		transactionHelper.add(query, params);

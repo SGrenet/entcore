@@ -54,19 +54,18 @@ import fr.wseduc.security.SecuredAction;
 
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.RouteMatcher;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.platform.Container;
+import org.vertx.java.core.http.RouteMatcher;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static fr.wseduc.webutils.request.RequestUtils.bodyToJson;
 import static org.entcore.common.http.response.DefaultResponseHandler.*;
 import static org.entcore.common.user.UserUtils.getUserInfos;
@@ -89,18 +88,18 @@ public class ConversationController extends BaseController {
 	}
 
 	@Override
-	public void init(Vertx vertx, Container container, RouteMatcher rm,
+	public void init(Vertx vertx, JsonObject config, RouteMatcher rm,
 			Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions) {
-		super.init(vertx, container, rm, securedActions);
+		super.init(vertx, config, rm, securedActions);
 		/*
 		this.conversationService = new DefaultConversationService(vertx,
-				container.config().getString("app-name", Conversation.class.getSimpleName()));
+				config.getString("app-name", Conversation.class.getSimpleName()));
 				*/
-		this.conversationService = new SqlConversationService(vertx, container.config().getString("db-schema", "conversation"));
+		this.conversationService = new SqlConversationService(vertx, config.getString("db-schema", "conversation"));
 		this.neoConversationService = new Neo4jConversationService();
-		notification = new TimelineHelper(vertx, eb, container);
+		notification = new TimelineHelper(vertx, eb, config);
 		eventStore = EventStoreFactory.getFactory().getEventStore(Conversation.class.getSimpleName());
-		this.threshold = container.config().getInteger("alertStorage", 80);
+		this.threshold = config.getInteger("alertStorage", 80);
 	}
 
 	@Get("conversation")
@@ -122,7 +121,7 @@ public class ConversationController extends BaseController {
 						@Override
 						public void handle(final JsonObject message) {
 
-							if(!message.containsField("from")){
+							if(!message.containsKey("from")){
 								message.put("from", user.getUserId());
 							}
 
@@ -179,7 +178,7 @@ public class ConversationController extends BaseController {
 					bodyToJson(request, new Handler<JsonObject>() {
 						@Override
 						public void handle(JsonObject message) {
-							if(!message.containsField("from")){
+							if(!message.containsKey("from")){
 								message.put("from", user.getUserId());
 							}
 							neoConversationService.addDisplayNames(message, null, new Handler<JsonObject>() {
@@ -270,7 +269,7 @@ public class ConversationController extends BaseController {
 					bodyToJson(request, new Handler<JsonObject>() {
 						@Override
 						public void handle(final JsonObject message) {
-							if(!message.containsField("from")){
+							if(!message.containsKey("from")){
 								message.put("from", user.getUserId());
 							}
 
@@ -412,7 +411,7 @@ public class ConversationController extends BaseController {
 			} else {
 				d2.add(a[1]);
 			}
-			d3.addArray(d2);
+			d3.add(d2);
 		}
 		message.put("displayNames", d3);
 		JsonArray toName = message.getJsonArray("toName");
@@ -580,7 +579,7 @@ public class ConversationController extends BaseController {
 							}
 
 							JsonArray results = event.right().getValue();
-							final long freeQuota = ((JsonObject) ((JsonArray) results.get(0)).get(0)).getLong("totalquota", 0L);
+							final long freeQuota = results.getJsonArray(0).getJsonObject(0).getLong("totalquota", 0L);
 
 							updateUserQuota(user.getUserId(), -freeQuota, new Handler<Void>() {
 								public void handle(Void event) {
@@ -789,7 +788,7 @@ public class ConversationController extends BaseController {
 						}
 
 						JsonArray results = event.right().getValue();
-						final long freeQuota = ((JsonObject) ((JsonArray) results.get(0)).get(0)).getLong("totalquota", 0L);
+						final long freeQuota = results.getJsonArray(0).getJsonObject(0).getLong("totalquota", 0L);
 
 						updateUserQuota(user.getUserId(), -freeQuota, new Handler<Void>() {
 							public void handle(Void event) {
@@ -844,7 +843,7 @@ public class ConversationController extends BaseController {
 									new JsonObject()).getLong("size", 0L),
 									new Handler<Void>() {
 										@Override
-										protected void handle() {
+										public void handle(Void v) {
 											conversationService.addAttachment(messageId, user, uploaded, defaultResponseHandler(request));
 										}
 									});
@@ -939,7 +938,7 @@ public class ConversationController extends BaseController {
 						final long fileSize = result.getLong("fileSize");
 
 						updateUserQuota(user.getUserId(), -fileSize, new Handler<Void>() {
-							protected void handle() {
+							public void handle(Void v) {
 								renderJson(request, result);
 							}
 						});
@@ -1057,14 +1056,14 @@ public class ConversationController extends BaseController {
 	private void send(final Message<JsonObject> message) {
 		JsonObject m = message.body().getJsonObject("message");
 		if (m == null) {
-			message.reply(new JsonObject().put("status", "error").putString("message", "invalid.message"));
+			message.reply(new JsonObject().put("status", "error").put("message", "invalid.message"));
 		}
 		final HttpServerRequest request = new JsonHttpServerRequest(
 				message.body().getJsonObject("request", new JsonObject()));
 		final UserInfos user = new UserInfos();
 		user.setUserId(message.body().getString("userId"));
 		user.setUsername(message.body().getString("username"));
-		if(!m.containsField("from")){
+		if(!m.containsKey("from")){
 			m.put("from", user.getUserId());
 		}
 		neoConversationService.addDisplayNames(m, null, new Handler<JsonObject>() {
@@ -1100,11 +1099,11 @@ public class ConversationController extends BaseController {
 		message.put("action", "getUserQuota");
 		message.put("userId", userId);
 
-		eb.send(QUOTA_BUS_ADDRESS, message, new Handler<Message<JsonObject>>() {
+		eb.send(QUOTA_BUS_ADDRESS, message, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 			public void handle(Message<JsonObject> reply) {
 				handler.handle(reply.body());
 			}
-		});
+		}));
 	}
 
 	private void updateUserQuota(final String userId, long size){
@@ -1118,7 +1117,7 @@ public class ConversationController extends BaseController {
 		message.put("size", size);
 		message.put("threshold", threshold);
 
-		eb.send(QUOTA_BUS_ADDRESS, message, new Handler<Message<JsonObject>>() {
+		eb.send(QUOTA_BUS_ADDRESS, message, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 			public void handle(Message<JsonObject> reply) {
 				JsonObject obj = reply.body();
 				UserUtils.addSessionAttribute(eb, userId, "storage", obj.getLong("storage"), null);
@@ -1129,7 +1128,7 @@ public class ConversationController extends BaseController {
 				if(continuation != null)
 					continuation.handle(null);
 			}
-		});
+		}));
 	}
 
 	private void notifyEmptySpaceIsSmall(String userId) {

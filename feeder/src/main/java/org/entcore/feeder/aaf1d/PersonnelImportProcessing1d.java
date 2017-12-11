@@ -27,6 +27,7 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -76,7 +77,7 @@ public class PersonnelImportProcessing1d extends PersonnelImportProcessing {
 				if (!(o instanceof String) || !o.toString().contains("$")) continue;
 				s.add(o.toString().substring(0, o.toString().indexOf('$')));
 			}
-			structuresByFunctions = new JsonArray(s.toArray());
+			structuresByFunctions = new JsonArray(new ArrayList<>(s));
 		}
 		importer.createOrUpdatePersonnel(object, profile, structuresByFunctions, null, null, true, true);
 	}

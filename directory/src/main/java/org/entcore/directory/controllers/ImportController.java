@@ -37,10 +37,8 @@ import org.entcore.directory.pojo.ImportInfos;
 import org.entcore.directory.services.ImportService;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.http.HttpServerFileUpload;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.json.JsonObject;
 
 import java.io.File;
 import java.util.UUID;
@@ -79,11 +77,11 @@ public class ImportController extends BaseController {
 	private void uploadImport(final HttpServerRequest request, final Handler<AsyncResult<ImportInfos>> handler) {
 		request.pause();
 		final String importId = UUID.randomUUID().toString();
-		final String path = container.config().getString("wizard-path", "/tmp") + File.separator + importId;
+		final String path = config.getString("wizard-path", "/tmp") + File.separator + importId;
 		request.setExpectMultipart(true);
 		request.endHandler(new Handler<Void>() {
 			@Override
-			protected void handle() {
+			public void handle(Void v) {
 				final ImportInfos importInfos = new ImportInfos();
 				importInfos.setId(importId);
 				importInfos.setPath(path);

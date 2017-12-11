@@ -23,20 +23,19 @@ import fr.wseduc.webutils.Either;
 import org.entcore.common.validation.StringValidation;
 import org.opensaml.saml2.core.Assertion;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonElement;
 import io.vertx.core.json.JsonObject;
 
 public class SSOAgents extends AbstractSSOProvider {
 
 	@Override
-	public void execute(Assertion assertion, Handler<Either<String, JsonElement>> handler) {
+	public void execute(Assertion assertion, Handler<Either<String, Object>> handler) {
 		if (!validConditions(assertion, handler)) return;
 
 		String mail = getAttribute(assertion, "mail");
 		if (mail == null) {
 			mail = getAttribute(assertion, "ctemail");
 			if (mail == null) {
-				handler.handle(new Either.Left<String, JsonElement>("invalid.email"));
+				handler.handle(new Either.Left<String, Object>("invalid.email"));
 				return;
 			}
 		}
@@ -45,7 +44,7 @@ public class SSOAgents extends AbstractSSOProvider {
 			executeQuery("MATCH (u:User {emailAcademy:{email}}) ", new JsonObject().put("email", mail),
 					assertion, handler);
 		} else {
-			handler.handle(new Either.Left<String, JsonElement>("invalid.email"));
+			handler.handle(new Either.Left<String, Object>("invalid.email"));
 		}
 	}
 

@@ -47,8 +47,8 @@ public class AdmlOfStructures extends AdmlResourcesProvider {
 					"WITH COLLECT(so.id) as sIds " +
 					"RETURN LENGTH(FILTER(sId IN sIds WHERE sId IN {scope})) = LENGTH(sIds) as exists ";
 			JsonObject params = new JsonObject()
-					.put("structures", new JsonArray(structures.toArray()))
-					.put("scope", new JsonArray(adminLocal.getScope().toArray()));
+					.put("structures", new JsonArray(structures))
+					.put("scope", new JsonArray(adminLocal.getScope()));
 			validateQuery(resourceRequest, handler, query, params);
 		} else {
 			handler.handle(true);

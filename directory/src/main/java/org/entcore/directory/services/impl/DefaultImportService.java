@@ -36,6 +36,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
+
 public class DefaultImportService implements ImportService {
 
 	private static final Logger log = LoggerFactory.getLogger(DefaultImportService.class);
@@ -53,7 +55,7 @@ public class DefaultImportService implements ImportService {
 		try {
 			JsonObject action = new JsonObject(mapper.writeValueAsString(importInfos))
 					.put("action", "validate");
-			eb.send(Directory.FEEDER, action, new Handler<Message<JsonObject>>() {
+			eb.send(Directory.FEEDER, action, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> res) {
 					if ("ok".equals(res.body().getString("status"))) {
@@ -73,7 +75,7 @@ public class DefaultImportService implements ImportService {
 								new JsonArray().add(res.body().getString("message", "")))));
 					}
 				}
-			});
+			}));
 		} catch (JsonProcessingException e) {
 			handler.handle(new Either.Left<JsonObject, JsonObject>(new JsonObject()
 					.put("global", new JsonArray().add("unexpected.error"))));
@@ -86,7 +88,7 @@ public class DefaultImportService implements ImportService {
 		try {
 			JsonObject action = new JsonObject(mapper.writeValueAsString(importInfos))
 					.put("action", "import");
-			eb.send("entcore.feeder", action, new Handler<Message<JsonObject>>() {
+			eb.send("entcore.feeder", action, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> event) {
 					if ("ok".equals(event.body().getString("status"))) {
@@ -101,7 +103,7 @@ public class DefaultImportService implements ImportService {
 								new JsonArray().add(event.body().getString("message", "")))));
 					}
 			}
-			});
+			}));
 		} catch (JsonProcessingException e) {
 			handler.handle(new Either.Left<JsonObject, JsonObject>(new JsonObject()
 					.put("global", new JsonArray().add("unexpected.error"))));

@@ -20,6 +20,7 @@
 package org.entcore.feeder.dictionary.structures;
 
 import fr.wseduc.webutils.DefaultAsyncResult;
+import io.vertx.core.AsyncResult;
 import org.entcore.feeder.ManualFeeder;
 import org.entcore.feeder.exceptions.TransactionException;
 import org.entcore.feeder.timetable.AbstractTimetableImporter;
@@ -28,9 +29,7 @@ import org.entcore.feeder.utils.TransactionHelper;
 import org.entcore.feeder.utils.TransactionManager;
 import org.entcore.feeder.utils.Validator;
 import org.joda.time.DateTime;
-import io.vertx.core.Handler<AsyncResult>;
 import io.vertx.core.Handler;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -84,7 +83,7 @@ public class DuplicateUsers {
 		}
 		final int size = sourcesPriority.size();
 		for (int i = 0; i < size; i++) {
-			sourcePriority.put(sourcesPriority.<String>get(i), size - i);
+			sourcePriority.put(sourcesPriority.getString(i), size - i);
 		}
 		this.updateCourses = updateCourses;
 	}
@@ -105,14 +104,14 @@ public class DuplicateUsers {
 			public void handle(Message<JsonObject> event) {
 				JsonArray res = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && res != null &&
-						res.size() == 1 && res.<JsonObject>get(0).getString("lastSearchDuplicates") != null) {
-					final String last = res.<JsonObject>get(0).getString("lastSearchDuplicates");
+						res.size() == 1 && res.getJsonObject(0).getString("lastSearchDuplicates") != null) {
+					final String last = res.getJsonObject(0).getString("lastSearchDuplicates");
 					final String[] profiles = ManualFeeder.profiles.keySet().toArray(new String[ManualFeeder.profiles.keySet().size()]);
-					final Handler<Void>[] handlers = new Handler<Void>[profiles.length + 1];
+					final Handler[] handlers = new Handler[profiles.length + 1];
 					final long start = System.currentTimeMillis();
 					handlers[handlers.length - 1] = new Handler<Void>() {
 						@Override
-						protected void handle() {
+						public void handle(Void v) {
 							final String updateDate = "MATCH (s:System {name : 'Starter'}) set s.lastSearchDuplicates = {now} ";
 							TransactionManager.getNeo4jHelper().execute(updateDate, new JsonObject().put("now", now),
 									new Handler<Message<JsonObject>>() {
@@ -136,7 +135,7 @@ public class DuplicateUsers {
 						final int j = i;
 						handlers[i] = new Handler<Void>() {
 							@Override
-							protected void handle() {
+							public void handle(Void v) {
 								searchDuplicatesByProfile(last, profiles[j], handlers[j + 1]);
 							}
 						};
@@ -154,7 +153,7 @@ public class DuplicateUsers {
 		String userId1 = message.body().getString("userId1");
 		String userId2 = message.body().getString("userId2");
 		if (userId1 == null || userId2 == null || userId1.trim().isEmpty() || userId2.trim().isEmpty()) {
-			message.reply(new JsonObject().put("status", "error").putString("message", "invalid.id"));
+			message.reply(new JsonObject().put("status", "error").put("message", "invalid.id"));
 			return;
 		}
 		String query =
@@ -162,7 +161,7 @@ public class DuplicateUsers {
 				"SET u1.ignoreDuplicates = coalesce(u1.ignoreDuplicates, []) + u2.id, " +
 				"u2.ignoreDuplicates = coalesce(u2.ignoreDuplicates, []) + u1.id " +
 				"DELETE r";
-		JsonObject params = new JsonObject().put("userId1", userId1).putString("userId2", userId2);
+		JsonObject params = new JsonObject().put("userId1", userId1).put("userId2", userId2);
 		TransactionManager.getNeo4jHelper().execute(query, params, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
@@ -223,7 +222,7 @@ public class DuplicateUsers {
 		String userId1 = message.body().getString("userId1");
 		String userId2 = message.body().getString("userId2");
 		if (userId1 == null || userId2 == null || userId1.trim().isEmpty() || userId2.trim().isEmpty()) {
-			message.reply(new JsonObject().put("status", "error").putString("message", "invalid.id"));
+			message.reply(new JsonObject().put("status", "error").put("message", "invalid.id"));
 			return;
 		}
 		String query =
@@ -232,14 +231,14 @@ public class DuplicateUsers {
 				"u1.disappearanceDate as disappearanceDate1, u1.deleteDate as deleteDate1, " +
 				"u2.id as userId2, u2.source as source2, NOT(HAS(u2.activationCode)) as activatedU2, " +
 				"u2.disappearanceDate as disappearanceDate2, u2.deleteDate as deleteDate2";
-		JsonObject params = new JsonObject().put("userId1", userId1).putString("userId2", userId2);
+		JsonObject params = new JsonObject().put("userId1", userId1).put("userId2", userId2);
 		TransactionManager.getNeo4jHelper().execute(query, params, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
 				JsonArray res = event.body().getJsonArray("result");
 				JsonObject error = new JsonObject().put("status", "error");
 				if ("ok".equals(event.body().getString("status")) && res != null && res.size() == 1) {
-					JsonObject r = res.get(0);
+					JsonObject r = res.getJsonObject(0);
 					if (r.getBoolean("activatedU1", true) && r.getBoolean("activatedU2", true)) {
 						message.reply(error.put("message", "two.users.activated"));
 					} else {
@@ -277,27 +276,27 @@ public class DuplicateUsers {
 			query = SIMPLE_MERGE_QUERY;
 			if (prioritySource(source1) == prioritySource(source2) && notDeduplicateSource.contains(source1)) {
 				if (!missing1 && activatedU1) {
-					params.put("userId1", userId1).putString("userId2", userId2);
+					params.put("userId1", userId1).put("userId2", userId2);
 				} else if (!missing2 && activatedU2) {
-					params.put("userId1", userId2).putString("userId2", userId1);
+					params.put("userId1", userId2).put("userId2", userId1);
 				} else {
 					query = SWITCH_MERGE_QUERY;
 					if (activatedU1) {
-						params.put("userId1", userId1).putString("userId2", userId2);
+						params.put("userId1", userId1).put("userId2", userId2);
 					} else {
-						params.put("userId1", userId2).putString("userId2", userId1);
+						params.put("userId1", userId2).put("userId2", userId1);
 					}
 				}
 			} else {
 				if (activatedU1) {
-					params.put("userId1", userId1).putString("userId2", userId2);
+					params.put("userId1", userId1).put("userId2", userId2);
 				} else if (activatedU2) {
-					params.put("userId1", userId2).putString("userId2", userId1);
+					params.put("userId1", userId2).put("userId2", userId1);
 				} else {
 					if (prioritySource(source1) > prioritySource(source2)) {
-						params.put("userId1", userId1).putString("userId2", userId2);
+						params.put("userId1", userId1).put("userId2", userId2);
 					} else {
-						params.put("userId1", userId2).putString("userId2", userId1);
+						params.put("userId1", userId2).put("userId2", userId1);
 					}
 				}
 			}
@@ -305,9 +304,9 @@ public class DuplicateUsers {
 				(activatedU2 && prioritySource(source1) > prioritySource(source2))) {
 			query = SWITCH_MERGE_QUERY;
 			if (activatedU1) {
-				params.put("userId1", userId1).putString("userId2", userId2);
+				params.put("userId1", userId1).put("userId2", userId2);
 			} else {
-				params.put("userId1", userId2).putString("userId2", userId1);
+				params.put("userId1", userId2).put("userId2", userId1);
 			}
 		} else {
 			message.reply(error.put("message", "invalid.merge.case"));
@@ -359,7 +358,7 @@ public class DuplicateUsers {
 					public void handle(Message<JsonObject> event) {
 						JsonArray result = event.body().getJsonArray("result");
 						if ("ok".equals(event.body().getString("status")) && result.size() == 1) {
-							String mergeKey = result.<JsonObject>get(0).getString("mergeKey");
+							String mergeKey = result.getJsonObject(0).getString("mergeKey");
 							if (mergeKey != null && mergeKeys.contains(mergeKey)) {
 								final JsonArray tmp = new JsonArray();
 								for (Object o : mergeKeys) {
@@ -445,7 +444,7 @@ public class DuplicateUsers {
 				"MATCH (u:User) WHERE u.modified > {lastSearchDuplicate} AND HEAD(u.profiles) = {profile} AND NOT(HAS(u.deleteDate)) " +
 				"RETURN u.id as id, u.firstName as firstName, u.lastName as lastName, " +
 						"u.birthDate as birthDate, u.email as email, u.source as source, u.disappearanceDate as disappearanceDate";
-		JsonObject params = new JsonObject().put("profile", profile).putString("lastSearchDuplicate", last);
+		JsonObject params = new JsonObject().put("profile", profile).put("lastSearchDuplicate", last);
 		TransactionManager.getNeo4jHelper().execute(query, params, new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
@@ -480,7 +479,7 @@ public class DuplicateUsers {
 		}
 		final JsonArray result = new JsonArray();
 		for (int i = 0; i < search.size(); i++) {
-			final JsonObject json = search.get(i);
+			final JsonObject json = search.getJsonObject(i);
 			final String firstNameAttr = luceneAttribute("firstName", json.getString("firstName"), 0.6);
 			final String lastNameAttr = luceneAttribute("lastName", json.getString("lastName"), 0.6);
 			String luceneQuery;
@@ -488,7 +487,7 @@ public class DuplicateUsers {
 					!firstNameAttr.trim().isEmpty() && !lastNameAttr.trim().isEmpty()) {
 				luceneQuery = firstNameAttr + " AND " + lastNameAttr;
 				result.add(json);
-				tx.add(query, params.copy().put("luceneQuery", luceneQuery).putString("id", json.getString("id")));
+				tx.add(query, params.copy().put("luceneQuery", luceneQuery).put("id", json.getString("id")));
 			}
 		}
 		tx.commit(new Handler<Message<JsonObject>>() {
@@ -505,9 +504,9 @@ public class DuplicateUsers {
 						return;
 					}
 					for (int i = 0; i < results.size(); i++) {
-						JsonArray findUsers = results.get(i);
+						JsonArray findUsers = results.getJsonArray(i);
 						if (findUsers == null || findUsers.size() == 0) continue;
-						JsonObject searchUser = result.get(i);
+						JsonObject searchUser = result.getJsonObject(i);
 						calculateAndStoreScore(searchUser, findUsers, tx);
 					}
 					if (!tx.isEmpty()) {
@@ -580,7 +579,7 @@ public class DuplicateUsers {
 
 		for (int i = 0; i < findUsers.size(); i++) {
 			int score = 2;
-			JsonObject fu = findUsers.get(i);
+			JsonObject fu = findUsers.getJsonObject(i);
 			score += exactMatch(lastName, cleanAttribute(fu.getString("lastName")));
 			score += exactMatch(firstName, cleanAttribute(fu.getString("firstName")));
 			score += exactMatch(birthDate, cleanAttribute(fu.getString("birthDate")));
@@ -603,7 +602,7 @@ public class DuplicateUsers {
 		return Validator.removeAccents(attribute).replaceAll("\\s+", "").toLowerCase();
 	}
 
-	public void autoMergeDuplicatesInStructure(final Handler<AsyncResult><JsonArray> handler) {
+	public void autoMergeDuplicatesInStructure(final Handler<AsyncResult<JsonArray>> handler) {
 		final Handler<JsonObject> duplicatesHandler = new Handler<JsonObject>() {
 			@Override
 			public void handle(JsonObject duplicatesRes) {

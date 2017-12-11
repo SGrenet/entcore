@@ -22,13 +22,12 @@ package org.entcore.auth.services.impl;
 import fr.wseduc.webutils.Either;
 import org.opensaml.saml2.core.Assertion;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonElement;
 import io.vertx.core.json.JsonObject;
 
 public class SSOUsers extends AbstractSSOProvider {
 
 	@Override
-	public void execute(Assertion assertion, Handler<Either<String, JsonElement>> handler) {
+	public void execute(Assertion assertion, Handler<Either<String, Object>> handler) {
 		if (!validConditions(assertion, handler)) return;
 
 		String joinKey = getAttribute(assertion, "FrEduIdENT");
@@ -36,7 +35,7 @@ public class SSOUsers extends AbstractSSOProvider {
 			executeQuery("MATCH (u:User {externalId:{joinKey}}) ", new JsonObject().put("joinKey", joinKey),
 					assertion, handler);
 		} else {
-			handler.handle(new Either.Left<String, JsonElement>("invalid.joinKey"));
+			handler.handle(new Either.Left<String, Object>("invalid.joinKey"));
 		}
 	}
 

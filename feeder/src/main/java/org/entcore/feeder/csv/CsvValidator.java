@@ -27,7 +27,6 @@ import org.entcore.feeder.utils.Joiner;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -40,7 +39,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 
 import static fr.wseduc.webutils.Utils.getOrElse;
-import static fr.wseduc.webutils.Utils.isNotEmpty;
 import static org.entcore.feeder.csv.CsvFeeder.*;
 import static org.entcore.feeder.utils.CSVUtil.emptyLine;
 import static org.entcore.feeder.utils.CSVUtil.getCsvReader;
@@ -77,34 +75,34 @@ public class CsvValidator extends Report implements ImportValidator {
 
 	@Override
 	public void validate(final String p, final Handler<JsonObject> handler) {
-		vertx.fileSystem().readDir(p, new Handler<AsyncResult<String[]>>() {
+		vertx.fileSystem().readDir(p, new Handler<AsyncResult<List<String>>>() {
 			@Override
-			public void handle(AsyncResult<String[]> event) {
-				if (event.succeeded() && event.result().length == 1) {
-					final String path = event.result()[0];
+			public void handle(AsyncResult<List<String>> event) {
+				if (event.succeeded() && event.result().size() == 1) {
+					final String path = event.result().get(0);
 					String[] s = path.replaceAll("/$", "").substring(path.lastIndexOf("/") + 1).split("_")[0].split("@");
 					if (s.length == 2) {
 						structureId = s[1];
 					}
-					vertx.fileSystem().readDir(path, new Handler<AsyncResult<String[]>>() {
+					vertx.fileSystem().readDir(path, new Handler<AsyncResult<List<String>>>() {
 						@Override
-						public void handle(AsyncResult<String[]> event) {
-							final String[] importFiles = event.result();
-							Arrays.sort(importFiles, Collections.reverseOrder());
-							if (event.succeeded() && importFiles.length > 0) {
-								final Handler<Void>[] handlers = new Handler<Void>[importFiles.length + 1];
+						public void handle(AsyncResult<List<String>> event) {
+							final List<String> importFiles = event.result();
+							Collections.sort(importFiles, Collections.reverseOrder());
+							if (event.succeeded() && importFiles.size() > 0) {
+								final Handler[] handlers = new Handler[importFiles.size() + 1];
 								handlers[handlers.length -1] = new Handler<Void>() {
 									@Override
-									protected void handle() {
+									public void handle(Void v) {
 										handler.handle(result);
 									}
 								};
-								for (int i = importFiles.length - 1; i >= 0; i--) {
+								for (int i = importFiles.size() - 1; i >= 0; i--) {
 									final int j = i;
 									handlers[i] = new Handler<Void>() {
 										@Override
-										protected void handle() {
-											final String file = importFiles[j];
+										public void handle(Void v) {
+											final String file = importFiles.get(j);
 											log.info("Validating file : " + file);
 											findUsersEnabled = true;
 											final String profile = file.substring(path.length() + 1).replaceFirst(".csv", "");
@@ -244,7 +242,7 @@ public class CsvValidator extends Report implements ImportValidator {
 			public void handle(Message<JsonObject> event) {
 				JsonArray result = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && result.size() == 1) {
-					handler.handle(result.<JsonObject>get(0).getJsonArray("ids"));
+					handler.handle(result.getJsonObject(0).getJsonArray("ids"));
 				} else {
 					handler.handle(null);
 				}
@@ -371,7 +369,7 @@ public class CsvValidator extends Report implements ImportValidator {
 						}
 						if ("Student".equals(profile) && classesA != null && classesA.size() == 1) {
 							seed = defaultStudentSeed;
-							ca = classesA.get(0);
+							ca = classesA.getString(0);
 						} else {
 							ca = String.valueOf(i);
 							seed = System.currentTimeMillis();
@@ -417,10 +415,10 @@ public class CsvValidator extends Report implements ImportValidator {
 												((JsonArray) childFirstName).size() == ((JsonArray) childLastName).size()) {
 											for (int j = 0; j < ((JsonArray) childUsername).size(); j++) {
 												String mapping = structure.getExternalId() +
-														((JsonArray) childUsername).<String>get(j).trim() +
-														((JsonArray) childLastName).<String>get(j).trim() +
-														((JsonArray) childFirstName).<String>get(j).trim() +
-														((JsonArray) childClasses).<String>get(j).trim() +
+														((JsonArray) childUsername).getString(j).trim() +
+														((JsonArray) childLastName).getString(j).trim() +
+														((JsonArray) childFirstName).getString(j).trim() +
+														((JsonArray) childClasses).getString(j).trim() +
 														defaultStudentSeed;
 												relativeStudentMapping(linkStudents, mapping);
 											}
@@ -447,9 +445,9 @@ public class CsvValidator extends Report implements ImportValidator {
 												((JsonArray) childFirstName).size() == ((JsonArray) childLastName).size()) {
 											for (int j = 0; j < ((JsonArray) childLastName).size(); j++) {
 												String mapping = structure.getExternalId() +
-														((JsonArray) childLastName).<String>get(j) +
-														((JsonArray) childFirstName).<String>get(j) +
-														((JsonArray) childClasses).<String>get(j) +
+														((JsonArray) childLastName).getString(j) +
+														((JsonArray) childFirstName).getString(j) +
+														((JsonArray) childClasses).getString(j) +
 														defaultStudentSeed;
 												relativeStudentMapping(linkStudents, mapping);
 											}
@@ -511,7 +509,7 @@ public class CsvValidator extends Report implements ImportValidator {
 			public void handle(Message<JsonObject> event) {
 				JsonArray result = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && result != null && result.size() == 1) {
-					handler.handle(new Structure(result.<JsonObject>get(0)));
+					handler.handle(new Structure(result.getJsonObject(0)));
 				} else {
 					try {
 						handler.handle(new Structure(CSVUtil.getStructure(path)));

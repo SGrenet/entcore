@@ -20,18 +20,16 @@
 package org.entcore.auth.services;
 
 import fr.wseduc.webutils.Either;
-import fr.wseduc.webutils.http.oauth.OpenIdConnectClient;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonElement;
 import io.vertx.core.json.JsonObject;
 
 public interface OpenIdConnectServiceProvider {
 
 	public static final String UNRECOGNIZED_USER_IDENTITY = "unrecognized.user.identity";
 
-	void executeFederate(JsonObject payload, Handler<Either<String, JsonElement>> handler);
+	void executeFederate(JsonObject payload, Handler<Either<String, Object>> handler);
 
-	void mappingUser(String login, String password, JsonObject payload, Handler<Either<String, JsonElement>> handler);
+	void mappingUser(String login, String password, JsonObject payload, Handler<Either<String, Object>> handler);
 
 	void setSetFederated(boolean setFederated);
 

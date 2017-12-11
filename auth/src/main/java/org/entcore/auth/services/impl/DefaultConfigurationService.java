@@ -40,7 +40,7 @@ public class DefaultConfigurationService implements ConfigurationService {
 	public void editWelcomeMessage(String domain, JsonObject messages, Handler<Either<String, JsonObject>> handler) {
 		if (Utils.defaultValidationParamsNull(handler, domain, messages)) return;
 		final JsonObject q = new JsonObject().put("type", WELCOME_MESSAGE_TYPE);
-		final JsonObject modifier = new JsonObject().put("$set", new JsonObject().putObject(domain.replaceAll("\\.", "_"), messages));
+		final JsonObject modifier = new JsonObject().put("$set", new JsonObject().put(domain.replaceAll("\\.", "_"), messages));
 		mongoDb.update(PLATEFORM_COLLECTION, q, modifier, true, false, validActionResultHandler(handler));
 	}
 
@@ -65,7 +65,7 @@ public class DefaultConfigurationService implements ConfigurationService {
 					JsonObject r = res.body().getJsonObject("result", new JsonObject());
 					JsonObject j = new JsonObject();
 					for (String attr : r.fieldNames()) {
-						j.putValue(attr.replaceAll("_", "."), r.getValue(attr));
+						j.put(attr.replaceAll("_", "."), r.getValue(attr));
 					}
 					handler.handle(new Either.Right<String, JsonObject>(j));
 				} else {

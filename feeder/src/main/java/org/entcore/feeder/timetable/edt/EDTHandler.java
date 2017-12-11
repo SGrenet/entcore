@@ -109,7 +109,7 @@ public class EDTHandler extends DefaultHandler {
 		currentTag = "";
 		if (localName.equals(currentEntityType)) {
 			currentEntityType = "";
-//			if (currentEntity.containsField("SemainesAnnulation")) {
+//			if (currentEntity.containsKey("SemainesAnnulation")) {
 //				log.info(currentEntity.encode());
 //			}
 			if (persEducNatOnly) {

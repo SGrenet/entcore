@@ -76,7 +76,7 @@ public abstract class AbstractFederateController extends BaseController {
 			@Override
 			public void handle(String sessionId) {
 				if (sessionId != null && !sessionId.trim().isEmpty()) {
-					long timeout = container.config().getLong("cookie_timeout", Long.MIN_VALUE);
+					long timeout = config.getLong("cookie_timeout", Long.MIN_VALUE);
 					CookieHelper.getInstance().setSigned("oneSessionId", sessionId, timeout, request);
 					CookieHelper.set("authenticated", "true", timeout, request);
 					final String callback = CookieHelper.getInstance().getSigned("callback", request);
@@ -131,12 +131,12 @@ public abstract class AbstractFederateController extends BaseController {
 								CookieHelper.set("authenticated", "", 0l, request);
 								afterDropSession(event, request, user, c);
 							} else {
-								AuthController.logoutCallback(request, c, container, eb);
+								AuthController.logoutCallback(request, c, config, eb);
 							}
 						}
 					});
 				} else {
-					AuthController.logoutCallback(request, c, container, eb);
+					AuthController.logoutCallback(request, c, config, eb);
 				}
 			}
 		});

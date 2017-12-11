@@ -60,7 +60,7 @@ public abstract class AbstractUser {
 	}
 
 	public static void checkUpdateEmail(JsonObject object, TransactionHelper transactionHelper) {
-		if (object.containsField("email")) {
+		if (object.containsKey("email")) {
 			final String queryUpdateEmail =
 					"MATCH (u:User {externalId: {externalId}}) " +
 					"WHERE NOT(HAS(u.email)) OR (HAS(u.activationCode) AND u.email <> {email}) " +
@@ -97,7 +97,7 @@ public abstract class AbstractUser {
 		if (mapping != null) {
 			final JsonObject res = new JsonObject();
 			for (String attr : object.fieldNames()) {
-				if (mapping.containsField(attr)) {
+				if (mapping.containsKey(attr)) {
 					String s = object.getString(attr);
 					JsonObject j = mapping.getJsonObject(attr);
 					if (j == null) {

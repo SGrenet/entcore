@@ -23,10 +23,8 @@ import org.entcore.feeder.utils.AAFUtil;
 import org.entcore.feeder.utils.JsonUtil;
 import org.entcore.feeder.utils.ResultMessage;
 import io.vertx.core.Handler;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonElement;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -64,10 +62,10 @@ public abstract class BaseExportProcessing implements ExportProcessing {
 					return;
 				}
 				final int nbHandlers = (nb % nbByFile == 0) ? nb / nbByFile : nb / nbByFile + 1;
-				final Handler<Void>[] handlers = new Handler<Void>[nbHandlers + 1];
+				final Handler[] handlers = new Handler[nbHandlers + 1];
 				handlers[handlers.length - 1] = new Handler<Void>() {
 					@Override
-					protected void handle() {
+					public void handle(Void v) {
 						if (concat && xmlEventWriter != null) {
 							try {
 								closeDocument();
@@ -87,7 +85,7 @@ public abstract class BaseExportProcessing implements ExportProcessing {
 					final int j = i;
 					handlers[i] = new Handler<Void>() {
 						@Override
-						protected void handle() {
+						public void handle(Void v) {
 							list(j*nbByFile, nbByFile, new Handler<JsonArray>() {
 								@Override
 								public void handle(JsonArray objects) {
@@ -185,12 +183,12 @@ public abstract class BaseExportProcessing implements ExportProcessing {
 		writer.add(eventFactory.createStartElement("", "", "attributes"));
 		writer.add(eventFactory.createDTD("\n"));
 		for (String attr : exportMapping.fieldNames()) {
-			JsonElement mapping = exportMapping.getElement(attr);
+			Object mapping = exportMapping.getValue(attr);
 			Object value = element.getValue(attr);
-			if (mapping.isObject()) {
-				addAttribute(mapping.asObject(), value, writer, eventFactory);
+			if (mapping instanceof JsonObject) {
+				addAttribute((JsonObject) mapping, value, writer, eventFactory);
 			} else {
-				for (Object o : mapping.asArray()) {
+				for (Object o : ((JsonArray) mapping)) {
 					if (!(o instanceof JsonObject)) continue;
 					addAttribute((JsonObject) o, value, writer, eventFactory);
 				}

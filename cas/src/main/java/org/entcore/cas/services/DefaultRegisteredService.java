@@ -35,6 +35,8 @@ import fr.wseduc.cas.async.Handler;
 import fr.wseduc.cas.entities.ServiceTicket;
 import fr.wseduc.cas.entities.User;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
+
 public class DefaultRegisteredService implements RegisteredService {
 
 	protected final I18n i18n = I18n.getInstance();
@@ -78,8 +80,8 @@ public class DefaultRegisteredService implements RegisteredService {
 	@Override
 	public void getUser(final String userId, final String service, final Handler<User> userHandler) {
 		JsonObject jo = new JsonObject();
-		jo.put("action", directoryAction).putString("userId", userId);
-		eb.send("directory", jo, new io.vertx.core.Handler<Message<JsonObject>>() {
+		jo.put("action", directoryAction).put("userId", userId);
+		eb.send("directory", jo, handlerToAsyncHandler(new io.vertx.core.Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
 				JsonObject res = event.body().getJsonObject("result");
@@ -92,7 +94,7 @@ public class DefaultRegisteredService implements RegisteredService {
 					userHandler.handle(null);
 				}
 			}
-		});
+		}));
 	}
 
 	@Override

@@ -53,12 +53,12 @@ public class UniversalisRegisteredService extends AbstractCas20ExtensionRegister
 
 		try {
 			// Uid
-			if (data.containsField("externalId")) {
+			if (data.containsKey("externalId")) {
 				additionnalAttributes.add(createTextElement(UNVS_ID, data.getString("externalId"), doc));
 			}
 
 			// Structures
-			for (Object o : data.getJsonArray("structures", new JsonArray()).toList()) {
+			for (Object o : data.getJsonArray("structures", new JsonArray()).getList()) {
 				Map<String, Object> structure = ((Map<String, Object>) o);
 				if (structure.containsKey("UAI")) {
 					additionnalAttributes.add(createTextElement(UNVS_STRUCTURE_UAI, structure.get("UAI").toString(), doc));
@@ -82,12 +82,12 @@ public class UniversalisRegisteredService extends AbstractCas20ExtensionRegister
 			}
 
 			// Lastname
-			if (data.containsField("lastName")) {
+			if (data.containsKey("lastName")) {
 				additionnalAttributes.add(createTextElement(UNVS_LASTNAME, data.getString("lastName"), doc));
 			}
 
 			// Firstname
-			if (data.containsField("firstName")) {
+			if (data.containsKey("firstName")) {
 				additionnalAttributes.add(createTextElement(UNVS_FIRSTNAME, data.getString("firstName"), doc));
 			}
 

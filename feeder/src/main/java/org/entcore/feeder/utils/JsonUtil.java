@@ -100,7 +100,7 @@ public final class JsonUtil {
 		final TreeSet<String> sorted = new TreeSet<>(object.fieldNames());
 		final JsonObject j = new JsonObject();
 		for (String attr : sorted) {
-			j.putValue(attr, object.getValue(attr));
+			j.put(attr, object.getValue(attr));
 		}
 		switch (hashAlgorithm) {
 			case MD5:

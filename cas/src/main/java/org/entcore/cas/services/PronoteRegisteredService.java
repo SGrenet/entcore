@@ -52,7 +52,7 @@ public class PronoteRegisteredService extends DefaultRegisteredService {
 
 			String category = null;
 			JsonArray types = data.getJsonArray("type");
-			for (Object type : types.toList()) {
+			for (Object type : types.getList()) {
 			    switch(type.toString()) {
 	                case "Student" :
 	                    category = checkProfile(category,"National_1");

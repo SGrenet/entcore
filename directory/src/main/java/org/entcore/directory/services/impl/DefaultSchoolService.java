@@ -32,6 +32,7 @@ import io.vertx.core.json.JsonObject;
 
 import java.util.List;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static org.entcore.common.neo4j.Neo4jResult.*;
 import static org.entcore.common.user.DefaultFunctions.ADMIN_LOCAL;
 import static org.entcore.common.user.DefaultFunctions.CLASS_ADMIN;
@@ -50,7 +51,7 @@ public class DefaultSchoolService implements SchoolService {
 	public void create(JsonObject school, Handler<Either<String, JsonObject>> result) {
 		JsonObject action = new JsonObject().put("action", "manual-create-structure")
 				.put("data", school);
-		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(result));
+		eventBus.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(result)));
 	}
 
 	@Override
@@ -94,7 +95,7 @@ public class DefaultSchoolService implements SchoolService {
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition = "WHERE s.id IN {structures} ";
-				params.put("structures", new JsonArray(scope.toArray()));
+				params.put("structures", new JsonArray(scope));
 			}
 		}
 		String query =
@@ -113,7 +114,7 @@ public class DefaultSchoolService implements SchoolService {
 				.put("action", "manual-add-user")
 				.put("structureId", structureId)
 				.put("userId", userId);
-		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(result));
+		eventBus.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(result)));
 	}
 
 	@Override
@@ -122,7 +123,7 @@ public class DefaultSchoolService implements SchoolService {
 				.put("action", "manual-remove-user")
 				.put("structureId", structureId)
 				.put("userId", userId);
-		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(result));
+		eventBus.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(result)));
 	}
 
 	@Override
@@ -131,7 +132,7 @@ public class DefaultSchoolService implements SchoolService {
 				.put("action", "manual-structure-attachment")
 				.put("structureId", structureId)
 				.put("parentStructureId", parentStructureId);
-		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(0, handler));
+		eventBus.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(0, handler)));
 	}
 
 	@Override
@@ -140,7 +141,7 @@ public class DefaultSchoolService implements SchoolService {
 			.put("action", "manual-structure-detachment")
 			.put("structureId", structureId)
 			.put("parentStructureId", parentStructureId);
-		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(handler));
+		eventBus.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(handler)));
 	}
 
 	@Override
@@ -163,7 +164,7 @@ public class DefaultSchoolService implements SchoolService {
 				.put("action", "manual-update-structure")
 				.put("structureId", structureId)
 				.put("data", body);
-		eventBus.send(Directory.FEEDER, action, validUniqueResultHandler(result));
+		eventBus.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(result)));
 	}
 
 	@Override
@@ -190,14 +191,14 @@ public class DefaultSchoolService implements SchoolService {
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition += "AND s.id IN {scope} ";
-				params.put("scope", new JsonArray(scope.toArray()));
+				params.put("scope", new JsonArray(scope));
 			}
 		} else if(userInfos.getFunctions().containsKey(CLASS_ADMIN)){
 			UserInfos.Function f = userInfos.getFunctions().get(CLASS_ADMIN);
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition = "AND class.id IN {scope} ";
-				params.put("scope", new JsonArray(scope.toArray()));
+				params.put("scope", new JsonArray(scope));
 			}
 		}
 
@@ -225,7 +226,7 @@ public class DefaultSchoolService implements SchoolService {
 		JsonObject params = new JsonObject().put("structureId", structureId);
 
 		//Activation
-		if(filterObj.containsField("activated")){
+		if(filterObj.containsKey("activated")){
 			String activated = filterObj.getString("activated", "false");
 			if("false".equals(activated.toLowerCase())){
 				condition = "WHERE NOT(u.activationCode IS NULL) ";
@@ -279,7 +280,7 @@ public class DefaultSchoolService implements SchoolService {
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition += "AND s.id IN {scope} ";
-				params.put("scope", new JsonArray(scope.toArray()));
+				params.put("scope", new JsonArray(scope));
 			}
 		} else if(userInfos.getFunctions().containsKey(CLASS_ADMIN)){
 			if(filterObj.getJsonArray("classes").size() < 1){
@@ -291,7 +292,7 @@ public class DefaultSchoolService implements SchoolService {
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition = "AND c.id IN {scope} ";
-				params.put("scope", new JsonArray(scope.toArray()));
+				params.put("scope", new JsonArray(scope));
 			}
 		}
 

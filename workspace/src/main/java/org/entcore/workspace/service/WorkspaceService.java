@@ -20,6 +20,7 @@
 package org.entcore.workspace.service;
 
 import static fr.wseduc.webutils.Utils.getOrElse;
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static org.entcore.common.http.response.DefaultResponseHandler.arrayResponseHandler;
 import static org.entcore.common.http.response.DefaultResponseHandler.defaultResponseHandler;
 import static org.entcore.common.user.UserUtils.getUserInfos;
@@ -27,14 +28,7 @@ import static org.entcore.workspace.dao.DocumentDao.DOCUMENTS_COLLECTION;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -57,13 +51,10 @@ import org.entcore.workspace.service.impl.DefaultFolderService;
 import org.entcore.common.storage.Storage;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.RouteMatcher;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.platform.Container;
 
 import com.mongodb.QueryBuilder;
 
@@ -82,6 +73,7 @@ import fr.wseduc.webutils.I18n;
 import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.http.ETag;
 import fr.wseduc.webutils.request.RequestUtils;
+import org.vertx.java.core.http.RouteMatcher;
 
 public class WorkspaceService extends BaseController {
 
@@ -99,20 +91,20 @@ public class WorkspaceService extends BaseController {
 	private enum WokspaceEvent { ACCESS, GET_RESOURCE }
 	private Storage storage;
 
-	public void init(Vertx vertx, Container container, RouteMatcher rm,
+	public void init(Vertx vertx, JsonObject config, RouteMatcher rm,
 			Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions) {
-		super.init(vertx, container, rm, securedActions);
+		super.init(vertx, config, rm, securedActions);
 		mongo = MongoDb.getInstance();
-		String node = (String) vertx.sharedData().getMap("server").get("node");
+		String node = (String) vertx.sharedData().getLocalMap("server").get("node");
 		if (node == null) {
 			node = "";
 		}
-		imageResizerAddress = node + container.config().getString("image-resizer-address", "wse.image.resizer");
+		imageResizerAddress = node + config.getString("image-resizer-address", "wse.image.resizer");
 		documentDao = new DocumentDao(mongo);
-		notification = new TimelineHelper(vertx, eb, container);
+		notification = new TimelineHelper(vertx, eb, config);
 		this.shareService = new MongoDbShareService(eb, mongo, "documents", securedActions, null);
 		this.folderService = new DefaultFolderService(mongo, storage);
-		this.threshold = container.config().getInteger("alertStorage", 80);
+		this.threshold = config.getInteger("alertStorage", 80);
 		eventStore = EventStoreFactory.getFactory().getEventStore(Workspace.class.getSimpleName());
 		post("/documents/copy/:ids", "copyDocuments");
 		put("/documents/move/:ids", "moveDocuments");
@@ -221,7 +213,7 @@ public class WorkspaceService extends BaseController {
 								} else {
 									n = new JsonObject();
 								}
-								n.put("number", number+1).putNumber("number-errors", errorsNb);
+								n.put("number", number+1).put("number-errors", errorsNb);
 								renderJson(request, n);
 							} else {
 								JsonObject error = new JsonObject().put("error", event.left().getValue());
@@ -266,7 +258,7 @@ public class WorkspaceService extends BaseController {
 		request.setExpectMultipart(true);
 		request.endHandler(new Handler<Void>() {
 			@Override
-			protected void handle() {
+			public void handle(Void v) {
 				final List<String> actions = request.formAttributes().getAll("actions");
 				final String groupId = request.formAttributes().get("groupId");
 				final String userId = request.formAttributes().get("userId");
@@ -281,7 +273,7 @@ public class WorkspaceService extends BaseController {
 							@Override
 							public void handle(Message<JsonObject> event) {
 								if ("ok".equals(event.body().getString("status")) && event.body().getJsonObject("result") != null) {
-									final boolean isFolder = !event.body().getJsonObject("result").containsField("file");
+									final boolean isFolder = !event.body().getJsonObject("result").containsKey("file");
 									if(isFolder)
 										shareFolderAction(request, id, user, actions, groupId, userId, false);
 									else
@@ -309,7 +301,7 @@ public class WorkspaceService extends BaseController {
 		request.setExpectMultipart(true);
 		request.endHandler(new Handler<Void>() {
 			@Override
-			protected void handle() {
+			public void handle(Void v) {
 				final List<String> actions = request.formAttributes().getAll("actions");
 				final String groupId = request.formAttributes().get("groupId");
 				final String userId = request.formAttributes().get("userId");
@@ -321,7 +313,7 @@ public class WorkspaceService extends BaseController {
 								@Override
 								public void handle(Message<JsonObject> event) {
 									if ("ok".equals(event.body().getString("status")) && event.body().getJsonObject("result") != null) {
-										final boolean isFolder = !event.body().getJsonObject("result").containsField("file");
+										final boolean isFolder = !event.body().getJsonObject("result").containsKey("file");
 										if (isFolder)
 											shareFolderAction(request, id, user, actions, groupId, userId, true);
 										else
@@ -586,7 +578,7 @@ public class WorkspaceService extends BaseController {
 				if (!(o instanceof JsonObject)) continue;
 				JsonObject added = (JsonObject) o;
 				Long size = added.getJsonObject("metadata", new JsonObject()).getLong("size", 0l);
-				String userId = (added.containsField("to")) ? added.getString("to") : added.getString("owner");
+				String userId = (added.containsKey("to")) ? added.getString("to") : added.getString("owner");
 				if (userId == null) {
 					log.info("UserId is null when update storage size");
 					log.info(added.encode());
@@ -605,7 +597,7 @@ public class WorkspaceService extends BaseController {
 				if (!(o instanceof JsonObject)) continue;
 				JsonObject removed = (JsonObject) o;
 				Long size = removed.getJsonObject("metadata", new JsonObject()).getLong("size", 0l);
-				String userId = (removed.containsField("to")) ? removed.getString("to") : removed.getString("owner");
+				String userId = (removed.containsKey("to")) ? removed.getString("to") : removed.getString("owner");
 				if (userId == null) {
 					log.info("UserId is null when update storage size");
 					log.info(removed.encode());
@@ -655,7 +647,7 @@ public class WorkspaceService extends BaseController {
 		request.setExpectMultipart(true);
 		request.endHandler(new Handler<Void>() {
 			@Override
-			protected void handle() {
+			public void handle(Void v) {
 				final String name = replaceUnderscore(request.formAttributes().get("name"));
 				final String path = request.formAttributes().get("path");
 				if (name == null || name.trim().isEmpty()) {
@@ -683,7 +675,7 @@ public class WorkspaceService extends BaseController {
 		request.setExpectMultipart(true);
 		request.endHandler(new Handler<Void>() {
 			@Override
-			protected void handle() {
+			public void handle(Void v) {
 				final String id = request.params().get("id");
 				final String path = request.formAttributes().get("path");
 				final String name = replaceUnderscore(request.formAttributes().get("name"));
@@ -729,7 +721,7 @@ public class WorkspaceService extends BaseController {
 		request.setExpectMultipart(true);
 		request.endHandler(new Handler<Void>() {
 			@Override
-			protected void handle() {
+			public void handle(Void v) {
 				final String id = request.params().get("id");
 				String p;
 				try {
@@ -815,7 +807,7 @@ public class WorkspaceService extends BaseController {
 								//Delete revisions for each sub-document
 								for(Object obj : r.right().getValue()){
 									JsonObject item = (JsonObject) obj;
-									if(item.containsField("file"))
+									if(item.containsKey("file"))
 										deleteAllRevisions(item.getString("_id"), new JsonArray().add(item.getString("file")));
 								}
 								//Decrement storage
@@ -895,7 +887,7 @@ public class WorkspaceService extends BaseController {
 					.put("src", storage.getProtocol() + "://" + storage.getBucket() + ":"
 							+ srcFile.getString("_id"))
 					.put("destinations", outputs);
-			eb.send(imageResizerAddress, json, new Handler<Message<JsonObject>>() {
+			eb.send(imageResizerAddress, json, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> event) {
 					JsonObject thumbnails = event.body().getJsonObject("outputs");
@@ -905,7 +897,7 @@ public class WorkspaceService extends BaseController {
 										.put("thumbnails", thumbnails)));
 					}
 				}
-			});
+			}));
 		}
 	}
 
@@ -930,13 +922,13 @@ public class WorkspaceService extends BaseController {
 				.put("quality", q)
 				.put("src", storage.getProtocol() + "://" + storage.getBucket() + ":" + srcFile.getString("_id"))
 				.put("dest", storage.getProtocol() + "://" + storage.getBucket() + ":" + srcFile.getString("_id"));
-		eb.send(imageResizerAddress, json, new Handler<Message<JsonObject>>() {
+		eb.send(imageResizerAddress, json, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
 				Integer size = event.body().getInteger("size");
 				handler.handle(size);
 			}
-		});
+		}));
 	}
 
 	@Put("/document/:id")
@@ -1022,7 +1014,7 @@ public class WorkspaceService extends BaseController {
 							.getJsonObject("thumbnails");
 
 					String query = "{ \"_id\": \"" + id + "\"}";
-					set.put("$set", doc).putObject("$unset", new JsonObject().put("thumbnails", ""));
+					set.put("$set", doc).put("$unset", new JsonObject().put("thumbnails", ""));
 					mongo.update(DocumentDao.DOCUMENTS_COLLECTION, new JsonObject(query), set,
 							new Handler<Message<JsonObject>>() {
 								@Override
@@ -1142,8 +1134,8 @@ public class WorkspaceService extends BaseController {
 
 					final String file = result.getString("file");
 					Set<Entry<String, Object>> thumbnails = new HashSet<Entry<String, Object>>();
-					if(result.containsField("thumbnails")){
-						thumbnails = result.getJsonObject("thumbnails").toMap().entrySet();
+					if(result.containsKey("thumbnails")){
+						thumbnails = result.getJsonObject("thumbnails").getMap().entrySet();
 					}
 
 					storage.removeFile(file,
@@ -1217,7 +1209,7 @@ public class WorkspaceService extends BaseController {
 		}
 		final String folder = folder2;
 		if (ids != null && !ids.trim().isEmpty()) {
-			JsonArray idsArray = new JsonArray(ids.split(","));
+			JsonArray idsArray = new JsonArray(Arrays.asList(ids.split(",")));
 			String criteria = "{ \"_id\" : { \"$in\" : " + idsArray.encode() + "}";
 			if (owner != null) {
 				criteria += ", \"to\" : \"" + owner + "\"";
@@ -1531,7 +1523,7 @@ public class WorkspaceService extends BaseController {
 													}
 												}
 											}
-											out = new JsonArray(folders.toArray());
+											out = new JsonArray(new ArrayList<>(folders));
 										}
 										renderJson(request, out);
 									} else {
@@ -1622,7 +1614,7 @@ public class WorkspaceService extends BaseController {
 					};
 
 					//If the document does not have a parent folder
-					if(!isFolder && !document.containsField("folder") || isFolder && document.getString("folder").equals(document.getString("name"))){
+					if(!isFolder && !document.containsKey("folder") || isFolder && document.getString("folder").equals(document.getString("name"))){
 						folderIdHandler.handle(null);
 					} else {
 						//If the document has a parent folder
@@ -1696,7 +1688,7 @@ public class WorkspaceService extends BaseController {
 					request.setExpectMultipart(true);
 					request.endHandler(new Handler<Void>() {
 						@Override
-						protected void handle() {
+						public void handle(Void v) {
 							String comment = request.formAttributes().get("comment");
 							if (comment != null && !comment.trim().isEmpty()) {
 								final String id = UUID.randomUUID().toString();
@@ -1742,7 +1734,7 @@ public class WorkspaceService extends BaseController {
 					request.setExpectMultipart(true);
 					request.endHandler(new Handler<Void>() {
 						@Override
-						protected void handle() {
+						public void handle(Void v) {
 							String comment = request.formAttributes().get("comment");
 							if (comment != null && !comment.trim().isEmpty()) {
 								final String id = UUID.randomUUID().toString();
@@ -1860,7 +1852,7 @@ public class WorkspaceService extends BaseController {
 			public void handle(UserInfos user) {
 				if (user != null && user.getUserId() != null) {
 					if (ids != null && !ids.trim().isEmpty()) {
-						JsonArray idsArray = new JsonArray(ids.split(","));
+						JsonArray idsArray = new JsonArray(Arrays.asList(ids.split(",")));
 						final String criteria = "{ \"_id\" : { \"$in\" : " + idsArray.encode() + "}}";
 
 						if (folder != null && !folder.trim().isEmpty()) {
@@ -2124,7 +2116,7 @@ public class WorkspaceService extends BaseController {
 		JsonArray t = message.body().getJsonArray("thumbs", new JsonArray());
 		List<String> thumbs = new ArrayList<>();
 		for (int i = 0; i < t.size(); i++) {
-			thumbs.add((String) t.get(i));
+			thumbs.add(t.getString(i));
 		}
 		addAfterUpload(uploaded, doc,  name, application, thumbs, DocumentDao.DOCUMENTS_COLLECTION,
 				new Handler<Message<JsonObject>>() {
@@ -2149,7 +2141,7 @@ public class WorkspaceService extends BaseController {
 		JsonArray t = message.body().getJsonArray("thumbs", new JsonArray());
 		List<String> thumbs = new ArrayList<>();
 		for (int i = 0; i < t.size(); i++) {
-			thumbs.add((String) t.get(i));
+			thumbs.add(t.getString(i));
 		}
 		updateAfterUpload(id, name, uploaded, thumbs, null, new Handler<Message<JsonObject>>() {
 			@Override

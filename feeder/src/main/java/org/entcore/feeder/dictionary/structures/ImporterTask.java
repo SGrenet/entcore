@@ -25,6 +25,8 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
+
 public class ImporterTask implements Handler<Long> {
 
 	private final EventBus eb;
@@ -39,14 +41,14 @@ public class ImporterTask implements Handler<Long> {
 
 	@Override
 	public void handle(Long event) {
-		eb.send(Feeder.FEEDER_ADDRESS, new JsonObject().put("action", "import").putString("feeder", feeder), new Handler<Message<JsonObject>>() {
+		eb.send(Feeder.FEEDER_ADDRESS, new JsonObject().put("action", "import").put("feeder", feeder), handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
 				if ("ok".equals(event.body().getString("status")) && export) {
 					eb.send(Feeder.FEEDER_ADDRESS, new JsonObject().put("action", "export"));
 				}
 			}
-		});
+		}));
 	}
 
 }

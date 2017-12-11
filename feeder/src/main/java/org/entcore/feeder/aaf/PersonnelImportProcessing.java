@@ -48,7 +48,7 @@ public class PersonnelImportProcessing extends BaseImportProcessing {
 
 	@Override
 	public void process(JsonObject object) {
-		List<String> c = object.getJsonArray("classes") != null ? object.getArray("classes").toList() : new LinkedList<String>();
+		List<String> c = object.getJsonArray("classes") != null ? object.getJsonArray("classes").getList() : new LinkedList<String>();
 		createGroups(object.getJsonArray("groups"), c);
 		createClasses(new JsonArray(c));
 		linkMef(object.getJsonArray("modules"));
@@ -67,7 +67,7 @@ public class PersonnelImportProcessing extends BaseImportProcessing {
 		if (object.getBoolean("teaches", false)) {
 			return TEACHER_PROFILE_EXTERNAL_ID;
 		} else if (functions != null && functions.size() > 0) {
-			for (Object function : functions.toList()) {
+			for (Object function : functions.getList()) {
 				if (function != null && (function.toString().contains("$DOC$") || function.toString().contains("$ENS$"))) {
 					return TEACHER_PROFILE_EXTERNAL_ID;
 				}

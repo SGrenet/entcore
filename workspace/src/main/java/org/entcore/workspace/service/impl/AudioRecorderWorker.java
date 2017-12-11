@@ -22,6 +22,7 @@ package org.entcore.workspace.service.impl;
 import com.sun.jna.Platform;
 import fr.wseduc.webutils.collections.PersistantBuffer;
 import fr.wseduc.webutils.data.ZLib;
+import io.vertx.core.eventbus.MessageConsumer;
 import net.sf.lamejb.BladeCodecFactory;
 import net.sf.lamejb.LamejbCodec;
 import net.sf.lamejb.LamejbCodecFactory;
@@ -33,13 +34,13 @@ import org.entcore.common.bus.WorkspaceHelper;
 import org.entcore.common.storage.Storage;
 import org.entcore.common.storage.StorageFactory;
 import org.entcore.common.user.UserUtils;
-import io.vertx.busmods.BusModBase;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.vertx.java.busmods.BusModBase;
 
 import java.io.*;
 import java.nio.ByteBuffer;
@@ -49,13 +50,15 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
+
 
 public class AudioRecorderWorker extends BusModBase implements Handler<Message<JsonObject>> {
 
 	private Storage storage;
 	private WorkspaceHelper workspaceHelper;
 	private final Map<String, PersistantBuffer> buffers = new HashMap<>();
-	private final Map<String, Handler<Message<byte[]>>> handlers = new HashMap<>();
+	private final Map<String, MessageConsumer<byte[]>> consumers = new HashMap<>();
 	private final Set<String> disabledCompression = new HashSet<>();
 
 	@Override
@@ -106,7 +109,7 @@ public class AudioRecorderWorker extends BusModBase implements Handler<Message<J
 								if ("ok".equals(f.getString("status"))) {
 									workspaceHelper.addDocument(f,
 											UserUtils.sessionToUserInfos(session), name, "mediaLibrary",
-											true, new JsonArray(), new Handler<Message<JsonObject>>() {
+											true, new JsonArray(), handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 												@Override
 												public void handle(Message<JsonObject> event) {
 													if ("ok".equals(event.body().getString("status"))) {
@@ -115,7 +118,7 @@ public class AudioRecorderWorker extends BusModBase implements Handler<Message<J
 														sendError(message, "workspace.add.error");
 													}
 												}
-											});
+											}));
 								} else {
 									sendError(message, "write.file.error");
 								}
@@ -140,9 +143,9 @@ public class AudioRecorderWorker extends BusModBase implements Handler<Message<J
 		if (buffer != null) {
 			buffer.clear();
 		}
-		Handler<Message<byte[]>> handler = handlers.remove(id);
-		if (handler != null) {
-			vertx.eventBus().unregisterHandler(AudioRecorderWorker.class.getSimpleName() + id, handler);
+		MessageConsumer<byte[]> consumer = consumers.remove(id);
+		if (consumer != null) {
+			consumer.unregister();
 		}
 		if (message != null) {
 			sendOK(message);
@@ -181,8 +184,8 @@ public class AudioRecorderWorker extends BusModBase implements Handler<Message<J
 				}
 			}
 		};
-		handlers.put(id, handler);
-		vertx.eventBus().localConsumer(AudioRecorderWorker.class.getSimpleName() + id, handler);
+		MessageConsumer<byte[]> consumer = vertx.eventBus().localConsumer(AudioRecorderWorker.class.getSimpleName() + id, handler);
+		consumers.put(id, consumer);
 		sendOK(message);
 	}
 

@@ -39,6 +39,7 @@ import org.entcore.common.user.UserInfos;
 import org.entcore.workspace.dao.DocumentDao;
 import org.entcore.workspace.service.WorkspaceService;
 
+import java.util.Arrays;
 import java.util.Map;
 
 public class WorkspaceResourcesProvider implements ResourcesProvider {
@@ -146,7 +147,7 @@ public class WorkspaceResourcesProvider implements ResourcesProvider {
 				"WHERE s.id IN {structures} " +
 				"RETURN count(*) > 0 as exists ";
 		JsonObject params = new JsonObject()
-				.put("structures", new JsonArray(adminLocal.getScope().toArray()))
+				.put("structures", new JsonArray(adminLocal.getScope()))
 				.put("userId", userId);
 		Neo4j.getInstance().execute(query, params, new Handler<Message<JsonObject>>() {
 			@Override
@@ -154,7 +155,7 @@ public class WorkspaceResourcesProvider implements ResourcesProvider {
 				JsonArray res = message.body().getJsonArray("result");
 				handler.handle(
 						"ok".equals(message.body().getString("status")) && res != null && res.size() == 1 &&
-								res.<JsonObject>get(0).getBoolean("exists", false)
+								res.getJsonObject(0).getBoolean("exists", false)
 				);
 			}
 		});
@@ -172,7 +173,7 @@ public class WorkspaceResourcesProvider implements ResourcesProvider {
 						"RETURN count(distinct u) as nb ";
 				final JsonArray users = object.getJsonArray("users", new JsonArray());
 				JsonObject params = new JsonObject()
-						.put("structures", new JsonArray(adminLocal.getScope().toArray()))
+						.put("structures", new JsonArray(adminLocal.getScope()))
 						.put("users", users);
 				Neo4j.getInstance().execute(query, params, new Handler<Message<JsonObject>>() {
 					@Override
@@ -180,7 +181,7 @@ public class WorkspaceResourcesProvider implements ResourcesProvider {
 						JsonArray res = message.body().getJsonArray("result");
 						handler.handle(
 								"ok".equals(message.body().getString("status")) && res != null && res.size() == 1 &&
-								res.<JsonObject>get(0).getInteger("nb", -1).equals(users.size())
+								res.getJsonObject(0).getInteger("nb", -1).equals(users.size())
 						);
 					}
 				});
@@ -226,7 +227,7 @@ public class WorkspaceResourcesProvider implements ResourcesProvider {
 			String serviceMethod, Handler<Boolean> handler) {
 		String ids = request.params().get("ids");
 		if (ids != null && !ids.trim().isEmpty()) {
-			JsonArray idsArray = new JsonArray(ids.split(","));
+			JsonArray idsArray = new JsonArray(Arrays.asList(ids.split(",")));
 			String query = "{ \"_id\": { \"$in\" : " + idsArray.encode() + "}, "
 					+ "\"$or\" : [{ \"owner\": \"" + user.getUserId() +
 					"\"}, {\"shared\" : { \"$elemMatch\" : " + orSharedElementMatch(user, serviceMethod) + "}}]}";

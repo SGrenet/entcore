@@ -51,7 +51,7 @@ public class GroupController extends BaseController {
 			public void handle(UserInfos user) {
 				if (user != null) {
 					final String structureId = request.params().get("structureId");
-					final JsonArray types = new JsonArray(request.params().getAll("type").toArray());
+					final JsonArray types = new JsonArray(request.params().getAll("type"));
 					groupService.listAdmin(structureId, user, types, arrayResponseHandler(request));
 				} else {
 					unauthorized(request);

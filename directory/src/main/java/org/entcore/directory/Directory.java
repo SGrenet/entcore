@@ -48,7 +48,7 @@ public class Directory extends BaseServer {
 	}
 
 	@Override
-	public void start() {
+	public void start() throws Exception {
 		final EventBus eb = getEventBus(vertx);
 		super.start();
 		setDefaultResourceFilter(new DirectoryResourcesProvider());
@@ -60,15 +60,15 @@ public class Directory extends BaseServer {
 			}
 		});
 
-		EmailFactory emailFactory = new EmailFactory(vertx, container, container.config());
+		EmailFactory emailFactory = new EmailFactory(vertx, config);
 		EmailSender emailSender = emailFactory.getSender();
 		UserService userService = new DefaultUserService(emailSender, eb);
 		UserBookService userBookService = new DefaultUserBookService();
-		TimelineHelper timeline = new TimelineHelper(vertx, eb, container);
+		TimelineHelper timeline = new TimelineHelper(vertx, eb, config);
 		ClassService classService = new DefaultClassService(eb);
 		SchoolService schoolService = new DefaultSchoolService(eb);
 		GroupService groupService = new DefaultGroupService(eb);
-		ConversationNotification conversationNotification = new ConversationNotification(vertx, eb, container);
+		ConversationNotification conversationNotification = new ConversationNotification(vertx, eb, config);
 
 		DirectoryController directoryController = new DirectoryController();
 		directoryController.setClassService(classService);

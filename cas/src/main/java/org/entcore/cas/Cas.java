@@ -36,7 +36,7 @@ import static fr.wseduc.webutils.Utils.isNotEmpty;
 public class Cas extends BaseServer {
 
 	@Override
-	public void start() {
+	public void start() throws Exception {
 		super.start();
 
 		EntCoreDataHandlerFactory dataHandlerFactory = new EntCoreDataHandlerFactory(getEventBus(vertx), config);

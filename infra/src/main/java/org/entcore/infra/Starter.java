@@ -23,14 +23,13 @@ import fr.wseduc.cron.CronTrigger;
 import fr.wseduc.mongodb.MongoDb;
 import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.request.CookieHelper;
-import fr.wseduc.webutils.validation.JsonSchemaValidator;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.shareddata.AsyncMap;
 import io.vertx.core.shareddata.LocalMap;
 import org.entcore.common.email.EmailFactory;
 import org.entcore.common.http.BaseServer;
 import org.entcore.common.notification.TimelineHelper;
-import org.entcore.common.utils.AsyncMapFactory;
+import org.entcore.common.utils.MapFactory;
 import org.entcore.common.utils.StringUtils;
 import org.entcore.infra.controllers.AntiVirusController;
 import org.entcore.infra.controllers.EmbedController;
@@ -51,7 +50,6 @@ import io.vertx.core.json.JsonObject;
 
 import java.io.File;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.List;
 
 import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
@@ -177,7 +175,7 @@ public class Starter extends BaseServer {
 	}
 
 	private void loadInvalidEmails() {
-		AsyncMapFactory.getClusterMap("invalidEmails", vertx, new Handler<AsyncMap<Object, Object>>() {
+		MapFactory.getClusterMap("invalidEmails", vertx, new Handler<AsyncMap<Object, Object>>() {
 			@Override
 			public void handle(final AsyncMap<Object, Object> invalidEmails) {
 				if (invalidEmails != null) {

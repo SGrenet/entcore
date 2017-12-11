@@ -46,7 +46,7 @@ public class UidRegisteredService extends AbstractCas20ExtensionRegisteredServic
 
 		try {
 			// Uid
-			if (data.containsField("externalId")) {
+			if (data.containsKey("externalId")) {
 				additionnalAttributes.add(createTextElement(UID, data.getString("externalId"), doc));
 			}
 

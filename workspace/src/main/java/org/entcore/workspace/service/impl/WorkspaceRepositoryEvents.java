@@ -42,10 +42,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class WorkspaceRepositoryEvents implements RepositoryEvents {
@@ -81,7 +78,7 @@ public class WorkspaceRepositoryEvents implements RepositoryEvents {
 				QueryBuilder.start("old_shared").elemMatch(
 						new QueryBuilder().or(groups.toArray(new DBObject[groups.size()])).get()
 				).get()).put("file").exists(true);
-		final JsonObject keys = new JsonObject().put("file", 1).putNumber("name", 1);
+		final JsonObject keys = new JsonObject().put("file", 1).put("name", 1);
 		final JsonObject query = MongoQueryBuilder.build(b);
 		mongo.find(DocumentDao.DOCUMENTS_COLLECTION, query, null,
 				keys, new Handler<Message<JsonObject>>() {
@@ -102,7 +99,7 @@ public class WorkspaceRepositoryEvents implements RepositoryEvents {
 								final JsonObject alias = new JsonObject();
 								final String [] ids = new String[racks.size() + documents.size()];
 								for (int i = 0; i < documents.size(); i++) {
-									JsonObject j = documents.get(i);
+									JsonObject j = documents.getJsonObject(i);
 									ids[i] = j.getString("file");
 									String fileName = j.getString("name");
 									if (fileName != null && fileName.contains("/")) {
@@ -115,7 +112,7 @@ public class WorkspaceRepositoryEvents implements RepositoryEvents {
 									}
 								}
 								for (int i = 0; i < racks.size(); i++) {
-									JsonObject j = racks.get(i);
+									JsonObject j = racks.getJsonObject(i);
 									ids[i] = j.getString("file");
 									String fileName = j.getString("name");
 									if (fileName != null && fileName.contains("/")) {
@@ -174,7 +171,7 @@ public class WorkspaceRepositoryEvents implements RepositoryEvents {
 									exported.set(true);
 									handler.handle(exported.get());
 								} else {
-									log.error("Write to fs : " + new JsonArray(ids).encode() + " - " + event.encode());
+									log.error("Write to fs : " + new JsonArray(Arrays.asList(ids)).encode() + " - " + event.encode());
 									handler.handle(exported.get());
 								}
 							}
@@ -249,7 +246,7 @@ public class WorkspaceRepositoryEvents implements RepositoryEvents {
 	public void deleteUsers(JsonArray users) {
 		String [] userIds = new String[users.size()];
 		for (int i = 0; i < users.size(); i++) {
-			JsonObject j = users.get(i);
+			JsonObject j = users.getJsonObject(i);
 			String id = j.getString("id");
 			userIds[i] = id;
 		}

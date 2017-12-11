@@ -119,7 +119,7 @@ public class Structure {
 					"SET s.joinKey = {joinKey} ";
 			JsonObject params = new JsonObject().put("joinKey", joinKey).put("externalId", getExternalId());
 			getTransaction().add(query, params);
-			return joinKey.toArray();
+			return joinKey.getList().toArray();
 		}
 		return null;
 	}
@@ -127,7 +127,7 @@ public class Structure {
 	public void addAttachment() {
 		JsonArray functionalAttachment = struct.getJsonArray("functionalAttachment");
 		if (functionalAttachment != null && functionalAttachment.size() > 0 &&
-				!externalId.equals(functionalAttachment.get(0))) {
+				!externalId.equals(functionalAttachment.getString(0))) {
 			JsonObject params = new JsonObject().put("externalId", externalId);
 			String query;
 			if (functionalAttachment.size() == 1) {
@@ -135,7 +135,7 @@ public class Structure {
 						"MATCH (s:Structure { externalId : {externalId}}), " +
 						"(ps:Structure { externalId : {functionalAttachment}}) " +
 						"CREATE UNIQUE s-[:HAS_ATTACHMENT]->ps";
-				params.put("functionalAttachment", (String) functionalAttachment.get(0));
+				params.put("functionalAttachment", functionalAttachment.getString(0));
 			} else {
 				query =
 						"MATCH (s:Structure { externalId : {externalId}}), (ps:Structure) " +
@@ -213,7 +213,7 @@ public class Structure {
 			public void handle(Message<JsonObject> event) {
 				JsonArray r = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && r != null && r.size() == 1) {
-					final JsonObject res = r.get(0);
+					final JsonObject res = r.getJsonObject(0);
 					usersInGroups(new Handler<Message<JsonObject>>() {
 
 						@Override

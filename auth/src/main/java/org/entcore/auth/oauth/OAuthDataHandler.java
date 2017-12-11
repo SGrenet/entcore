@@ -35,7 +35,6 @@ import jp.eisbahn.oauth2.server.models.Request;
 import org.entcore.auth.services.OpenIdConnectService;
 import org.entcore.common.neo4j.Neo4j;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler<AsyncResult>;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -83,7 +82,7 @@ public class OAuthDataHandler extends DataHandler {
 			public void handle(Message<JsonObject> res) {
 				JsonArray a = res.body().getJsonArray("result");
 				if ("ok".equals(res.body().getString("status")) && a != null && a.size() == 1) {
-					JsonObject r = a.get(0);
+					JsonObject r = a.getJsonObject(0);
 					handler.handle(r != null && r.getInteger("nb") == 1);
 				} else {
 					handler.handle(false);
@@ -116,7 +115,7 @@ public class OAuthDataHandler extends DataHandler {
 					JsonArray result = res.body().getJsonArray("result");
 					if ("ok".equals(res.body().getString("status")) &&
 							result != null && result.size() == 1) {
-						JsonObject r = result.get(0);
+						JsonObject r = result.getJsonObject(0);
 						String dbPassword;
 						if (r != null && (dbPassword = r.getString("password")) != null && !r.getBoolean("blockedProfile", false)) {
 							boolean success = false;
@@ -171,11 +170,11 @@ public class OAuthDataHandler extends DataHandler {
 			public void handle(Message<JsonObject> event) {
 				if (!"ok".equals(event.body().getString("status"))) {
 					log.error("Error updating old password for user " + username + " : " + event.body().getString("message"));
-				} else if (event.body().getJsonArray("result") != null && event.body().getArray("result").size() == 1) {
+				} else if (event.body().getJsonArray("result") != null && event.body().getJsonArray("result").size() == 1) {
 					// welcome message
 					JsonObject message = new JsonObject()
-							.put("userId", event.body().getJsonArray("result").<JsonObject>get(0).getString("id"))
-							.put("profile", event.body().getJsonArray("result").<JsonObject>get(0).getString("profile"))
+							.put("userId", event.body().getJsonArray("result").getJsonObject(0).getString("id"))
+							.put("profile", event.body().getJsonArray("result").getJsonObject(0).getString("profile"))
 							.put("request", new JsonObject()
 									.put("headers", new JsonObject()
 													.put("Accept-Language", getRequest().getHeader("Accept-Language"))
@@ -209,9 +208,9 @@ public class OAuthDataHandler extends DataHandler {
 
 						if ("ok".equals(res.body().getString("status")) &&
 								r != null && r.size() == 1) {
-							JsonObject j = r.get(0);
+							JsonObject j = r.getJsonObject(0);
 							if (j != null &&
-								Arrays.asList(j.getJsonArray("scope", new JsonArray()).toArray())
+								j.getJsonArray("scope", new JsonArray()).getList()
 										.containsAll(Arrays.asList(scope.split("\\s")))) {
 								createAuthInfo(clientId, userId, scope, redirectUri, handler);
 							} else {
@@ -279,7 +278,7 @@ public class OAuthDataHandler extends DataHandler {
 								.put("expiresIn", 3600);
 						if (openIdConnectService != null && authInfo.getScope() != null && authInfo.getScope().contains("openid")) {
 						//"2.0".equals(RequestUtils.getAcceptVersion(getRequest().getHeader("Accept")))) {
-							openIdConnectService.generateIdToken(authInfo.getUserId(), authInfo.getClientId(), new Handler<AsyncResult><String>() {
+							openIdConnectService.generateIdToken(authInfo.getUserId(), authInfo.getClientId(), new io.vertx.core.Handler<AsyncResult<String>>() {
 								@Override
 								public void handle(AsyncResult<String> ar) {
 									if (ar.succeeded()) {
@@ -314,7 +313,7 @@ public class OAuthDataHandler extends DataHandler {
 								t.setToken(token.getString("token"));
 								t.setCreatedOn(new Date(token.getJsonObject("createdOn").getLong("$date")));
 								t.setExpiresIn(3600);
-								if (token.containsField("id_token")) {
+								if (token.containsKey("id_token")) {
 									t.setIdToken(token.getString("id_token"));
 								}
 								handler.handle(t);
@@ -390,7 +389,7 @@ public class OAuthDataHandler extends DataHandler {
 				public void handle(Message<JsonObject> res) {
 					JsonArray a = res.body().getJsonArray("result");
 					if ("ok".equals(res.body().getString("status")) && a != null && a.size() == 1) {
-						JsonObject r = a.get(0);
+						JsonObject r = a.getJsonObject(0);
 						handler.handle(r != null && r.getInteger("nb") == 1);
 					} else {
 						handler.handle(false);
@@ -417,7 +416,7 @@ public class OAuthDataHandler extends DataHandler {
 				public void handle(Message<JsonObject> res) {
 					JsonArray a = res.body().getJsonArray("result");
 					if ("ok".equals(res.body().getString("status")) && a != null && a.size() == 1) {
-						JsonObject r = a.get(0);
+						JsonObject r = a.getJsonObject(0);
 						handler.handle(r != null && r.getInteger("nb") == 1);
 					} else {
 						handler.handle(false);

@@ -57,12 +57,12 @@ public class LeSiteTvRegisteredService extends AbstractCas20ExtensionRegisteredS
 			Element root = createElement(LSTV_ROOT, doc);
 
 			// Uid
-			if (data.containsField("externalId")) {
+			if (data.containsKey("externalId")) {
 				root.appendChild(createTextElement(LSTV_ID, data.getString("externalId"), doc));
 			}
 
 			// Structures
-			for (Object o : data.getJsonArray("structures", new JsonArray()).toList()) {
+			for (Object o : data.getJsonArray("structures", new JsonArray()).getList()) {
 				Map<String, Object> structure = ((Map<String, Object>) o);
 				if (structure.containsKey("UAI")) {
 					root.appendChild(createTextElement(LSTV_STRUCTURE_UAI, structure.get("UAI").toString(), doc));
@@ -86,17 +86,17 @@ public class LeSiteTvRegisteredService extends AbstractCas20ExtensionRegisteredS
 			}
 
 			// Lastname
-			if (data.containsField("lastName")) {
+			if (data.containsKey("lastName")) {
 				root.appendChild(createTextElement(LSTV_LASTNAME, data.getString("lastName"), doc));
 			}
 
 			// Firstname
-			if (data.containsField("firstName")) {
+			if (data.containsKey("firstName")) {
 				root.appendChild(createTextElement(LSTV_FIRSTNAME, data.getString("firstName"), doc));
 			}
 
 			// Email
-			if (data.containsField("email")) {
+			if (data.containsKey("email")) {
 				root.appendChild(createTextElement(LSTV_EMAIL, data.getString("email"), doc));
 			}
 

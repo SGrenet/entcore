@@ -29,12 +29,12 @@ import org.entcore.feeder.dictionary.structures.*;
 import org.entcore.feeder.exceptions.TransactionException;
 import org.entcore.feeder.exceptions.ValidationException;
 import org.entcore.feeder.utils.*;
-import io.vertx.busmods.BusModBase;
 import io.vertx.core.Handler;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.LoggerFactory;
+import org.vertx.java.busmods.BusModBase;
 
 import java.io.*;
 import java.security.NoSuchAlgorithmException;
@@ -74,7 +74,6 @@ public class ManualFeeder extends BusModBase {
 
 	public ManualFeeder(Neo4j neo4j) {
 		this.neo4j = neo4j;
-		this.logger = LoggerFactory.getLogger(ManualFeeder.class);
 	}
 
 	public void createStructure(final Message<JsonObject> message) {
@@ -331,7 +330,7 @@ public class ManualFeeder extends BusModBase {
 				public void handle(Message<JsonObject> event) {
 					final JsonArray results = event.body().getJsonArray("results");
 					if ("ok".equals(event.body().getString("status")) && results != null && results.size() > 0) {
-						message.reply(event.body().put("result", results.<JsonArray>get(0)));
+						message.reply(event.body().put("result", results.getJsonArray(0)));
 					} else {
 						message.reply(event.body());
 					}
@@ -484,7 +483,7 @@ public class ManualFeeder extends BusModBase {
 			public void handle(Message<JsonObject> event) {
 				JsonArray res = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && res != null && res.size() == 1) {
-					JsonObject j = res.get(0);
+					JsonObject j = res.getJsonObject(0);
 					if (users.size() == j.getInteger("count", 0)) {
 						executeTransaction(message, new VoidFunction<TransactionHelper>() {
 							@Override
@@ -539,7 +538,7 @@ public class ManualFeeder extends BusModBase {
 			public void handle(Message<JsonObject> r) {
 				JsonArray result = r.body().getJsonArray("result");
 				if ("ok".equals(r.body().getString("status")) && result != null && result.size() == 1) {
-					JsonObject j = result.get(0);
+					JsonObject j = result.getJsonObject(0);
 					final String structureExternalId = j.getString("sId");
 					final String classExternalId = j.getString("cId");
 					if (structureExternalId == null || classExternalId == null) {
@@ -637,7 +636,7 @@ public class ManualFeeder extends BusModBase {
 			public void handle(Message<JsonObject> r) {
 				JsonArray result = r.body().getJsonArray("result");
 				if ("ok".equals(r.body().getString("status")) && result != null && result.size() == 1) {
-					JsonObject j = result.get(0);
+					JsonObject j = result.getJsonObject(0);
 					final String structureExternalId = j.getString("sId");
 					final String classExternalId = j.getString("cId");
 					if (structureExternalId == null || classExternalId == null) {
@@ -847,7 +846,7 @@ public class ManualFeeder extends BusModBase {
 				public void handle(Message<JsonObject> event) {
 					JsonArray result = event.body().getJsonArray("result");
 					if ("ok".equals(event.body().getString("status")) && result != null && result.size() == 1) {
-						final JsonArray s = result.<JsonObject>get(0).getJsonArray("ids");
+						final JsonArray s = result.getJsonObject(0).getJsonArray("ids");
 						executeTransaction(message, new VoidFunction<TransactionHelper>() {
 							@Override
 							public void apply(TransactionHelper tx) {

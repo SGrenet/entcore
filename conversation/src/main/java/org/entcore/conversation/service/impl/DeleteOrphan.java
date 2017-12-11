@@ -81,7 +81,7 @@ public class DeleteOrphan implements Handler<Long> {
 							});
 						}
 						final String deletOrphanAttachments =
-								"delete from conversation.attachments where id IN " + Sql.listPrepared(ids.toArray());
+								"delete from conversation.attachments where id IN " + Sql.listPrepared(ids.getList());
 						sql.prepared(deletOrphanAttachments, ids, new Handler<Message<JsonObject>>() {
 							@Override
 							public void handle(Message<JsonObject> event) {

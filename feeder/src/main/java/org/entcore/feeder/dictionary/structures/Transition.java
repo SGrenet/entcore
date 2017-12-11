@@ -32,6 +32,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -100,7 +101,7 @@ public class Transition {
 				public void handle(Message<JsonObject> m) {
 					if ("ok".equals(m.body().getString("status"))) {
 						JsonArray r = m.body().getJsonArray("result", new JsonArray());
-						groupsUsers.addAll(r.toList());
+						groupsUsers.addAll(r.getList());
 						Structure s = GraphData.getStructures().get(structuresExternalId[j]);
 						if (s == null) {
 							log.error("Missing structure with externalId : " +
@@ -134,7 +135,7 @@ public class Transition {
 			public void handle(Message<JsonObject> m) {
 				if ("ok".equals(m.body().getString("status"))) {
 					JsonArray r = m.body().getJsonArray("result", new JsonArray());
-					groupsUsers.addAll(r.toList());
+					groupsUsers.addAll(r.getList());
 					try {
 						TransactionManager.getInstance().persist(GRAPH_DATA_UPDATE, false,
 								new Handler<Message<JsonObject>>() {
@@ -143,7 +144,7 @@ public class Transition {
 								if ("ok".equals(event.body().getString("status"))) {
 									if (handler != null) {
 										handler.handle(new ResultMessage()
-												.put("result", new JsonArray(groupsUsers.toArray())));
+												.put("result", new JsonArray(new ArrayList<>(groupsUsers))));
 									}
 								} else {
 									log.error("Transition commit error");

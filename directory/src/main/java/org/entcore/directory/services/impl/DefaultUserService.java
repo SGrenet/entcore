@@ -23,6 +23,7 @@ import fr.wseduc.webutils.Either;
 
 import fr.wseduc.webutils.Utils;
 import fr.wseduc.webutils.email.EmailSender;
+import io.vertx.core.AsyncResult;
 import org.entcore.common.neo4j.Neo4j;
 import org.entcore.common.user.UserInfos;
 import org.entcore.common.validation.StringValidation;
@@ -41,6 +42,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 import static org.entcore.common.neo4j.Neo4jResult.*;
 import static org.entcore.common.user.DefaultFunctions.ADMIN_LOCAL;
 import static org.entcore.common.user.DefaultFunctions.CLASS_ADMIN;
@@ -66,7 +68,7 @@ public class DefaultUserService implements UserService {
 				.put("structureId", structureId)
 				.put("profile", user.getString("type"))
 				.put("data", user);
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(result)));
 	}
 
 	@Override
@@ -77,7 +79,7 @@ public class DefaultUserService implements UserService {
 				.put("classId", classId)
 				.put("profile", user.getString("type"))
 				.put("data", user);
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(result)));
 	}
 
 	@Override
@@ -86,7 +88,7 @@ public class DefaultUserService implements UserService {
 				.put("action", "manual-update-user")
 				.put("userId", id)
 				.put("data", user);
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(result)));
 	}
 
 	@Override
@@ -119,15 +121,14 @@ public class DefaultUserService implements UserService {
 					logger.debug(json.encode());
 					notification.sendEmail(request, email, null, null,
 							"email.user.created.info", "email/userCreated.html", json, true,
-							new Handler<Message<JsonObject>>() {
+							new Handler<AsyncResult<Message<JsonObject>>>() {
 
 								@Override
-								public void handle(Message<JsonObject> message) {
-									if ("ok".equals(message.body().getString("status"))) {
+								public void handle(AsyncResult<Message<JsonObject>> ar) {
+									if (ar.succeeded()) {
 										result.handle(new Either.Right<String, Boolean>(true));
 									} else {
-										result.handle(new Either.Left<String, Boolean>(
-												message.body().getString("message")));
+										result.handle(new Either.Left<String, Boolean>(ar.cause().getMessage()));
 									}
 								}
 							});
@@ -198,7 +199,7 @@ public class DefaultUserService implements UserService {
 			params.put("structureId", structureId);
 			if (profile != null && !profile.isEmpty()) {
 				query += "AND p.name IN {profile} ";
-				params.put("profile", new JsonArray(profile.toArray()));
+				params.put("profile", new JsonArray(profile));
 			}
 		} else { // users without structure
 			query = "MATCH (u:User)" +
@@ -256,7 +257,7 @@ public class DefaultUserService implements UserService {
 			List<String> scope = f.getScope();
 			if (scope != null && !scope.isEmpty()) {
 				condition = "AND s.id IN {scope} ";
-				params.put("scope", new JsonArray(scope.toArray()));
+				params.put("scope", new JsonArray(scope));
 			}
 		} else if(userInfos.getFunctions().containsKey(CLASS_ADMIN)){
 			UserInfos.Function f = userInfos.getFunctions().get(CLASS_ADMIN);
@@ -264,7 +265,7 @@ public class DefaultUserService implements UserService {
 			if (scope != null && !scope.isEmpty()) {
 				functionMatch = "WITH u MATCH (c:Class)<-[:DEPENDS]-(cpg:ProfileGroup)-[:DEPENDS]->(pg:ProfileGroup)-[:HAS_PROFILE]->(p:Profile), u-[:IN]->pg ";
 				condition = "AND c.id IN {scope} ";
-				params.put("scope", new JsonArray(scope.toArray()));
+				params.put("scope", new JsonArray(scope));
 			}
 		}
 		if(nameFilter != null && !nameFilter.trim().isEmpty()){
@@ -302,16 +303,16 @@ public class DefaultUserService implements UserService {
 	public void delete(List<String> users, Handler<Either<String, JsonObject>> result) {
 		JsonObject action = new JsonObject()
 				.put("action", "manual-delete-user")
-				.put("users", new JsonArray(users.toArray()));
-		eb.send(Directory.FEEDER, action, validEmptyHandler(result));
+				.put("users", new JsonArray(users));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validEmptyHandler(result)));
 	}
 
 	@Override
 	public void restore(List<String> users, Handler<Either<String, JsonObject>> result) {
 		JsonObject action = new JsonObject()
 				.put("action", "manual-restore-user")
-				.put("users", new JsonArray(users.toArray()));
-		eb.send(Directory.FEEDER, action, validEmptyHandler(result));
+				.put("users", new JsonArray(users));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validEmptyHandler(result)));
 	}
 
 	@Override
@@ -323,7 +324,7 @@ public class DefaultUserService implements UserService {
 				.put("function", functionCode)
 				.put("inherit", inherit)
 				.put("scope", scope);
-		eb.send(Directory.FEEDER, action, validEmptyHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validEmptyHandler(result)));
 	}
 
 	@Override
@@ -332,7 +333,7 @@ public class DefaultUserService implements UserService {
 				.put("action", "manual-remove-user-function")
 				.put("userId", id)
 				.put("function", functionCode);
-		eb.send(Directory.FEEDER, action, validEmptyHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validEmptyHandler(result)));
 	}
 
 	@Override
@@ -341,7 +342,7 @@ public class DefaultUserService implements UserService {
 				.put("action", "manual-add-user-group")
 				.put("userId", id)
 				.put("groupId", groupId);
-		eb.send(Directory.FEEDER, action, validEmptyHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validEmptyHandler(result)));
 	}
 
 	@Override
@@ -350,7 +351,7 @@ public class DefaultUserService implements UserService {
 				.put("action", "manual-remove-user-group")
 				.put("userId", id)
 				.put("groupId", groupId);
-		eb.send(Directory.FEEDER, action, validEmptyHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validEmptyHandler(result)));
 	}
 
 	@Override
@@ -390,7 +391,7 @@ public class DefaultUserService implements UserService {
 				.put("action", "manual-relative-student")
 				.put("relativeId", relativeId)
 				.put("studentId", studentId);
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(0, eitherHandler));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(0, eitherHandler)));
 	}
 
 	@Override
@@ -399,7 +400,7 @@ public class DefaultUserService implements UserService {
 				.put("action", "manual-unlink-relative-student")
 				.put("relativeId", relativeId)
 				.put("studentId", studentId);
-		eb.send(Directory.FEEDER, action, validEmptyHandler(eitherHandler));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validEmptyHandler(eitherHandler)));
 	}
 
 	@Override
@@ -408,7 +409,7 @@ public class DefaultUserService implements UserService {
 				.put("action", "ignore-duplicate")
 				.put("userId1", userId1)
 				.put("userId2", userId2);
-		eb.send(Directory.FEEDER, action, validEmptyHandler(result));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validEmptyHandler(result)));
 	}
 
 	@Override
@@ -417,7 +418,7 @@ public class DefaultUserService implements UserService {
 				.put("action", "list-duplicate")
 				.put("structures", structures)
 				.put("inherit", inherit);
-		eb.send(Directory.FEEDER, action, validResultHandler(results));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validResultHandler(results)));
 	}
 
 	@Override
@@ -426,7 +427,7 @@ public class DefaultUserService implements UserService {
 				.put("action", "merge-duplicate")
 				.put("userId1", userId1)
 				.put("userId2", userId2);
-		eb.send(Directory.FEEDER, action, validEmptyHandler(handler));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validEmptyHandler(handler)));
 	}
 
 	@Override
@@ -460,7 +461,7 @@ public class DefaultUserService implements UserService {
 		// Init params and filter for all type of queries
 		String  filter =  "WHERE s.UAI IN {uai} ";
 
-		JsonObject params = new JsonObject().put("uai", new JsonArray(UAI.toArray()));
+		JsonObject params = new JsonObject().put("uai", new JsonArray(UAI));
 
 		StringBuilder query = new StringBuilder();
 		query.append("MATCH (s:Structure)<-[:DEPENDS]-(cpg:ProfileGroup)");
@@ -511,7 +512,7 @@ public class DefaultUserService implements UserService {
 	public void generateMergeKey(String userId, Handler<Either<String, JsonObject>> handler) {
 		if (Utils.defaultValidationParamsError(handler, userId)) return;
 		final String query = "MATCH (u:User {id: {id}}) SET u.mergeKey = {mergeKey} return u.mergeKey as mergeKey";
-		final JsonObject params = new JsonObject().put("id", userId).putString("mergeKey", UUID.randomUUID().toString());
+		final JsonObject params = new JsonObject().put("id", userId).put("mergeKey", UUID.randomUUID().toString());
 		neo.execute(query, params, validUniqueResultHandler(handler));
 	}
 
@@ -522,7 +523,7 @@ public class DefaultUserService implements UserService {
 				.put("action", "merge-by-keys")
 				.put("originalUserId", userId)
 				.put("mergeKeys", body.getJsonArray("mergeKeys"));
-		eb.send(Directory.FEEDER, action, validUniqueResultHandler(5, handler));
+		eb.send(Directory.FEEDER, action, handlerToAsyncHandler(validUniqueResultHandler(5, handler)));
 	}
 
 	@Override

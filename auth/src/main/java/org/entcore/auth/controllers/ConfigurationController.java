@@ -72,7 +72,7 @@ public class ConfigurationController extends BaseController {
 									.put("enabled", res.getJsonObject(host).getBoolean("enabled", false))
 							);
 						} else if (res.getJsonObject(host) != null) {
-							if (!res.getJsonObject(host).containsField("enabled")) {
+							if (!res.getJsonObject(host).containsKey("enabled")) {
 								res.getJsonObject(host).put("enabled", false);
 							}
 							renderJson(request, res.getJsonObject(host));

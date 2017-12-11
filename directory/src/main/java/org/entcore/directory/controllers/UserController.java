@@ -231,7 +231,7 @@ public class UserController extends BaseController {
 			@SuppressWarnings("unchecked")
 			public void handle(JsonObject event) {
 				if (event != null) {
-					userService.delete(event.getJsonArray("users", new JsonArray()).toList(), defaultResponseHandler(request));
+					userService.delete(event.getJsonArray("users", new JsonArray()).getList(), defaultResponseHandler(request));
 				} else {
 					badRequest(request, "invalid.json");
 				}
@@ -255,7 +255,7 @@ public class UserController extends BaseController {
 				if (user != null) {
 					final String structureId = request.params().get("structureId");
 					final String classId = request.params().get("classId");
-					JsonArray types = new JsonArray(request.params().getAll("profile").toArray());
+					JsonArray types = new JsonArray(request.params().getAll("profile"));
 					final String filterActive = request.params().get("filterActive");
 					final String exportType = request.params().get("type") == null ? "" : request.params().get("type");
 					final String format = request.params().get("format");
@@ -378,7 +378,7 @@ public class UserController extends BaseController {
 				if (user != null) {
 					final String structureId = request.params().get("structureId");
 					final String classId = request.params().get("classId");
-					final JsonArray types = new JsonArray(request.params().getAll("profile").toArray());
+					final JsonArray types = new JsonArray(request.params().getAll("profile"));
 					final String groupId = request.params().get("groupId");
 					final String nameFilter = request.params().get("name");
 					final String filterActive = request.params().get("filterActive");
@@ -453,7 +453,7 @@ public class UserController extends BaseController {
 	public void listDuplicates(final HttpServerRequest request) {
 		final List<String> structures = request.params().getAll("structure");
 		final boolean inherit = "true".equals(request.params().get("inherit"));
-		userService.listDuplicates(new JsonArray(structures.toArray()), inherit, arrayResponseHandler(request));
+		userService.listDuplicates(new JsonArray(structures), inherit, arrayResponseHandler(request));
 	}
 
 
@@ -468,7 +468,7 @@ public class UserController extends BaseController {
 		if ("true".equalsIgnoreCase(request.params().get("administrativeStructure"))) {
 			fields.add("administrativeStructure");
 		}
-		JsonArray types = new JsonArray(request.params().getAll("type").toArray());
+		JsonArray types = new JsonArray(request.params().getAll("type"));
 
 		boolean isExportFull = false;
 		String isExportFullParameter = request.params().get("full");

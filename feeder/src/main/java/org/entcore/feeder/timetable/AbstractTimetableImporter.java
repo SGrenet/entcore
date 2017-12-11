@@ -21,6 +21,7 @@ package org.entcore.feeder.timetable;
 
 import fr.wseduc.mongodb.MongoDb;
 import fr.wseduc.webutils.DefaultAsyncResult;
+import io.vertx.core.AsyncResult;
 import org.entcore.common.neo4j.Neo4jUtils;
 import org.entcore.feeder.dictionary.structures.Importer;
 import org.entcore.feeder.dictionary.structures.Transition;
@@ -32,7 +33,6 @@ import org.entcore.feeder.utils.Report;
 import org.entcore.feeder.utils.TransactionHelper;
 import org.entcore.feeder.utils.TransactionManager;
 import org.joda.time.DateTime;
-import io.vertx.core.Handler<AsyncResult>;
 import io.vertx.core.Handler;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
@@ -143,7 +143,7 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 	protected TransactionHelper txXDT;
 	private final MongoDb mongoDb = MongoDb.getInstance();
 	private final AtomicInteger countMongoQueries = new AtomicInteger(0);
-	private Handler<AsyncResult><Report> endHandler;
+	private Handler<AsyncResult<Report>> endHandler;
 	protected final String basePath;
 	private boolean txSuccess = false;
 	protected Set<String> userImportedExternalId = new HashSet<>();
@@ -155,7 +155,7 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 		this.report = new Report(acceptLanguage);
 	}
 
-	protected void init(final Handler<AsyncResult><Void> handler) throws TransactionException {
+	protected void init(final Handler<AsyncResult<Void>> handler) throws TransactionException {
 		importTimestamp = System.currentTimeMillis();
 		final String externalIdFromUAI = "MATCH (s:Structure {UAI : {UAI}}) " +
 				"return s.externalId as externalId, s.id as id, s.timetable as timetable ";
@@ -169,7 +169,7 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 				"return cm.mapping as mapping ";
 		final String subjectsMappingQuery = "MATCH (s:Structure {UAI : {UAI}})<-[:SUBJECT]-(sub:Subject) return sub.code as code, sub.id as id";
 		final TransactionHelper tx = TransactionManager.getTransaction();
-		tx.add(getUsersByProfile, new JsonObject().put("UAI", UAI).putString("profile", "Teacher"));
+		tx.add(getUsersByProfile, new JsonObject().put("UAI", UAI).put("profile", "Teacher"));
 		tx.add(externalIdFromUAI, new JsonObject().put("UAI", UAI));
 		tx.add(classesMappingQuery, new JsonObject().put("UAI", UAI));
 		tx.add(subjectsMappingQuery, new JsonObject().put("UAI", UAI));
@@ -179,18 +179,18 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 				final JsonArray res = event.body().getJsonArray("results");
 				if ("ok".equals(event.body().getString("status")) && res != null && res.size() == 4) {
 					try {
-						for (Object o : res.<JsonArray>get(0)) {
+						for (Object o : res.getJsonArray(0)) {
 							if (o instanceof JsonObject) {
 								final JsonObject j = (JsonObject) o;
 								teachersMapping.put(j.getString("tma"), new String[]{j.getString("id"), j.getString("source")});
 							}
 						}
-						JsonArray a = res.get(1);
+						JsonArray a = res.getJsonArray(1);
 						if (a != null && a.size() == 1) {
-							structureExternalId = a.<JsonObject>get(0).getString("externalId");
+							structureExternalId = a.getJsonObject(0).getString("externalId");
 							structure.add(structureExternalId);
-							structureId = a.<JsonObject>get(0).getString("id");
-							if (!getSource().equals(a.<JsonObject>get(0).getString("timetable"))) {
+							structureId = a.getJsonObject(0).getString("id");
+							if (!getSource().equals(a.getJsonObject(0).getString("timetable"))) {
 								handler.handle(new DefaultAsyncResult<Void>(new TransactionException("different.timetable.type")));
 								return;
 							}
@@ -198,10 +198,10 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 							handler.handle(new DefaultAsyncResult<Void>(new ValidationException("invalid.uai")));
 							return;
 						}
-						JsonArray cm = res.get(2);
+						JsonArray cm = res.getJsonArray(2);
 						if (cm != null && cm.size() == 1) {
 							try {
-								final JsonObject cmn = cm.get(0);
+								final JsonObject cmn = cm.getJsonObject(0);
 								log.info(cmn.encode());
 								if (isNotEmpty(cmn.getString("mapping"))) {
 									classesMapping = new JsonObject(cmn.getString("mapping"));
@@ -214,7 +214,7 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 								log.error(ecm.getMessage(), ecm);
 							}
 						}
-						JsonArray subjects = res.get(3);
+						JsonArray subjects = res.getJsonArray(3);
 						if (subjects != null && subjects.size() > 0) {
 							for (Object o : subjects) {
 								if (o instanceof JsonObject) {
@@ -243,7 +243,7 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 			final String externalId = structureExternalId + "$" + currentEntity.getString("Code");
 			subjectId = UUID.randomUUID().toString();
 			txXDT.add(CREATE_SUBJECT, currentEntity.put("structureExternalId", structureExternalId)
-					.put("externalId", externalId).putString("id", subjectId)
+					.put("externalId", externalId).put("id", subjectId)
 					.put("source", getSource()).put("now", importTimestamp));
 		}
 		subjects.put(id, subjectId);
@@ -341,11 +341,11 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 			final JsonArray teacherIds = object.getJsonArray("teacherIds");
 			final List<String> ids = new ArrayList<>();
 			if (teacherIds != null) {
-				ids.addAll(teacherIds.toList());
+				ids.addAll(teacherIds.getList());
 			}
 			final JsonArray personnelIds = object.getJsonArray("personnelIds");
 			if (personnelIds != null) {
-				ids.addAll(personnelIds.toList());
+				ids.addAll(personnelIds.getList());
 			}
 			if (!ids.isEmpty()) {
 				final JsonArray g = new JsonArray();
@@ -435,11 +435,11 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 		}
 	}
 
-	protected void commit(final Handler<AsyncResult><Report> handler) {
+	protected void commit(final Handler<AsyncResult<Report>> handler) {
 		final JsonObject params = new JsonObject().put("structureExternalId", structureExternalId)
 				.put("source", getSource()).put("now", importTimestamp);
 		persistBulKCourses();
-		txXDT.add(DELETE_SUBJECT, params.copy().put("subjects", new JsonArray(subjects.values().toArray())));
+		txXDT.add(DELETE_SUBJECT, params.copy().put("subjects", new JsonArray(new ArrayList<>(subjects.values()))));
 		txXDT.add(UNLINK_SUBJECT, params);
 		txXDT.add(UNLINK_GROUP, params);
 		txXDT.add(DELETE_GROUPS, params);
@@ -473,9 +473,9 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 		if (mergedUsers == null) return;
 		long now = System.currentTimeMillis();
 		for (int i=1; i < mergedUsers.size(); i+=2) {
-			final JsonArray a = mergedUsers.get(i);
+			final JsonArray a = mergedUsers.getJsonArray(i);
 			if (a.size() > 0) {
-				updateMergedUsers(a.<JsonObject>get(0), now);
+				updateMergedUsers(a.getJsonObject(0), now);
 			}
 		}
 	}
@@ -506,7 +506,7 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 				public void handle(Message<JsonObject> event) {
 					final JsonArray res = event.body().getJsonArray("result");
 					if ("ok".equals(event.body().getString("status")) && res != null && res.size() > 0) {
-						transitionDeleteCourses(res.<JsonObject>get(0));
+						transitionDeleteCourses(res.getJsonObject(0));
 						transitionDeleteSubjectsAndMapping(structureExternalId);
 					}
 				}
@@ -558,7 +558,7 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 	public static void initStructure(final EventBus eb, final Message<JsonObject> message) {
 		final JsonObject conf = message.body().getJsonObject("conf");
 		if (conf == null) {
-			message.reply(new JsonObject().put("status", "error").putString("message", "invalid.conf"));
+			message.reply(new JsonObject().put("status", "error").put("message", "invalid.conf"));
 			return;
 		}
 		final String query =
@@ -569,7 +569,7 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 			public void handle(final Message<JsonObject> event) {
 				final JsonArray j = event.body().getJsonArray("result");
 				if ("ok".equals(event.body().getString("status")) && j != null && j.size() == 1 &&
-						j.<JsonObject>get(0).getBoolean("update", false)) {
+						j.getJsonObject(0).getBoolean("update", false)) {
 					try {
 						TransactionHelper tx = TransactionManager.getTransaction();
 						final String q1 =
@@ -596,7 +596,7 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 								if ("ok".equals(res.body().getString("status"))) {
 									final JsonArray r = res.body().getJsonArray("results");
 									if (r != null && r.size() == 2) {
-										Transition.publishDeleteGroups(eb, log, r.<JsonArray>get(0));
+										Transition.publishDeleteGroups(eb, log, r.getJsonArray(0));
 									}
 									final JsonObject matcher = new JsonObject().put("structureId", conf.getString("structureId"));
 									MongoDb.getInstance().delete(COURSES, matcher, new Handler<Message<JsonObject>>() {
@@ -615,7 +615,7 @@ public abstract class AbstractTimetableImporter implements TimetableImporter {
 						});
 					} catch (TransactionException e) {
 						log.error("Transaction error when init timetable structure", e);
-						message.reply(new JsonObject().put("status", "error").putString("message", e.getMessage()));
+						message.reply(new JsonObject().put("status", "error").put("message", e.getMessage()));
 					}
 				} else {
 					message.reply(event.body());

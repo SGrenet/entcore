@@ -27,9 +27,8 @@ import org.entcore.auth.services.FederationService;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
-import io.vertx.core.http.RouteMatcher;
 import io.vertx.core.json.JsonObject;
-import io.vertx.platform.Container;
+import org.vertx.java.core.http.RouteMatcher;
 
 import java.util.Map;
 
@@ -38,9 +37,9 @@ public class FederationServiceImpl extends BaseController implements FederationS
 	private MongoDb mongo = MongoDb.getInstance();
 	private static final String SESSIONS_COLLECTION = "sessions";
 
-	public void init(Vertx vertx, Container container, RouteMatcher rm,
+	public void init(Vertx vertx, JsonObject config, RouteMatcher rm,
 					 Map<String, SecuredAction> securedActions) {
-		super.init(vertx, container, rm, securedActions);
+		super.init(vertx, config, rm, securedActions);
 		mongo = MongoDb.getInstance();
 	}
 

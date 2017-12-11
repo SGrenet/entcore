@@ -33,7 +33,7 @@ public class FlashMsgServiceMongoImpl extends MongoDbCrudService implements Flas
 	@Override
 	public void create(JsonObject data, Handler<Either<String, JsonObject>> handler) {
 		JsonObject now = MongoDb.now();
-		data.put("created", now).putObject("modified", now).put("readCount", 0).put("markedAsRead", new JsonArray());
+		data.put("created", now).put("modified", now).put("readCount", 0).put("markedAsRead", new JsonArray());
 		mongo.save(collection, data,
 				MongoDbResult.validActionResultHandler(handler));
 	}
@@ -83,7 +83,7 @@ public class FlashMsgServiceMongoImpl extends MongoDbCrudService implements Flas
 		JsonObject queryParam = new JsonObject();
 		JsonObject updateParam = new JsonObject();
 
-		queryParam.put("_id", id).put("markedAsRead", new JsonObject().putString("$ne", userId));
+		queryParam.put("_id", id).put("markedAsRead", new JsonObject().put("$ne", userId));
 		updateParam
 			.put("$push", new JsonObject()
 				.put("markedAsRead", userId))

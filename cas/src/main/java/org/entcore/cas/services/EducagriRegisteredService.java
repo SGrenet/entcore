@@ -50,12 +50,12 @@ public class EducagriRegisteredService extends AbstractCas20ExtensionRegisteredS
         user.setUser(data.getString(principalAttributeName));
         try{
             //uid
-            if (data.containsField("externalId")) {
+            if (data.containsKey("externalId")) {
                 additionnalAttributes.add(createTextElement(EA_ID, data.getString("externalId"), doc));
             }
             
             // Structures
-            for (Object o : data.getJsonArray("structures", new JsonArray()).toList()) {
+            for (Object o : data.getJsonArray("structures", new JsonArray()).getList()) {
                 Map<String, Object> structure = ((Map<String, Object>) o);
                 if (structure.containsKey("UAI")) {
                     additionnalAttributes.add(createTextElement(EA_STRUCTURE_UAI, structure.get("UAI").toString(), doc));

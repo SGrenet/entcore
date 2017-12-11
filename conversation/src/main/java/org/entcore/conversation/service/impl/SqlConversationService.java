@@ -390,7 +390,7 @@ public class SqlConversationService implements ConversationService{
 						public void handle(JsonArray visibles) {
 							JsonArray users = new JsonArray();
 							JsonArray groups = new JsonArray();
-							visible.put("groups", groups).putArray("users", users);
+							visible.put("groups", groups).put("users", users);
 							for (Object o: visibles) {
 								if (!(o instanceof JsonObject)) continue;
 								JsonObject j = (JsonObject) o;
@@ -418,7 +418,7 @@ public class SqlConversationService implements ConversationService{
 				public void handle(JsonArray visibles) {
 					JsonArray users = new JsonArray();
 					JsonArray groups = new JsonArray();
-					visible.put("groups", groups).putArray("users", users);
+					visible.put("groups", groups).put("users", users);
 					for (Object o: visibles) {
 						if (!(o instanceof JsonObject)) continue;
 						JsonObject j = (JsonObject) o;
@@ -661,7 +661,7 @@ public class SqlConversationService implements ConversationService{
 		if(validationParamsError(user, result, messageId))
 			return;
 
-		long attachmentSize = uploaded.getJsonObject("metadata", new JsonObject()).getLong("size", 0);
+		long attachmentSize = uploaded.getJsonObject("metadata", new JsonObject()).getLong("size", 0l);
 
 		SqlStatementsBuilder builder = new SqlStatementsBuilder();
 
@@ -764,9 +764,9 @@ public class SqlConversationService implements ConversationService{
 				}
 				else {
 					JsonArray results = event.right().getValue();
-					JsonObject attachment = (JsonObject) ((JsonArray) results.get(0)).get(0);
-					boolean deletionCheck = ((JsonArray) results.get(1)).size() > 0 ?
-							((JsonObject) ((JsonArray) results.get(1)).get(0)).getBoolean("deletioncheck", false) :
+					JsonObject attachment = results.getJsonArray(0).getJsonObject(0);
+					boolean deletionCheck = results.getJsonArray(1).size() > 0 ?
+							results.getJsonArray(1).getJsonObject(0).getBoolean("deletioncheck", false) :
 							false;
 					JsonObject resultJson = new JsonObject()
 						.put("deletionCheck", deletionCheck)

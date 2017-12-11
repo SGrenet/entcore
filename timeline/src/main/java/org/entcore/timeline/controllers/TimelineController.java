@@ -32,6 +32,7 @@ import fr.wseduc.webutils.Utils;
 import fr.wseduc.webutils.collections.TTLSet;
 import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.request.RequestUtils;
+import io.vertx.core.shareddata.LocalMap;
 import org.entcore.common.http.filter.AdminFilter;
 import org.entcore.common.http.filter.AdmlOfStructures;
 import org.entcore.common.http.filter.ResourceFilter;
@@ -48,13 +49,11 @@ import org.entcore.timeline.services.TimelineConfigService;
 import org.entcore.timeline.services.TimelineMailerService;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.Handler<Void>;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.RouteMatcher;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.platform.Container;
+import org.vertx.java.core.http.RouteMatcher;
 
 import java.io.StringReader;
 import java.io.Writer;
@@ -71,7 +70,7 @@ public class TimelineController extends BaseController {
 	private TimelineConfigService configService;
 	private TimelineMailerService mailerService;
 	private Map<String, String> registeredNotifications;
-	private ConcurrentMap<String, String> eventsI18n;
+	private LocalMap<String, String> eventsI18n;
 	private HashMap<String, JsonObject> lazyEventsI18n;
 	private Set<String> antiFlood;
 
@@ -80,14 +79,14 @@ public class TimelineController extends BaseController {
 	private JsonArray eventTypes; // cache to improve perfs
 	private boolean refreshTypesCache;
 
-	public void init(Vertx vertx, Container container, RouteMatcher rm,
+	public void init(Vertx vertx, JsonObject config, RouteMatcher rm,
 			Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions) {
-		super.init(vertx, container, rm, securedActions);
+		super.init(vertx, config, rm, securedActions);
 		store = new DefaultTimelineEventStore();
-		timelineHelper = new TimelineHelper(vertx, eb, container);
-		antiFlood = new TTLSet<>(container.config().getLong("antiFloodDelay", 3000l),
-				vertx, container.config().getLong("antiFloodClear", 3600 * 1000l));
-		refreshTypesCache = container.config().getBoolean("refreshTypesCache", false);
+		timelineHelper = new TimelineHelper(vertx, eb, config);
+		antiFlood = new TTLSet<>(config.getLong("antiFloodDelay", 3000l),
+				vertx, config.getLong("antiFloodClear", 3600 * 1000l));
+		refreshTypesCache = config.getBoolean("refreshTypesCache", false);
 	}
 
 	/* Override i18n to use additional timeline translations and nested templates */
@@ -179,7 +178,7 @@ public class TimelineController extends BaseController {
 
 										final AtomicInteger countdown = new AtomicInteger(results.size());
 										final Handler<Void> endHandler = new Handler<Void>() {
-											protected void handle() {
+											public void handle(Void v) {
 												if (countdown.decrementAndGet() <= 0) {
 													res.put("results", compiledResults);
 													renderJson(request, res);
@@ -411,7 +410,7 @@ public class TimelineController extends BaseController {
 						final AtomicInteger countdown = new AtomicInteger(structureIds.size());
 						final Set<String> recipientsSet = new HashSet<>();
 						final Handler<Void> finalHandler = new Handler<Void>() {
-							protected void handle() {
+							public void handle(Void v) {
 								if(countdown.decrementAndGet() == 0){
 									ArrayList<String> recipients = new ArrayList<>();
 									recipients.addAll(recipientsSet);
@@ -431,16 +430,17 @@ public class TimelineController extends BaseController {
 								.put("action", "list-adml")
 								.put("structureId", structureId);
 
-							eb.send("directory", message, new Handler<Message<JsonArray>>() {
-								public void handle(Message<JsonArray> result) {
-									JsonArray users = result.body();
-									for(Object userObj: users){
+							eb.send("directory", message, result -> {
+								if (result.succeeded()) {
+									JsonArray users = (JsonArray) result.result().body();
+									for (Object userObj : users) {
 										JsonObject user = (JsonObject) userObj;
 										recipientsSet.add(user.getString("id"));
 									}
-
-									finalHandler.handle(null);
+								} else {
+									log.error("Error list adml", result.cause());
 								}
+								finalHandler.handle(null);
 							});
 						}
 					}
@@ -477,7 +477,7 @@ public class TimelineController extends BaseController {
 
 				final AtomicInteger countdown = new AtomicInteger(results.size());
 				final Handler<Void> endHandler = new Handler<Void>() {
-					protected void handle() {
+					public void handle(Void v) {
 						if (countdown.decrementAndGet() <= 0) {
 							renderJson(request, compiledResults);
 						}
@@ -675,7 +675,7 @@ public class TimelineController extends BaseController {
 					if (restriction.equals(TimelineNotificationsLoader.Restrictions.EXTERNAL.name()) ||
 							restriction.equals(TimelineNotificationsLoader.Restrictions.HIDDEN.name())) {
 						String notifType = notif.getString("type");
-						if (!restricted.containsField(notifType)) {
+						if (!restricted.containsKey(notifType)) {
 							restricted.put(notifType, new JsonArray());
 						}
 						restricted.getJsonArray(notifType).add(notif.getString("event-type"));
@@ -698,7 +698,7 @@ public class TimelineController extends BaseController {
 		this.registeredNotifications = registeredNotifications;
 	}
 
-	public void setEventsI18n(ConcurrentMap<String, String> eventsI18n) {
+	public void setEventsI18n(LocalMap<String, String> eventsI18n) {
 		this.eventsI18n = eventsI18n;
 	}
 
