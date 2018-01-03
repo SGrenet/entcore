@@ -45,6 +45,8 @@ import fr.wseduc.webutils.security.BCrypt;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import static fr.wseduc.webutils.Utils.getOrElse;
+
 public class OAuthDataHandler extends DataHandler {
 	private final Neo4j neo;
 	private final MongoDb mongo;
@@ -117,7 +119,7 @@ public class OAuthDataHandler extends DataHandler {
 							result != null && result.size() == 1) {
 						JsonObject r = result.getJsonObject(0);
 						String dbPassword;
-						if (r != null && (dbPassword = r.getString("password")) != null && !r.getBoolean("blockedProfile", false)) {
+						if (r != null && (dbPassword = r.getString("password")) != null && !getOrElse(r.getBoolean("blockedProfile"), false)) {
 							boolean success = false;
 							String hash = null;
 							try {

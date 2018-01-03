@@ -34,6 +34,8 @@ import org.vertx.java.busmods.BusModBase;
 import java.io.Serializable;
 import java.util.*;
 
+import static fr.wseduc.webutils.Utils.getOrElse;
+
 public class AuthManager extends BusModBase implements Handler<Message<JsonObject>> {
 
 	protected Map<String, String> sessions;
@@ -71,13 +73,13 @@ public class AuthManager extends BusModBase implements Handler<Message<JsonObjec
 			ClusterManager cm = ((VertxInternal) vertx).getClusterManager();
 			sessions = cm.getSyncMap("sessions");
 			logins = cm.getSyncMap("logins");
-			if (config.getBoolean("inactivy", false)) {
+			if (getOrElse(config.getBoolean("inactivy"), false)) {
 				inactivity = cm.getSyncMap("inactivity");
 			}
 		} else {
 			sessions = new HashMap<>();
 			logins = new HashMap<>();
-			if (config.getBoolean("inactivy", false)) {
+			if (getOrElse(config.getBoolean("inactivy"), false)) {
 				inactivity = new HashMap<>();
 			}
 		}
@@ -164,7 +166,7 @@ public class AuthManager extends BusModBase implements Handler<Message<JsonObjec
 		}
 
 		LoginInfo info = getLoginInfo(userId);
-		if (info == null && !message.body().getBoolean("allowDisconnectedUser", false)) {
+		if (info == null && !getOrElse(message.body().getBoolean("allowDisconnectedUser"), false)) {
 			sendError(message, "[doFindByUserId] info is null - Invalid userId : " + message.body().encode());
 			return;
 		} else if (info == null) {
@@ -392,7 +394,7 @@ public class AuthManager extends BusModBase implements Handler<Message<JsonObjec
 
 	private void doDrop(final Message<JsonObject> message) {
 		final String sessionId = message.body().getString("sessionId");
-		boolean sessionMeta =  message.body().getBoolean("sessionMetadata", false);
+		boolean sessionMeta =  getOrElse(message.body().getBoolean("sessionMetadata"), false);
 		if (sessionId == null || sessionId.trim().isEmpty()) {
 			sendError(message, "Invalid sessionId.");
 			return;
@@ -433,7 +435,7 @@ public class AuthManager extends BusModBase implements Handler<Message<JsonObjec
 			if (s != null) {
 				final String userId = s.getString("userId");
 				LoginInfo info = removeLoginInfo(sessionId, userId);
-				if (config.getBoolean("slo", false)) {
+				if (getOrElse(config.getBoolean("slo"), false)) {
 					eb.send("cas", new JsonObject().put("action", "logout").put("userId", userId));
 				}
 				Long timerId;
@@ -632,7 +634,7 @@ public class AuthManager extends BusModBase implements Handler<Message<JsonObjec
 					JsonObject functions = new JsonObject();
 					JsonArray actions = new JsonArray();
 					JsonArray apps = new JsonArray();
-					for (Object o : j2.getJsonArray("authorizedActions", new JsonArray())) {
+					for (Object o : getOrElse(j2.getJsonArray("authorizedActions"), new JsonArray())) {
 						if (!(o instanceof JsonArray)) continue;
 						JsonArray a = (JsonArray) o;
 						actions.add(new JsonObject()
@@ -640,7 +642,7 @@ public class AuthManager extends BusModBase implements Handler<Message<JsonObjec
 								.put("displayName", a.getString(1))
 								.put("type", a.getString(2)));
 					}
-					for (Object o : j2.getJsonArray("apps", new JsonArray())) {
+					for (Object o : getOrElse(j2.getJsonArray("apps"), new JsonArray())) {
 						if (!(o instanceof JsonArray)) continue;
 						JsonArray a = (JsonArray) o;
 						apps.add(new JsonObject()
@@ -653,7 +655,7 @@ public class AuthManager extends BusModBase implements Handler<Message<JsonObjec
 										.put("prefix", (String) a.getString(6))
 						);
 					}
-					for (Object o : j.getJsonArray("aafFunctions", new JsonArray())) {
+					for (Object o : getOrElse(j.getJsonArray("aafFunctions"), new JsonArray())) {
 						if (o == null) continue;
 						String [] sf = o.toString().split("\\$");
 						if (sf.length == 5) {
@@ -685,7 +687,7 @@ public class AuthManager extends BusModBase implements Handler<Message<JsonObjec
 						}
 					}
 					j.remove("aafFunctions");
-					for (Object o : j.getJsonArray("functions", new JsonArray())) {
+					for (Object o : getOrElse(j.getJsonArray("functions"), new JsonArray())) {
 						if (!(o instanceof JsonArray)) continue;
 						JsonArray a = (JsonArray) o;
 						String code = a.getString(0);
@@ -698,7 +700,7 @@ public class AuthManager extends BusModBase implements Handler<Message<JsonObjec
 					}
 					final JsonObject children = new JsonObject();
 					final List<String> childrenIds = new ArrayList<String>();
-					for (Object o : j.getJsonArray("childrenInfo", new JsonArray())) {
+					for (Object o : getOrElse(j.getJsonArray("childrenInfo"), new JsonArray())) {
 						if (!(o instanceof JsonArray)) continue;
 						final JsonArray a = (JsonArray) o;
 						final String childId = a.getString(0);
@@ -723,7 +725,7 @@ public class AuthManager extends BusModBase implements Handler<Message<JsonObjec
 					final JsonObject cache = (results.getJsonArray(4) != null && results.getJsonArray(4).size() > 0 &&
 							results.getJsonArray(4).getJsonObject(0) != null) ? results.getJsonArray(4).getJsonObject(0) : new JsonObject();
 					j.put("cache", cache);
-					j.put("widgets", j3.getJsonArray("widgets", new JsonArray()));
+					j.put("widgets", getOrElse(j3.getJsonArray("widgets"), new JsonArray()));
 					handler.handle(j);
 				} else {
 					handler.handle(null);

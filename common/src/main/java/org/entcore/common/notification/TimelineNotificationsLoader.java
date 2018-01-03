@@ -22,6 +22,7 @@ package org.entcore.common.notification;
 import java.io.File;
 import java.util.List;
 
+import fr.wseduc.webutils.data.FileResolver;
 import io.vertx.core.shareddata.AsyncMap;
 import org.entcore.common.utils.MapFactory;
 import org.entcore.common.utils.Config;
@@ -37,7 +38,7 @@ import io.vertx.core.logging.LoggerFactory;
 public class TimelineNotificationsLoader {
 
 	private final Vertx vertx;
-	private final static String notifyDir = "./view/notify";
+	private final static String notifyDir = FileResolver.absolutePath("view/notify");
 	private static final Logger log = LoggerFactory.getLogger(TimelineNotificationsLoader.class);
 	private AsyncMap<String, String> sharedMap;
 	private final static String sharedMapName = "notificationsMap";

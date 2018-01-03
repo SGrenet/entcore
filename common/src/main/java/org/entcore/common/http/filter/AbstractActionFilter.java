@@ -94,7 +94,7 @@ public abstract class AbstractActionFilter implements Filter {
 
 	private Binding requestBinding(HttpServerRequest request) {
 		for (Binding binding: bindings) {
-			if (!request.method().equals(binding.getMethod().name())) {
+			if (!request.method().name().equals(binding.getMethod().name())) {
 				continue;
 			}
 			Matcher m = binding.getUriPattern().matcher(request.path());

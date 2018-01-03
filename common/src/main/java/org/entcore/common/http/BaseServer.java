@@ -31,6 +31,7 @@ import fr.wseduc.webutils.request.filter.UserAuthFilter;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import fr.wseduc.webutils.validation.JsonSchemaValidator;
 
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.shareddata.LocalMap;
 import org.entcore.common.controller.ConfController;
 import org.entcore.common.controller.RightsController;
@@ -283,7 +284,7 @@ public abstract class BaseServer extends Server {
 	protected BaseServer setSearchingEvents(final SearchingEvents searchingEvents) {
 		searchingHandler.setSearchingEvents(searchingEvents);
 		final LocalMap<String, String> set = vertx.sharedData().getLocalMap(SearchingHandler.class.getName());
-		set.putIfAbsent(searchingEvents.getClass().getSimpleName(), null);
+		set.putIfAbsent(searchingEvents.getClass().getSimpleName(), "");
 		return this;
 	}
 
