@@ -22,6 +22,7 @@ package org.entcore.common.http;
 import fr.wseduc.mongodb.MongoDb;
 import fr.wseduc.webutils.I18n;
 import fr.wseduc.webutils.Server;
+import fr.wseduc.webutils.data.FileResolver;
 import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.request.AccessLogger;
 import fr.wseduc.webutils.request.CookieHelper;
@@ -31,7 +32,6 @@ import fr.wseduc.webutils.request.filter.UserAuthFilter;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import fr.wseduc.webutils.validation.JsonSchemaValidator;
 
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.shareddata.LocalMap;
 import org.entcore.common.controller.ConfController;
 import org.entcore.common.controller.RightsController;
@@ -159,7 +159,8 @@ public abstract class BaseServer extends Server {
 				String neo4jConfig = (String) vertx.sharedData().getLocalMap("server").get("neo4jConfig");
 				Neo4j.getInstance().init(vertx, new JsonObject(neo4jConfig));
 			}
-			Neo4jUtils.loadScripts(this.getClass().getSimpleName(), vertx, config.getString("neo4j-init-scripts", "neo4j"));
+			Neo4jUtils.loadScripts(this.getClass().getSimpleName(), vertx,
+					FileResolver.absolutePath(config.getString("neo4j-init-scripts", "neo4j")));
 		}
 		if (config.getBoolean("mongodb", true)) {
 			MongoDb.getInstance().init(getEventBus(vertx), node +
@@ -173,7 +174,7 @@ public abstract class BaseServer extends Server {
 			Sql.getInstance().init(getEventBus(vertx), node +
 					config.getString("sql-address", "sql.persistor"));
 			schema = config.getString("db-schema", getPathPrefix(config).replaceAll("/", ""));
-			DB.loadScripts(schema, vertx, config.getString("init-scripts", "sql"));
+			DB.loadScripts(schema, vertx, FileResolver.absolutePath(config.getString("init-scripts", "sql")));
 		}
 
 		JsonSchemaValidator validator = JsonSchemaValidator.getInstance();
