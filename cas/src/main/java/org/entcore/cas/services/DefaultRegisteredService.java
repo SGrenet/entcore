@@ -27,6 +27,7 @@ import java.util.regex.PatternSyntaxException;
 import fr.wseduc.webutils.I18n;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -54,14 +55,14 @@ public class DefaultRegisteredService implements RegisteredService {
 	public void configure(final EventBus eb, final Map<String, Object> conf) {
 		this.eb = eb;
 		try {
-			List<String> patterns = (List<String>) conf.get(CONF_PATTERNS);
+			List<String> patterns = ((JsonArray) conf.get(CONF_PATTERNS)).getList();
 			if (patterns != null && !patterns.isEmpty()) {
 				addConfPatterns(patterns.toArray(new String[patterns.size()]));
 			}
 			this.principalAttributeName = String.valueOf(conf.get(CONF_PRINCIPAL_ATTR_NAME));
 		}
 		catch (Exception e) {
-			log.error("Failed to parse configuration");
+			log.error("Failed to parse configuration", e);
 		}
 	}
 
