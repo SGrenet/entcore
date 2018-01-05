@@ -19,6 +19,8 @@
 
 package org.entcore.common.notification;
 
+import fr.wseduc.webutils.Utils;
+import fr.wseduc.webutils.data.FileResolver;
 import fr.wseduc.webutils.http.Renders;
 
 import io.vertx.core.shareddata.LocalMap;
@@ -50,7 +52,7 @@ import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
 public class TimelineHelper {
 
 	private static final String TIMELINE_ADDRESS = "wse.timeline";
-	private final static String messagesDir = "./i18n/timeline";
+	private final static String messagesDir = FileResolver.absolutePath("i18n/timeline");
 	private final EventBus eb;
 	private final Renders render;
 	private final Vertx vertx;
@@ -242,7 +244,7 @@ public class TimelineHelper {
 	}
 
 	private void loadAssetsTimelineDirectory() {
-		final String[] app = config.getString("main", "").split("\\.");
+		final String[] app = Utils.loadFromResource("mod.json").getString("main").split("\\.");
 		final String assetsDirectory = config.getString("assets-path", "../..") + File.separator + "assets";
 		final String i18nDirectory = assetsDirectory + File.separator + "i18n" + File.separator + app[app.length - 1] +
 				File.separator + "timeline";

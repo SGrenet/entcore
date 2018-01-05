@@ -97,7 +97,7 @@ public class PortalController extends BaseController {
 						String path = assetsPath + "/assets/themes/" + skin + "/skins/" + s + "/";
 						final JsonObject j = new JsonObject()
 								.put("_id", s)
-								.put("path", path);
+								.put("path", path.substring(assetsPath.length()));
 						if ("default".equals(s)) {
 							vertx.fileSystem().readFile(path + "/details.json", new Handler<AsyncResult<Buffer>>() {
 								@Override
