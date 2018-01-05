@@ -52,13 +52,7 @@ public class MonitoringController extends BaseController {
 	public void init(Vertx vertx, JsonObject config, RouteMatcher rm, Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions) {
 		super.init(vertx, config, rm, securedActions);
 		dbCheckTimeout = config.getLong("dbCheckTimeout", 5000l);
-		for (Object o : config.getJsonArray("pre-required-modules", new JsonArray())) {
-			if (!(o instanceof JsonObject)) continue;
-			if (((JsonObject) o).getString("name", "").startsWith("fr.wseduc~mod-postgresql")) {
-				postgresql = true;
-				break;
-			}
-		}
+		postgresql = config.getBoolean("sql", true);
 	}
 
 	@Get("/monitoring/db")

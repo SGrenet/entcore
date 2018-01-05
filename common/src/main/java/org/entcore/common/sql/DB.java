@@ -70,7 +70,7 @@ public class DB {
 
 	private static void loadAndExecute(final String schema, final Vertx vertx,
 			final String path, final JsonArray excludeFileNames) {
-		vertx.fileSystem().readDir(path, new Handler<AsyncResult<List<String>>>() {
+		vertx.fileSystem().readDir(path, ".*?\\.sql$", new Handler<AsyncResult<List<String>>>() {
 			@Override
 			public void handle(AsyncResult<List<String>> asyncResult) {
 				if (asyncResult.succeeded()) {
