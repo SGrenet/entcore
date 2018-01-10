@@ -81,7 +81,7 @@ public class MapFactory {
 			ClusterManager cm = ((VertxInternal) vertx).getClusterManager();
 			map = cm.getSyncMap(name);
 		} else {
-			map = new HashMap<>();
+			map = vertx.sharedData().getLocalMap(name);
 		}
 		return map;
 	}

@@ -74,11 +74,11 @@ public class TimelineNotificationsLoader {
 
 	private TimelineNotificationsLoader(Vertx vertx){
 		this.vertx = vertx;
-		scanNotifications();
 		MapFactory.getClusterMap(sharedMapName, vertx, new Handler<AsyncMap<String, String>>() {
 			@Override
 			public void handle(AsyncMap<String, String> map) {
 				sharedMap = map;
+				scanNotifications();
 			}
 		});
 	}
