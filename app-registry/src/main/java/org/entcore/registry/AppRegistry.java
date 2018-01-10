@@ -19,6 +19,7 @@
 
 package org.entcore.registry;
 
+import fr.wseduc.webutils.collections.JsonObject;
 import org.entcore.common.appregistry.AppRegistryEventsHandler;
 import org.entcore.common.http.BaseServer;
 import org.entcore.registry.controllers.AppRegistryController;
@@ -37,6 +38,7 @@ public class AppRegistry extends BaseServer {
 		addController(new WidgetController());
 		setDefaultResourceFilter(new AppRegistryFilter());
 		new AppRegistryEventsHandler(vertx, new NopAppRegistryEventService());
+		vertx.eventBus().publish("app-registry.loaded", new JsonObject());
 	}
 
 }
