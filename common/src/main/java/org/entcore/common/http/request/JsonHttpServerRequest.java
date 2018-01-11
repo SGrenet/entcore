@@ -19,6 +19,7 @@
 
 package org.entcore.common.http.request;
 
+import fr.wseduc.webutils.http.Renders;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
@@ -97,7 +98,7 @@ public class JsonHttpServerRequest implements HttpServerRequest {
 
 	@Override
 	public String host() {
-		return null;
+		return Renders.getHost(this);
 	}
 
 	@Override
