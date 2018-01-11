@@ -2,7 +2,7 @@ import {
     ChangeDetectionStrategy, ChangeDetectorRef, AfterViewInit,
     Component, Input, OnInit, ComponentRef, ViewChildren, QueryList } from '@angular/core'
 import { BundlesService } from 'sijil'
-import { ComponentDescriptor, DynamicComponent} from '../../shared/ux/directives/dynamic-component'
+import { ComponentDescriptor, DynamicComponentDirective} from '../../shared/ux/directives'
 import { SimpleSelectComponent } from '../../shared/ux/components/value-editable/simple-select.component'
 
 
@@ -40,7 +40,7 @@ export class MappingsTable implements OnInit, AfterViewInit {
     
     translate = (...args) => { return (<any> this.bundles.translate)(...args) }
 
-    @ViewChildren(DynamicComponent) dComponents:QueryList<DynamicComponent>;
+    @ViewChildren(DynamicComponentDirective) dComponents:QueryList<DynamicComponentDirective>;
     @Input() headers : String[];
     @Input() mappings : Object;
     @Input() availables : String[];
