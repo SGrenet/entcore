@@ -9,6 +9,7 @@ plugins {
 subprojects {
   apply plugin:'java'
   apply plugin:'maven'
+  apply plugin:'maven-publish'
   apply plugin:'com.github.johnrengelman.shadow'
 
 	repositories {
@@ -64,7 +65,7 @@ subprojects {
 
   shadowJar {
     classifier = 'fat'
-    archiveName = "org.entcore~${project.name}~$version-$classifier.$extension"
+    archiveName = "${modowner}~${project.name}~$version-$classifier.$extension"
       mergeServiceFiles {
         include 'META-INF/services/io.vertx.core.spi.VerticleFactory'
       }
@@ -74,10 +75,39 @@ subprojects {
     repositories.mavenInstaller {
       pom.version = "$version"
         pom.artifactId = "${project.name}"
-        pom.groupId = 'org.entcore'
+        pom.groupId = "${modowner}"
     }
   }
 
+  publishing {
+    repositories {
+      if (version.endsWith("SNAPSHOT")) {
+        maven {
+          name 'Snapshots'
+            url 'https://maven.opendigitaleducation.com/nexus/content/repositories/snapshots/'
+            credentials {
+              username "${odeUsername}"
+                password "${odePassword}"
+            }
+        }
+      } else {
+        maven {
+          name 'Releases'
+            url 'https://maven.opendigitaleducation.com/nexus/content/repositories/releases/'
+            credentials {
+              username "${odeUsername}"
+                password "${odePassword}"
+            }
+        }
+      }
+    }
+    publications {
+      maven(MavenPublication) {
+        groupId "${modowner}"
+          artifact("build/libs/${modowner}~${project.name}~$version-fat.jar") { classifier "fat" }
+      }
+    }
+  }
   javadoc {
     options.encoding = 'UTF-8'
     classpath = configurations.provided
