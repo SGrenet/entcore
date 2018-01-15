@@ -217,7 +217,6 @@
     // import : step 4 : Report
     "import.report": "Rapport intermédiaires",
     "line" : "Ligne",
-    "externalId" : "Identifiant",
     "classes" : "Classe(s)",
     "operation" : "Opération",
     // import : step 5 : Finish
