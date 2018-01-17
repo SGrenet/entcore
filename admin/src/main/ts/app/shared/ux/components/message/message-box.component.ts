@@ -50,6 +50,8 @@ export class MessageBoxComponent implements OnInit {
     @Input() type: MessageType;
     @Input() header:string;
 
+    // type (string | [string,Object])[] enable to pass an array of String where String is i18n key
+    // or an array of tuple<String, Object> where String is i18n key and Object is 118n params 
     private _messages:[string,Object][];
     @Input() set messages(value:(string | [string,Object])[]) {
         this._messages = [];
@@ -59,8 +61,7 @@ export class MessageBoxComponent implements OnInit {
                 this._messages.push([m,{}]);
             else if (typeof m == "object") {
                 this._messages.push(m);
-                console.log(m[0] +' '+m[1]);
-                console.log(typeof m);
+                console.log (m[0] + " : " + m[1])
             }
         }
     };
