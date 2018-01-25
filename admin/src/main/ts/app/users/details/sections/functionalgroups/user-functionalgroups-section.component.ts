@@ -15,7 +15,7 @@ import { SpinnerService, NotifyService } from '../../../../core/services'
                 <div class="padded">
                     <h3><s5l>add.group</s5l></h3>
                     <list class="inner-list"
-                        [model]="listGroupModel"
+                        [model]="structureFunctionalGroups"
                         [inputFilter]="filterByInput"
                         [filters]="filterGroups"
                         searchPlaceholder="search.group"
@@ -33,7 +33,7 @@ import { SpinnerService, NotifyService } from '../../../../core/services'
             </lightbox>
             
             <ul class="actions-list">
-                <li *ngFor="let g of listUserGroup">
+                <li *ngFor="let g of userFunctionalGroups">
                     <div *ngIf="g.id">
                         <span>{{ g.name }}</span>
                         <i  class="fa fa-times action" (click)="removeGroup(g)"
@@ -48,9 +48,10 @@ import { SpinnerService, NotifyService } from '../../../../core/services'
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UserFunctionalGroupsSection extends AbstractSection implements OnInit {
-    listGroupModel: GroupModel[] = [];
-    listUserGroup: GroupModel[];
-    showGroupLightbox: boolean = false
+    structureFunctionalGroups: GroupModel[] = [];
+    userFunctionalGroups: GroupModel[] = [];
+
+    showGroupLightbox: boolean = false;
 
     @Input() user: UserModel;
     @Input() structure: StructureModel;
@@ -71,38 +72,22 @@ export class UserFunctionalGroupsSection extends AbstractSection implements OnIn
     }
     
     ngOnInit() {
-        this.refreshListGroupModel();
-        this.refreshListUserGroup();
+        this.updateGroups();
     }
 
-    // Hack refresh data when structure change
+    // Refresh data when structure change
     ngOnChanges() {
-        this.refreshListGroupModel();
-        this.refreshListUserGroup();
+        this.updateGroups();
     }
-
-    private refreshListGroupModel = () => {
-        if (this.structure.groups.data && this.structure.groups.data.length > 0) {
-            this.listGroupModel = this.structure.groups.data.filter(g => g.type === 'FunctionalGroup');
-        }
-    }
-
-    private refreshListUserGroup = () => {
-        if (this.details.functionalGroups) {
-            this.listUserGroup = this.details.functionalGroups.filter(ug => this.listGroupModel.find(g => g.id == ug.id));
-        }
+    
+    private updateGroups() {
+        this.structureFunctionalGroups = this.structure.groups.data.filter(g => g.type === 'FunctionalGroup' && !this.details.functionalGroups.find(mg => mg.id == g.id));
+        this.userFunctionalGroups = this.details.functionalGroups.filter(ug => this.structure.groups.data.find(g => g.id == ug.id));
     }
 
     filterByInput = (g: {id: string, name: string}) => {
         if (!this.inputFilter) return true
         return `${g.name}`.toLowerCase().indexOf(this.inputFilter.toLowerCase()) >= 0
-    }
-
-    filterGroups = (g: {id: string, name: string}) => {
-        if (this.details.functionalGroups) {
-            return !this.details.functionalGroups.find(fg => g.id === fg.id)
-        }
-        return true;
     }
     
     disableGroup = (g) => {
@@ -110,7 +95,7 @@ export class UserFunctionalGroupsSection extends AbstractSection implements OnIn
     }
 
     addGroup = (group) => {
-        this.spinner.perform('portal-content', this.user.addFunctionalGroup(group))
+        this.spinner.perform('portal-content', this.user.addFunctionalGroup(group)
             .then(() => {
                 this.ns.success(
                     { 
@@ -119,6 +104,8 @@ export class UserFunctionalGroupsSection extends AbstractSection implements OnIn
                             group:  group.name
                         } 
                     }, 'notify.user.add.group.title');
+
+                this.updateGroups();
                 this.cdRef.markForCheck();
             })
             .catch(err => {
@@ -129,11 +116,12 @@ export class UserFunctionalGroupsSection extends AbstractSection implements OnIn
                             group:  group.name
                         }
                     }, 'notify.user.add.group.error.title', err);
-            });
+            })
+        );
     }
 
     removeGroup = (group) => {
-        this.spinner.perform('portal-content', this.user.removeFunctionalGroup(group))
+        this.spinner.perform('portal-content', this.user.removeFunctionalGroup(group)
             .then(() => {
                 this.ns.success(
                     { 
@@ -142,6 +130,8 @@ export class UserFunctionalGroupsSection extends AbstractSection implements OnIn
                             group:  group.name
                         } 
                     }, 'notify.user.remove.group.title');
+
+                this.updateGroups();
                 this.cdRef.markForCheck();
             })
             .catch(err => {
@@ -152,7 +142,8 @@ export class UserFunctionalGroupsSection extends AbstractSection implements OnIn
                             group:  group.name
                         }
                     }, 'notify.user.remove.group.error.title', err);
-            });
+            })
+        );
     }
 
     protected onUserChange() {}

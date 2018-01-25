@@ -15,9 +15,8 @@ import { AbstractSection } from '../abstract.section'
                 <div class="padded">
                     <h3><s5l>add.group</s5l></h3>
                     <list class="inner-list"
-                        [model]="listGroupModel"
+                        [model]="structureManualGroups"
                         [inputFilter]="filterByInput"
-                        [filters]="filterGroups"
                         searchPlaceholder="search.group"
                         sort="name"
                         (inputChange)="inputFilter = $event"
@@ -33,7 +32,7 @@ import { AbstractSection } from '../abstract.section'
             </lightbox>
     
             <ul class="actions-list">
-                <li *ngFor="let mg of listUserGroup">
+                <li *ngFor="let mg of userManualGroups">
                     <div *ngIf="mg.id">
                         <span>{{ mg.name }}</span>
                         <i  class="fa fa-times action" (click)="removeGroup(mg)"
@@ -48,8 +47,9 @@ import { AbstractSection } from '../abstract.section'
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UserManualGroupsSection extends AbstractSection implements OnInit {
-    listGroupModel: GroupModel[] = [];
-    listUserGroup: GroupModel[];
+    userManualGroups: GroupModel[] = [];
+    structureManualGroups: GroupModel[] = [];
+
     showGroupLightbox: boolean = false;
 
     @Input() user: UserModel;
@@ -71,26 +71,17 @@ export class UserManualGroupsSection extends AbstractSection implements OnInit {
     }
 
     ngOnInit() {
-        this.refreshListGroupModel();
-        this.refreshListUserGroup();
+        this.updateGroups();
     }
 
-    // Hack refresh data when structure change
+    // Refresh data when structure change
     ngOnChanges() {
-        this.refreshListGroupModel();
-        this.refreshListUserGroup();
+        this.updateGroups();
     }
 
-    private refreshListGroupModel = () => {
-        if (this.structure.groups.data && this.structure.groups.data.length > 0) {
-            this.listGroupModel = this.structure.groups.data.filter(g => g.type === 'ManualGroup');
-        }
-    }
-
-    private refreshListUserGroup = () => {
-        if (this.details.manualGroups) {
-            this.listUserGroup = this.details.manualGroups.filter(ug => this.listGroupModel.find(g => g.id == ug.id));
-        }
+    private updateGroups() {
+        this.structureManualGroups = this.structure.groups.data.filter(g => g.type === 'ManualGroup' && !this.details.manualGroups.find(mg => mg.id == g.id));
+        this.userManualGroups = this.details.manualGroups.filter(ug => this.structure.groups.data.find(g => g.id == ug.id));
     }
 
     filterByInput = (mg: {id: string, name: string}) => {
@@ -100,19 +91,12 @@ export class UserManualGroupsSection extends AbstractSection implements OnInit {
         return `${mg.name}`.toLowerCase().indexOf(this.inputFilter.toLowerCase()) >= 0;
     }
 
-    filterGroups = (mg: {id: string, name: string}) => {
-        if (this.details.manualGroups) {
-            return !this.details.manualGroups.find(manualGroup => mg.id === manualGroup.id);
-        }
-        return true;
-    }
-    
     disableGroup = (mg) => {
         return this.spinner.isLoading(mg.id);
     }
 
     addGroup = (group) => {
-        this.spinner.perform('portal-content', this.user.addManualGroup(group))
+        return this.spinner.perform('portal-content', this.user.addManualGroup(group)
             .then(() => {
                 this.ns.success(
                     { 
@@ -121,6 +105,7 @@ export class UserManualGroupsSection extends AbstractSection implements OnInit {
                             group:  group.name
                         } 
                     }, 'notify.user.add.group.title');
+                this.updateGroups();
                 this.cdRef.markForCheck();
             })
             .catch(err => {
@@ -131,11 +116,12 @@ export class UserManualGroupsSection extends AbstractSection implements OnInit {
                             group:  group.name
                         }
                     }, 'notify.user.add.group.error.title', err);
-            });
+            })
+        );
     }
 
     removeGroup = (group) => {
-        this.spinner.perform('portal-content', this.user.removeManualGroup(group))
+        return this.spinner.perform('portal-content', this.user.removeManualGroup(group)
             .then(() => {
                 this.ns.success(
                     { 
@@ -144,6 +130,7 @@ export class UserManualGroupsSection extends AbstractSection implements OnInit {
                             group:  group.name
                         } 
                     }, 'notify.user.remove.group.title');
+                this.updateGroups();
                 this.cdRef.markForCheck();
             })
             .catch(err => {
@@ -154,7 +141,8 @@ export class UserManualGroupsSection extends AbstractSection implements OnInit {
                             group:  group.name
                         }
                     }, 'notify.user.remove.group.error.title', err);
-            });
+            })
+        );
     }
 
     protected onUserChange() {}
